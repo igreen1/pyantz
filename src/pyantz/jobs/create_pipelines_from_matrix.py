@@ -20,15 +20,16 @@ import os
 from typing import Any, Callable, Generator, Mapping
 
 import pandas as pd
+from pydantic import BaseModel
+
 from pyantz.infrastructure.config.base import (
     Config,
     ParametersType,
     PipelineConfig,
     PrimitiveType,
+    submitter_job,
 )
-from pyantz.infrastructure.config.job_decorators import submitter_job
 from pyantz.infrastructure.core.status import Status
-from pydantic import BaseModel
 
 
 class Parameters(BaseModel, frozen=True):

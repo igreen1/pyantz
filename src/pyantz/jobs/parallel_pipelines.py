@@ -22,8 +22,8 @@ from pyantz.infrastructure.config.base import (
     PipelineConfig,
     PrimitiveType,
     SubmitFunctionType,
+    submitter_job,
 )
-from pyantz.infrastructure.config.job_decorators import submitter_job
 from pyantz.infrastructure.core.status import Status
 
 ParallelPipelinesParametersType: TypeAlias = list[PipelineConfig]

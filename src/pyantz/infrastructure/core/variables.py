@@ -8,8 +8,9 @@ from collections.abc import Mapping as MappingABC
 from operator import add, mul, sub, truediv
 from typing import Mapping, overload
 
-from pyantz.infrastructure.config.base import ParametersType, PrimitiveType
 from pydantic import BaseModel
+
+from pyantz.infrastructure.config.base import ParametersType, PrimitiveType
 
 VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
 

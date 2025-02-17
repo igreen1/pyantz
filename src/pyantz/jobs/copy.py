@@ -4,10 +4,10 @@ import logging
 import os
 import shutil
 
-from pyantz.infrastructure.config.base import ParametersType
-from pyantz.infrastructure.config.job_decorators import simple_job
-from pyantz.infrastructure.core.status import Status
 from pydantic import BaseModel
+
+from pyantz.infrastructure.config.base import ParametersType, simple_job
+from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):

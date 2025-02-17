@@ -7,16 +7,17 @@ with a new variables PIPELINE_ID set to a counter
 import logging
 from typing import Mapping
 
+from pydantic import BaseModel, PositiveInt
+
 from pyantz.infrastructure.config.base import (
     Config,
     ParametersType,
     PipelineConfig,
     PrimitiveType,
     SubmitFunctionType,
+    submitter_job,
 )
-from pyantz.infrastructure.config.job_decorators import submitter_job
 from pyantz.infrastructure.core.status import Status
-from pydantic import BaseModel, PositiveInt
 
 
 class Parameters(BaseModel, frozen=True):

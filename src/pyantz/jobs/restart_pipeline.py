@@ -4,16 +4,17 @@ import logging
 import operator
 from typing import Any, Callable, Literal, Mapping
 
+from pydantic import BaseModel
+
 from pyantz.infrastructure.config.base import (
     Config,
     ParametersType,
     PipelineConfig,
     PrimitiveType,
     SubmitFunctionType,
+    submitter_job,
 )
-from pyantz.infrastructure.config.job_decorators import submitter_job
 from pyantz.infrastructure.core.status import Status
-from pydantic import BaseModel
 
 comparators: dict[str, Callable[[Any, Any], bool]] = {
     "==": operator.eq,

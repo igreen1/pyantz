@@ -9,13 +9,12 @@ import logging
 import uuid
 from typing import Any, Callable, Literal, Mapping, TypeAlias, Union
 
-from pyantz.infrastructure.core.status import Status
 from pydantic import BaseModel, BeforeValidator, Field, field_serializer
 from typing_extensions import Annotated, Unpack
 
-from .local_submitter import LocalSubmitterConfig
+from pyantz.infrastructure.core.status import Status
 
-VALID_DECORATORS: set[str] = {"mutable_job", "submitter_job", "simple_job"}
+from .local_submitter import LocalSubmitterConfig
 
 PrimitiveType: TypeAlias = str | int | float | bool
 AntzConfig: TypeAlias = Union["Config", "PipelineConfig", "JobConfig"]
@@ -45,6 +44,24 @@ MutableJobFunctionType: TypeAlias = Callable[
     ],
 ]
 
+_SPECIAL_ATTRIBUTE_NAME: str = "__pyantz_job_type__"
+
+
+def get_job_type(fn: Callable[..., Any]) -> str | None:
+    """For a provided callable, return what type of job it is
+
+    This API is guaranteed to be stable; our implementation of how
+        to mark functions is not. SO **USE THIS** to check
+
+    :param fn: any function which may or may not be marked
+    :type fn: Callable[..., Any]
+    :return: if the function is marked, return the mark type; else None
+    :rtype: str | None
+    """
+    if hasattr(fn, _SPECIAL_ATTRIBUTE_NAME):
+        return getattr(fn, _SPECIAL_ATTRIBUTE_NAME)
+    return None
+
 
 def get_function_by_name_strongly_typed(
     func_type_name: str,
@@ -61,34 +78,25 @@ def get_function_by_name_strongly_typed(
         func_type_name: the name of the wrapper in job_decorators
     """
 
-    strict: bool = func_type_name.startswith("pyantzjobs")
+    # strict for PyAntz jobs because we should at least be consistent!
+    strict: bool = func_type_name.startswith("pyantz.jobs")
 
-    if strict:
-
-        def strict_get_function_by_name(
-            func_name_or_any: Any,
-        ) -> Callable[..., Any] | None:
-            func_handle = get_function_by_name(func_name_or_any)
-            if func_handle is None:
-                return func_handle
-            print(func_handle.__qualname__)
-            if func_handle.__qualname__.split(".")[0] != func_type_name:
-                return None
-            return func_handle
-
-        return strict_get_function_by_name
-
-    def get_function_by_name_typed(func_name_or_any: Any) -> Callable[..., Any] | None:
+    def typed_get_function_by_name(
+        func_name_or_any: Any,
+    ) -> Callable[..., Any] | None:
         func_handle = get_function_by_name(func_name_or_any)
         if func_handle is None:
             return func_handle
-        if func_handle.__qualname__.split(".")[0] != func_type_name:
-            if func_handle.__qualname__.split(".")[0] not in VALID_DECORATORS:
-                return func_handle  # doesn't have any of the valid wrappers
+        job_type = get_job_type(func_handle)
+        if job_type is None and strict:
+            return None
+        if job_type is None:
+            return func_handle
+        if job_type != func_type_name:
             return None
         return func_handle
 
-    return get_function_by_name_typed
+    return typed_get_function_by_name
 
 
 def get_function_by_name(func_name_or_any: Any) -> Callable[..., Any] | None:
@@ -143,7 +151,7 @@ class MutableJobConfig(BaseModel, frozen=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
     function: Annotated[
         MutableJobFunctionType,
-        BeforeValidator(get_function_by_name_strongly_typed("mutable_job")),
+        BeforeValidator(get_function_by_name_strongly_typed("mutable")),
     ]
     parameters: ParametersType
 
@@ -168,7 +176,7 @@ class SubmitterJobConfig(BaseModel, frozen=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
     function: Annotated[
         SubmitterJobFunctionType,
-        BeforeValidator(get_function_by_name_strongly_typed("submitter_job")),
+        BeforeValidator(get_function_by_name_strongly_typed("submitter")),
     ]
     parameters: ParametersType
 
@@ -188,7 +196,7 @@ class JobConfig(BaseModel, frozen=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
     function: Annotated[
         JobFunctionType,
-        BeforeValidator(get_function_by_name_strongly_typed("simple_job")),
+        BeforeValidator(get_function_by_name_strongly_typed("simple")),
     ]
     parameters: ParametersType
 
@@ -236,3 +244,39 @@ class InitialConfig(BaseModel, frozen=True):
     analysis_config: Config
     submitter_config: LocalSubmitterConfig = Field(discriminator="type")
     logging_config: LoggingConfig = LoggingConfig()
+
+
+def mutable_job(
+    fn: Callable[
+        [ParametersType, Mapping[str, PrimitiveType], logging.Logger],
+        tuple[Status, Mapping[str, PrimitiveType]],
+    ],
+) -> MutableJobFunctionType:
+    """Wrap a mutable job to
+    1. Allow it to accept variable args if a user incorrectly marks job
+    2. Allow for type checking in the pydantic model
+    """
+
+    setattr(fn, _SPECIAL_ATTRIBUTE_NAME, "mutable")
+    return fn
+
+
+def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
+    """Wrap a submitter job to
+    1. Allow it to accept variable args if a user incorrectly marks job
+    2. Allow for type checking in the pydantic model
+    """
+    setattr(fn, _SPECIAL_ATTRIBUTE_NAME, "submitter")
+    return fn
+
+
+def simple_job(
+    fn: Callable[[ParametersType, logging.Logger], Status],
+) -> JobFunctionType:
+    """Wrap a simple job to
+    1. Allow it to accept variable args if a user incorrectly marks job
+    2. Allow for type checking in the pydantic model
+    """
+
+    setattr(fn, _SPECIAL_ATTRIBUTE_NAME, "simple")
+    return fn

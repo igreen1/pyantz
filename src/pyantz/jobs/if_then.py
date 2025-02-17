@@ -7,6 +7,9 @@ If that function returns False, then take path 2
 import logging
 from typing import Callable, Mapping
 
+from pydantic import BaseModel, BeforeValidator
+from typing_extensions import Annotated
+
 from pyantz.infrastructure.config.base import (
     Config,
     ParametersType,
@@ -14,11 +17,9 @@ from pyantz.infrastructure.config.base import (
     PrimitiveType,
     SubmitFunctionType,
     get_function_by_name,
+    submitter_job,
 )
-from pyantz.infrastructure.config.job_decorators import submitter_job
 from pyantz.infrastructure.core.status import Status
-from pydantic import BaseModel, BeforeValidator
-from typing_extensions import Annotated
 
 
 class Parameters(BaseModel, frozen=True):

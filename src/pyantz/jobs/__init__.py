@@ -3,7 +3,7 @@
 import importlib as _importlib
 from typing import Any as _Any
 
-from pyantz.infrastructure.config.base import VALID_DECORATORS, get_function_by_name
+from pyantz.infrastructure.config.base import get_job_type
 
 
 def get_job_parameter_schema(job_full_name: str) -> dict[str, _Any] | None:
@@ -31,17 +31,6 @@ def get_job_parameter_schema(job_full_name: str) -> dict[str, _Any] | None:
 
     if hasattr(mod, "Parameters"):
         return getattr(mod, "Parameters").schema_json()
-    return None
-
-
-def get_job_type(job_full_name: str) -> str | None:
-    """Get the type of job (Mutable, submitter, simple)"""
-    func_handle = get_function_by_name(job_full_name)
-    if func_handle is None:
-        return func_handle
-
-    if func_handle.__qualname__.split(".")[0] in VALID_DECORATORS:
-        return func_handle.__qualname__.split(".")[0]
     return None
 
 
