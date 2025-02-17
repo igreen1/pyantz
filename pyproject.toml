@@ -1,0 +1,39 @@
+[project]
+name = "pyantz"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "igreen1",email = "dev@iangreen.dev"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas (>=2.2.3,<3.0.0)",
+    "pydantic (>=2.10.6,<3.0.0)",
+    "numpy (>=2.2.3,<3.0.0)",
+    "rich (>=13.9.4,<14.0.0)",
+]
+
+[tool.poetry]
+packages = [{include = "pyantz", from = "src"}]
+
+[tool.isort]
+profile = "black"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+hypothesis = "^6.124.3"
+bandit = "^1.8.3"
+ruff = "^0.9.6"
+isort = "^6.0.0"
+black = "^25.1.0"
+mypy = "^1.15.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
