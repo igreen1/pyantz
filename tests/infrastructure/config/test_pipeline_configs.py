@@ -36,7 +36,7 @@ def test_pipeline_with_job_config() -> None:
             {
                 "type": "job",
                 "name": "my job",
-                "function": "test.infrastructure.config.test_pipeline_configs.fake_job_task",
+                "function": "tests.infrastructure.config.test_pipeline_configs.fake_job_task",
                 "parameters": {"arg1": 1, "arg2": 2},
             }
         ],
@@ -61,7 +61,7 @@ def test_disallow_nested_pipeline() -> None:
                     {
                         "type": "job",
                         "name": "my job",
-                        "function": "test.infrastructure.config.test_pipeline_configs.fake_job_task",
+                        "function": "tests.infrastructure.config.test_pipeline_configs.fake_job_task",
                         "parameters": {"arg1": 1, "arg2": 2},
                     }
                 ],

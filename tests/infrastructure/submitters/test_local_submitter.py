@@ -24,7 +24,7 @@ def test_local_submitter(tmpdir) -> None:
                 "stages": [
                     {
                         "type": "job",
-                        "function": "antz.jobs.copy.copy",
+                        "function": "pyantz.jobs.copy.copy",
                         "parameters": {
                             "source": os.fspath(src_file),
                             "destination": os.fspath(dst_file),
@@ -35,7 +35,7 @@ def test_local_submitter(tmpdir) -> None:
         },
     }
 
-    antz.run.run(test_config)
+    pyantz.run.run(test_config)
 
     assert os.path.exists(dst_file)
     with open(dst_file, "r", encoding='utf-8') as fh:

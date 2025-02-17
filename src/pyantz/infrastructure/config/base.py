@@ -61,7 +61,7 @@ def get_function_by_name_strongly_typed(
         func_type_name: the name of the wrapper in job_decorators
     """
 
-    strict: bool = func_type_name.startswith("antz.jobs")
+    strict: bool = func_type_name.startswith("pyantzjobs")
 
     if strict:
 

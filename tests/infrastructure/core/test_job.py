@@ -36,7 +36,7 @@ def test_getting_functions() -> None:
 
     job_config: dict = {
         "type": "job",
-        "function": "test.infrastructure.core.test_job.successful_function",
+        "function": "tests.infrastructure.core.test_job.successful_function",
         "parameters": {},
     }
     jc = JobConfig.model_validate(job_config)
@@ -46,7 +46,7 @@ def test_getting_functions() -> None:
 
     job_config = {
         "type": "job",
-        "function": "test.infrastructure.core.test_job.failed_function",
+        "function": "tests.infrastructure.core.test_job.failed_function",
         "parameters": {},
     }
     jc = JobConfig.model_validate(job_config)
@@ -58,7 +58,7 @@ def test_running_job_success() -> None:
     """Test that running the success function returns success through the job"""
     job_config: dict = {
         "type": "job",
-        "function": "test.infrastructure.core.test_job.successful_function",
+        "function": "tests.infrastructure.core.test_job.successful_function",
         "parameters": {},
     }
     jc = JobConfig.model_validate(job_config)
@@ -70,7 +70,7 @@ def test_running_job_failure() -> None:
     """Test that running the failure function returns failure through the job"""
     job_config: dict = {
         "type": "job",
-        "function": "test.infrastructure.core.test_job.failed_function",
+        "function": "tests.infrastructure.core.test_job.failed_function",
         "parameters": {},
     }
     jc = JobConfig.model_validate(job_config)
@@ -82,7 +82,7 @@ def test_running_job_exception() -> None:
     """Test that running the exception function returns failure through the job"""
     job_config: dict = {
         "type": "job",
-        "function": "test.infrastructure.core.test_job.error_function",
+        "function": "tests.infrastructure.core.test_job.error_function",
         "parameters": {},
     }
     jc = JobConfig.model_validate(job_config)
@@ -94,7 +94,7 @@ def test_no_function_error() -> None:
     """Test that non existent functions cause a validation error"""
     job_config: dict = {
         "type": "job",
-        "function": "test.infrastructure.core.test_job.NOSUCHFUNCTION",
+        "function": "tests.infrastructure.core.test_job.NOSUCHFUNCTION",
         "parameters": {},
     }
 
@@ -106,7 +106,7 @@ def test_not_a_callable() -> None:
     """Test that non callable functions cause a validation error"""
     job_config: dict = {
         "type": "job",
-        "function": "test.infrastructure.core.test_job",
+        "function": "tests.infrastructure.core.test_job",
         "parameters": {},
     }
 
@@ -118,7 +118,7 @@ def test_not_a_module() -> None:
     """Test that modules not existing for the provided function cause a validation error"""
     job_config: dict = {
         "type": "job",
-        "function": "antz.no.such.module",
+        "function": "pyantz.no.such.module",
         "parameters": {},
     }
     with pytest.raises(ValidationError):

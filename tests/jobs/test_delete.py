@@ -80,7 +80,7 @@ def test_delete_file_in_job(tmpdir: str | os.PathLike[str]) -> None:
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "antz.jobs.delete.delete",
+            "function": "pyantz.jobs.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{file_name}"},
         }
     )
@@ -103,7 +103,7 @@ def test_delete_file_in_job_non_existing(tmpdir: str | os.PathLike[str]) -> None
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "antz.jobs.delete.delete",
+            "function": "pyantz.jobs.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{file_name}"},
         }
     )
@@ -131,7 +131,7 @@ def test_delete_dir_in_job(tmpdir: str | os.PathLike[str]) -> None:
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "antz.jobs.delete.delete",
+            "function": "pyantz.jobs.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{dir_name}"},
         }
     )
@@ -154,7 +154,7 @@ def test_delete_dir_in_job_non_existing(tmpdir: str | os.PathLike[str]) -> None:
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "antz.jobs.delete.delete",
+            "function": "pyantz.jobs.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{file_name}"},
         }
     )

@@ -21,7 +21,7 @@ def test_job_import() -> None:
     job_config = {
         "type": "job",
         "name": "my job",
-        "function": "test.infrastructure.config.test_job_configs.fake_function",
+        "function": "tests.infrastructure.config.test_job_configs.fake_function",
         "parameters": {"s": 1},
     }
 
@@ -34,7 +34,7 @@ def test_failed_to_find_job() -> None:
     job_config = {
         "type": "job",
         "name": "my job",
-        "function": "test.infrastructure.config.test_job_configs.AGHS",
+        "function": "tests.infrastructure.config.test_job_configs.AGHS",
         "parameters": {"s": 1},
     }
 
@@ -47,7 +47,7 @@ def test_not_a_callable() -> None:
     job_config = {
         "type": "job",
         "name": "my job",
-        "function": "test.infrastructure.config.test_job_configs",
+        "function": "tests.infrastructure.config.test_job_configs",
         "parameters": {"s": 1},
     }
 
@@ -60,7 +60,7 @@ def test_no_such_module() -> None:
     job_config = {
         "type": "job",
         "name": "my job",
-        "function": "test.infrastructure.configxxxx.test_job_configs",
+        "function": "tests.infrastructure.configxxxx.test_job_configs",
         "parameters": {"s": 1},
     }
 
@@ -74,7 +74,7 @@ def test_job_uuid_creation() -> None:
     job_config = {
         "type": "job",
         "name": "my job",
-        "function": "test.infrastructure.config.test_job_configs.fake_function",
+        "function": "tests.infrastructure.config.test_job_configs.fake_function",
         "parameters": {"s": 1},
     }
 
@@ -95,7 +95,7 @@ def test_job_uuid_override() -> None:
         "type": "job",
         "id": "cb13bc78-e4a2-4a69-8a54-04ef168d656e",
         "name": "my job",
-        "function": "test.infrastructure.config.test_job_configs.fake_function",
+        "function": "tests.infrastructure.config.test_job_configs.fake_function",
         "parameters": {"s": 1},
     }
 
@@ -112,7 +112,7 @@ def test_empty_job_parameters() -> None:
     job_config = {
         "type": "job",
         "name": "my job",
-        "function": "test.infrastructure.config.test_job_configs.fake_function",
+        "function": "tests.infrastructure.config.test_job_configs.fake_function",
         "parameters": {},
     }
     _j1 = JobConfig.model_validate(job_config)
@@ -121,7 +121,7 @@ def test_empty_job_parameters() -> None:
         job_config = {
             "type": "job",
             "name": "my job",
-            "function": "test.infrastructure.config.test_job_configs.fake_function",
+            "function": "tests.infrastructure.config.test_job_configs.fake_function",
         }
         _j1 = JobConfig.model_validate(job_config)
 
@@ -132,7 +132,7 @@ def test_job_frozen_attr() -> None:
     job_config = {
         "type": "job",
         "name": "my job",
-        "function": "test.infrastructure.config.test_job_configs.fake_function",
+        "function": "tests.infrastructure.config.test_job_configs.fake_function",
         "parameters": {},
     }
     j1 = JobConfig.model_validate(job_config)
