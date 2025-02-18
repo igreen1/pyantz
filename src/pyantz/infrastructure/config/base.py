@@ -247,6 +247,24 @@ class InitialConfig(BaseModel, frozen=True):
     logging_config: LoggingConfig = LoggingConfig()
 
 
+def mutable_job(fn: Callable[["ParametersType", Mapping[str, PrimitiveType], logging.Logger], tuple[Status, Mapping[str, PrimitiveType]]],) -> MutableJobFunctionType:
+    """Wrap a mutable job to
+    1. Allow it to accept variable args if a user incorrectly marks job
+    2. Allow for type checking in the pydantic model
+    """
+
+    @wraps(fn)
+    def _mutable_job(
+        params: ParametersType,
+        variables: Mapping[str, PrimitiveType],
+        logger: logging.Logger,
+        *_: Any,
+    ) -> tuple[Status, Mapping[str, PrimitiveType]]:
+        return fn(params, variables, logger)
+
+    setattr(_mutable_job, _SPECIAL_ATTRIBUTE_NAME, "mutable")
+    return _mutable_job
+
 def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
     """Wrap a submitter job to
     1. Allow it to accept variable args if a user incorrectly marks job
