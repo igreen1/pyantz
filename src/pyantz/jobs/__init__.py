@@ -3,7 +3,12 @@
 import importlib as _importlib
 from typing import Any as _Any
 
-from pyantz.infrastructure.config.base import get_job_type, mutable_job as mark_mutable, submitter_job as mark_submitter, simple_job as mark_simple
+from pyantz.infrastructure.config.base import (
+    get_job_type,
+)
+from pyantz.infrastructure.config.base import mutable_job as mark_mutable
+from pyantz.infrastructure.config.base import simple_job as mark_simple
+from pyantz.infrastructure.config.base import submitter_job as mark_submitter
 
 
 def get_job_parameter_schema(job_full_name: str) -> dict[str, _Any] | None:
@@ -49,7 +54,7 @@ __all__ = [
     "run_script",
     "set_variable_from_function",
     "get_job_type",
-    'mark_simple',
-    'mark_submitter',
-    'mark_mutable',
+    "mark_simple",
+    "mark_submitter",
+    "mark_mutable",
 ]

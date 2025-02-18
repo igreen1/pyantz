@@ -10,7 +10,14 @@ import uuid
 from functools import wraps
 from typing import Any, Callable, Literal, Mapping, TypeAlias, Union
 
-from pydantic import BaseModel, validate_call, BeforeValidator, Field, field_serializer, RootModel
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    Field,
+    RootModel,
+    field_serializer,
+    validate_call,
+)
 from typing_extensions import Annotated, Unpack
 
 from pyantz.infrastructure.core.status import Status
@@ -247,7 +254,12 @@ class InitialConfig(BaseModel, frozen=True):
     logging_config: LoggingConfig = LoggingConfig()
 
 
-def mutable_job(fn: Callable[["ParametersType", Mapping[str, PrimitiveType], logging.Logger], tuple[Status, Mapping[str, PrimitiveType]]],) -> MutableJobFunctionType:
+def mutable_job(
+    fn: Callable[
+        ["ParametersType", Mapping[str, PrimitiveType], logging.Logger],
+        tuple[Status, Mapping[str, PrimitiveType]],
+    ],
+) -> MutableJobFunctionType:
     """Wrap a mutable job to
     1. Allow it to accept variable args if a user incorrectly marks job
     2. Allow for type checking in the pydantic model
@@ -264,6 +276,7 @@ def mutable_job(fn: Callable[["ParametersType", Mapping[str, PrimitiveType], log
 
     setattr(_mutable_job, _SPECIAL_ATTRIBUTE_NAME, "mutable")
     return _mutable_job
+
 
 def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
     """Wrap a submitter job to
@@ -283,6 +296,7 @@ def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
 
     setattr(_submitter_job, _SPECIAL_ATTRIBUTE_NAME, "submitter")
     return _submitter_job
+
 
 def simple_job(
     fn: Callable[[ParametersType, logging.Logger], Status],
