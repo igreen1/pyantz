@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from pyantz.infrastructure.config.base import JobConfig, Status
 from pyantz.infrastructure.core.job import run_job
-from pyantz.jobs.delete import delete
+from pyantz.jobs.file.delete import delete
 
 logger = logging.getLogger("test")
 logger.setLevel(0)
@@ -80,7 +80,7 @@ def test_delete_file_in_job(tmpdir: str | os.PathLike[str]) -> None:
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "pyantz.jobs.delete.delete",
+            "function": "pyantz.jobs.file.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{file_name}"},
         }
     )
@@ -103,7 +103,7 @@ def test_delete_file_in_job_non_existing(tmpdir: str | os.PathLike[str]) -> None
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "pyantz.jobs.delete.delete",
+            "function": "pyantz.jobs.file.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{file_name}"},
         }
     )
@@ -131,7 +131,7 @@ def test_delete_dir_in_job(tmpdir: str | os.PathLike[str]) -> None:
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "pyantz.jobs.delete.delete",
+            "function": "pyantz.jobs.file.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{dir_name}"},
         }
     )
@@ -154,7 +154,7 @@ def test_delete_dir_in_job_non_existing(tmpdir: str | os.PathLike[str]) -> None:
     job_config = JobConfig.model_validate(
         {
             "type": "job",
-            "function": "pyantz.jobs.delete.delete",
+            "function": "pyantz.jobs.file.delete.delete",
             "parameters": {"path": "%{tmpdir}" + os.sep + "%{file_name}"},
         }
     )
