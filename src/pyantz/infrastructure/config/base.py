@@ -7,9 +7,10 @@ from __future__ import annotations
 import importlib
 import logging
 import uuid
+from functools import wraps
 from typing import Any, Callable, Literal, Mapping, TypeAlias, Union
 
-from pydantic import BaseModel, BeforeValidator, Field, field_serializer
+from pydantic import BaseModel, validate_call, BeforeValidator, Field, field_serializer, RootModel
 from typing_extensions import Annotated, Unpack
 
 from pyantz.infrastructure.core.status import Status
@@ -246,6 +247,13 @@ class InitialConfig(BaseModel, frozen=True):
     logging_config: LoggingConfig = LoggingConfig()
 
 
+InitialConfig.model_rebuild()
+Config.model_rebuild()
+PipelineConfig.model_rebuild()
+JobConfig.model_rebuild()
+SubmitterJobConfig.model_rebuild()
+MutableJobConfig.model_rebuild()
+
 def mutable_job(
     fn: Callable[
         [ParametersType, Mapping[str, PrimitiveType], logging.Logger],
@@ -257,8 +265,18 @@ def mutable_job(
     2. Allow for type checking in the pydantic model
     """
 
-    setattr(fn, _SPECIAL_ATTRIBUTE_NAME, "mutable")
-    return fn
+    @validate_call
+    @wraps(fn)
+    def _mutable_job(
+        params: ParametersType,
+        variables: Mapping[str, PrimitiveType],
+        logger: logging.Logger,
+        *_: Any,
+    ) -> tuple[Status, Mapping[str, PrimitiveType]]:
+        return fn(params, variables, logger)
+
+    setattr(_mutable_job, _SPECIAL_ATTRIBUTE_NAME, "mutable")
+    return _mutable_job
 
 
 def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
@@ -266,9 +284,20 @@ def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
     1. Allow it to accept variable args if a user incorrectly marks job
     2. Allow for type checking in the pydantic model
     """
-    setattr(fn, _SPECIAL_ATTRIBUTE_NAME, "submitter")
-    return fn
 
+    @validate_call
+    @wraps(fn)
+    def _submitter_job(
+        params: ParametersType,
+        submitter: SubmitFunctionType,
+        variables: Mapping[str, PrimitiveType],
+        pipeline_config: PipelineConfig,
+        logger: logging.Logger,
+    ) -> Status:
+        return fn(params, submitter, variables, pipeline_config, logger)
+
+    setattr(_submitter_job, _SPECIAL_ATTRIBUTE_NAME, "submitter")
+    return _submitter_job
 
 def simple_job(
     fn: Callable[[ParametersType, logging.Logger], Status],
@@ -278,5 +307,14 @@ def simple_job(
     2. Allow for type checking in the pydantic model
     """
 
-    setattr(fn, _SPECIAL_ATTRIBUTE_NAME, "simple")
-    return fn
+    @validate_call
+    @wraps(fn)
+    def _simple_job(
+        params: ParametersType,
+        logger: logging.Logger,
+        *_: Any,
+    ) -> Status:
+        return fn(params, logger)
+
+    setattr(_simple_job, _SPECIAL_ATTRIBUTE_NAME, "simple")
+    return _simple_job
