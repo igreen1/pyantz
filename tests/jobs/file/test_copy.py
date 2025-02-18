@@ -7,7 +7,7 @@ import random
 import string
 
 from pyantz.infrastructure.core.status import Status
-from pyantz.jobs.copy import copy
+from pyantz.jobs.file.copy import copy
 
 FILE_LENGTH_MAX: int = 8000
 

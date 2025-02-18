@@ -24,7 +24,7 @@ def test_local_submitter(tmpdir) -> None:
                 "stages": [
                     {
                         "type": "job",
-                        "function": "pyantz.jobs.copy.copy",
+                        "function": "pyantz.jobs.file.copy.copy",
                         "parameters": {
                             "source": os.fspath(src_file),
                             "destination": os.fspath(dst_file),

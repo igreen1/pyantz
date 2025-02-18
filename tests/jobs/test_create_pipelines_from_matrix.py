@@ -59,7 +59,7 @@ def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
                             "stages": [
                                 {
                                     "type": "job",
-                                    "function": "pyantz.jobs.copy.copy",
+                                    "function": "pyantz.jobs.file.copy.copy",
                                     "parameters": {
                                         "source": os.fspath(src_file),
                                         "destination": os.fspath(dst_file),
@@ -91,7 +91,7 @@ def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
                 {
                     "type": "job",
                     "id": ret.config.stages[0].id,
-                    "function": "pyantz.jobs.copy.copy",
+                    "function": "pyantz.jobs.file.copy.copy",
                     "parameters": {"source": src_file, "destination": dst_file},
                 }
             ],
@@ -111,7 +111,7 @@ def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
                 {
                     "type": "job",
                     "id": ret.config.stages[0].id,
-                    "function": "pyantz.jobs.copy.copy",
+                    "function": "pyantz.jobs.file.copy.copy",
                     "parameters": {"source": src_file, "destination": dst_file},
                 }
             ],
@@ -131,7 +131,7 @@ def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
                 {
                     "type": "job",
                     "id": ret.config.stages[0].id,
-                    "function": "pyantz.jobs.copy.copy",
+                    "function": "pyantz.jobs.file.copy.copy",
                     "parameters": {"source": src_file, "destination": dst_file},
                 }
             ],
