@@ -5,7 +5,10 @@ import logging
 from pyantz.jobs.file.make_dirs import make_dirs
 
 from pyantz.infrastructure.core.status import Status
-from tests.jobs.generic_job_tester import success_in_pipeline, error_in_pipeline, submit_to_local
+from pyantz.infrastructure.config.base import PipelineConfig
+from pyantz.infrastructure.core.pipeline import run_pipeline
+import pyantz.run
+
 
 test_logger = logging.getLogger(__name__)
 test_logger.setLevel(0)
@@ -52,11 +55,21 @@ def test_success_in_pipeline(tmpdir) -> None:
         'function': 'pyantz.jobs.file.make_dirs.make_dirs'
     }
 
-    success_in_pipeline(job_config)
+    pipeline_config = PipelineConfig.model_validate({
+        'type': 'pipeline',
+        'stages': [job_config]
+    })
+
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger('test'))
+    assert status == Status.SUCCESS
     assert os.path.exists(path)
-    success_in_pipeline(job_config)
+    
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger('test'))
+    assert status == Status.SUCCESS
     assert os.path.exists(path)
-    success_in_pipeline(job_config)
+
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger('test'))
+    assert status == Status.SUCCESS
     assert os.path.exists(path)
 
 def test_error_in_pipeline(tmpdir) -> None:
@@ -71,15 +84,23 @@ def test_error_in_pipeline(tmpdir) -> None:
         'function': 'pyantz.jobs.file.make_dirs.make_dirs'
     }
 
-    success_in_pipeline(job_config)
+    pipeline_config = PipelineConfig.model_validate({
+        'type': 'pipeline',
+        'stages': [job_config]
+    })
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger('test'))
+    assert status == Status.SUCCESS
     assert os.path.exists(path)
-    error_in_pipeline(job_config)
-    assert os.path.exists(path)
-    error_in_pipeline(job_config)
+    
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger('test'))
+    assert status == Status.ERROR
     assert os.path.exists(path)
 
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger('test'))
+    assert status == Status.ERROR
+    assert os.path.exists(path)
 
-def submit_to_local(tmpdir) -> None:
+def test_submit_to_local(tmpdir) -> None:
     
 
     path = os.path.join(tmpdir, "test_dir")
@@ -91,9 +112,19 @@ def submit_to_local(tmpdir) -> None:
         'function': 'pyantz.jobs.file.make_dirs.make_dirs'
     }
 
-    submit_to_local(job_config)
+    test_config = {
+        "submitter_config": {"type": "local"},
+        "analysis_config": {
+            "variables": {},
+            "config": {
+                'type': 'pipeline',
+                'stages': [job_config]
+            }
+        }
+    }
+    pyantz.run.run(test_config)
     assert os.path.exists(path)
-    submit_to_local(job_config)
+    pyantz.run.run(test_config)
     assert os.path.exists(path)
-    submit_to_local(job_config)
+    pyantz.run.run(test_config)
     assert os.path.exists(path)

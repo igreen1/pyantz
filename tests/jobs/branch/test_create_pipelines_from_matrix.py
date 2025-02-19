@@ -51,7 +51,7 @@ def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
             "stages": [
                 {
                     "type": "submitter_job",
-                    "function": "pyantz.jobs.create_pipelines_from_matrix.create_pipelines_from_matrix",
+                    "function": "pyantz.jobs.branch.create_pipelines_from_matrix.create_pipelines_from_matrix",
                     "parameters": {
                         "matrix_path": matrix_path,
                         "pipeline_config_template": {

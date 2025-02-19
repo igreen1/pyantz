@@ -22,9 +22,12 @@ def run_local_submitter(config: InitialConfig) -> threading.Thread:
         Callable[[PipelineConfig], None]: callable that accepts a pipeline config
             and places it on the queue
     """
-    mp.set_start_method(
-        "spawn"
-    )  # we have significant threading, so complete isolation is required
+    try:
+        # we have significant threading, so complete isolation is required
+        mp.set_start_method('spawn', force=True)
+        print("spawned")
+    except RuntimeError:
+        pass
 
     unified_task_queue: mp.Queue = mp.Queue()
 
