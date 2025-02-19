@@ -20,7 +20,7 @@ jobs:
         pip install pylint pydantic black pandas
     - name: Analysing the code with pylint
       run: |
-        pylint antz
+        pylint pyantz
     - name: Checking the format with black
       run: |
-        black --check antz
+        black --check pyantz
