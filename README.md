@@ -1,4 +1,6 @@
 
+ poetry run coverage run --source=src -m pytest
+
 TODO
 -> slurm
     on failure of submission, retry with different node
