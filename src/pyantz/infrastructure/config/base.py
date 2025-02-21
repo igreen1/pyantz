@@ -197,7 +197,7 @@ class SubmitterJobConfig(BaseModel, frozen=True):
 class JobConfig(BaseModel, frozen=True):
     """Configuration of a job"""
 
-    type: Literal["job"]
+    type: Literal["job"] | Literal['simple_job']
     name: str = "some job"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
     function: Annotated[

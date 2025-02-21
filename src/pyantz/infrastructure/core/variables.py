@@ -221,7 +221,7 @@ def _resolve_variable_expression_recursive(
                 lval = _infer_type(lval)
                 if not isinstance(lval, (int, float)):
                     raise RuntimeError(
-                        f'Unable to resolve perform multiplication with "{lval}" and "{rval}"'
+                        f'Unable to resolve perform operation ({op_char}) with "{lval}" and "{rval}"'
                     )
 
             if not isinstance(rval, (int, float)):
@@ -229,7 +229,7 @@ def _resolve_variable_expression_recursive(
                 rval = _infer_type(rval)
                 if not isinstance(rval, (int, float)):
                     raise RuntimeError(
-                        f'Unable to resolve perform multiplication with "{rval}"'
+                        f'Unable to resolve perform operation ({op_char}) with "{rval}"'
                     )
 
             return op_fn(lval, rval)
