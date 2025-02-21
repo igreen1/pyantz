@@ -17,7 +17,7 @@ class MakeDirsModel(BaseModel):
 
 
 @simple_job
-def make_dirs(parameters: ParametersType, logger: logging.Logger) -> None:
+def make_dirs(parameters: ParametersType, logger: logging.Logger) -> Status:
     """Make directories for a given path
 
     Args:
@@ -29,10 +29,10 @@ def make_dirs(parameters: ParametersType, logger: logging.Logger) -> None:
         print(params_parsed.exist_ok)
         os.makedirs(params_parsed.path, exist_ok=params_parsed.exist_ok)
     except FileExistsError as exc:
-        logger.error(f"Directory {params_parsed.path} already exists", exc_info=exc)
+        logger.error("Directory %s already exists", params_parsed.path, exc_info=exc)
         return Status.ERROR
-    except Exception as exc:
-        logger.error(f"Failed to create directory {params_parsed.path}", exc_info=exc)
+    except PermissionError as exc:
+        logger.error("Permission denied to create directory", exc_info=exc)
         return Status.ERROR
 
     return Status.SUCCESS

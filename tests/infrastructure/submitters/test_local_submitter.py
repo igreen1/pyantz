@@ -12,7 +12,7 @@ def test_local_submitter(tmpdir) -> None:
 
     test_text: str = "Hello there general kenobi"
 
-    with open(src_file, "w", encoding='utf-8') as fh:
+    with open(src_file, "w", encoding="utf-8") as fh:
         fh.write(test_text)
 
     test_config = {
@@ -38,6 +38,6 @@ def test_local_submitter(tmpdir) -> None:
     pyantz.run.run(test_config)
 
     assert os.path.exists(dst_file)
-    with open(dst_file, "r", encoding='utf-8') as fh:
+    with open(dst_file, "r", encoding="utf-8") as fh:
         ret = fh.read()
     assert ret == test_text

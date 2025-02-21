@@ -24,7 +24,7 @@ def run_local_submitter(config: InitialConfig) -> threading.Thread:
     """
     try:
         # we have significant threading, so complete isolation is required
-        mp.set_start_method('spawn', force=True)
+        mp.set_start_method("spawn", force=True)
         print("spawned")
     except RuntimeError:
         pass

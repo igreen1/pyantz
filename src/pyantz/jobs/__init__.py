@@ -40,21 +40,12 @@ def get_job_parameter_schema(job_full_name: str) -> dict[str, _Any] | None:
 
 
 __all__ = [
-    "assert_variable",
-    "change_variable",
-    "compare",
-    "copy",
-    "create_pipelines_from_matrix",
-    "delete",
-    "explode_pipeline",
-    "if_then",
+    "branch",
+    "file",
+    "variables",
     "nop",
-    "parallel_pipelines",
-    "restart_pipeline",
-    "run_script",
-    "set_variable_from_function",
     "get_job_type",
+    "mark_mutable",
     "mark_simple",
     "mark_submitter",
-    "mark_mutable",
 ]

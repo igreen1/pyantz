@@ -1,8 +1,8 @@
 """Test the copy job"""
 
 import glob
-import os
 import logging
+import os
 import random
 import string
 
@@ -11,8 +11,9 @@ from pyantz.jobs.file.copy import copy
 
 FILE_LENGTH_MAX: int = 8000
 
-logger = logging.Logger('test')
+logger = logging.Logger("test")
 logger.setLevel(0)
+
 
 def test_copy_file(tmpdir: str | os.PathLike[str]) -> None:
 

@@ -75,9 +75,7 @@ def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
 
     parsed_input = Config.model_validate(input_config)
 
-    run_manager(
-        parsed_input, submit_callable, logger
-    )
+    run_manager(parsed_input, submit_callable, logger)
 
     ret = q.get(timeout=1)
 

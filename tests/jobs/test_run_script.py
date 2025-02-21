@@ -1,14 +1,14 @@
 """Test running a script"""
 
+import logging
 import os
-import logging 
 
 from pyantz.infrastructure.core.status import Status
 from pyantz.jobs.run_script import run_script
 
-
 logger = logging.getLogger("test")
 logger.setLevel(0)
+
 
 def test_run_script_fn(tmpdir) -> None:
     """Test running a script with the run_script fn"""
@@ -31,7 +31,8 @@ def test_run_script_fn(tmpdir) -> None:
                 "script_path": script_path,
                 "script_args": ["what?"],
                 "stdout_save_file": stdout_file,
-            }, logger
+            },
+            logger,
         )
         == Status.SUCCESS
     )
