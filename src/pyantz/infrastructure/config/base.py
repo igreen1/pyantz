@@ -13,10 +13,10 @@ from typing import Any, Callable, Literal, Mapping, TypeAlias, Union
 from pydantic import (
     BaseModel,
     BeforeValidator,
+    ConfigDict,
     Field,
     field_serializer,
     validate_call,
-    ConfigDict
 )
 from typing_extensions import Annotated, Unpack
 
@@ -199,7 +199,7 @@ class SubmitterJobConfig(BaseModel, frozen=True):
 class JobConfig(BaseModel, frozen=True):
     """Configuration of a job"""
 
-    type: Literal["job"] | Literal['simple_job']
+    type: Literal["job"] | Literal["simple_job"]
     name: str = "some job"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
     function: Annotated[
@@ -252,6 +252,7 @@ class InitialConfig(BaseModel, frozen=True):
     analysis_config: Config
     submitter_config: LocalSubmitterConfig = Field(discriminator="type")
     logging_config: LoggingConfig = LoggingConfig()
+
 
 def mutable_job(
     fn: Callable[
