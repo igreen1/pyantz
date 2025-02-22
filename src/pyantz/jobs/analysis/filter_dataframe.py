@@ -1,8 +1,9 @@
-"""For an input dataframe, filter based on a provided query """
+"""For an input dataframe, filter based on a provided query"""
 
 import logging
 import os
 import shutil
+
 import pandas as pd
 from pydantic import BaseModel
 
@@ -29,11 +30,11 @@ def filter_dataframe(parameters: ParametersType, logger: logging.Logger) -> Stat
         output_file (str): path to save the filtered dataframe
     }
 
-    
+
     Args:
         parameters (ParametersType): ParametersType for this function
         logger (logging.Logger): logger for this function
-    
+
     Returns:
         Status: result of this job
     """
@@ -45,10 +46,10 @@ def filter_dataframe(parameters: ParametersType, logger: logging.Logger) -> Stat
     if not os.path.exists(filter_parameters.input_file):
         logger.error("Input file does not exist")
         return Status.ERROR
-    
-    data = pd.read_parquet(filter_parameters.input_file, dtype_backend='pyarrow')
+
+    data = pd.read_parquet(filter_parameters.input_file, dtype_backend="pyarrow")
     filtered_data = data.query(filter_parameters.query_string)
     if filter_parameters.output_file is not None:
         filtered_data.to_parquet(filter_parameters.output_file)
-    
+
     return Status.SUCCESS
