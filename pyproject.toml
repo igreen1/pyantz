@@ -21,6 +21,9 @@ packages = [{include = "pyantz", from = "src"}]
 [tool.isort]
 profile = "black"
 
+[tool.pylint.main]
+disable = "W0401,W0614"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 hypothesis = "^6.124.3"
