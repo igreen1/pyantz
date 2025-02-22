@@ -30,7 +30,10 @@ def test_explode_pipelines_job_standalone() -> None:
         parameters,
         mock_submit_fn,
         {},
-        None,
+        PipelineConfig.model_validate({
+            "type": "pipeline",
+            "stages": []
+        }),
         logging.getLogger('test'),
     )
 

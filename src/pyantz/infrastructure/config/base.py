@@ -15,6 +15,8 @@ from pydantic import (
     BeforeValidator,
     Field,
     field_serializer,
+    validate_call,
+    ConfigDict
 )
 from typing_extensions import Annotated, Unpack
 
@@ -251,7 +253,6 @@ class InitialConfig(BaseModel, frozen=True):
     submitter_config: LocalSubmitterConfig = Field(discriminator="type")
     logging_config: LoggingConfig = LoggingConfig()
 
-
 def mutable_job(
     fn: Callable[
         ["ParametersType", Mapping[str, PrimitiveType], logging.Logger],
@@ -263,12 +264,12 @@ def mutable_job(
     2. Allow for type checking in the pydantic model
     """
 
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     @wraps(fn)
     def _mutable_job(
         params: ParametersType,
         variables: Mapping[str, PrimitiveType],
         logger: logging.Logger,
-        *_: Any,
     ) -> tuple[Status, Mapping[str, PrimitiveType]]:
         return fn(params, variables, logger)
 
@@ -282,6 +283,7 @@ def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
     2. Allow for type checking in the pydantic model
     """
 
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     @wraps(fn)
     def _submitter_job(
         params: ParametersType,
@@ -304,11 +306,11 @@ def simple_job(
     2. Allow for type checking in the pydantic model
     """
 
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     @wraps(fn)
     def _simple_job(
         params: ParametersType,
         logger: logging.Logger,
-        *_: Any,
     ) -> Status:
         return fn(params, logger)
 

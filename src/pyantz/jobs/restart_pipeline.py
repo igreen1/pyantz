@@ -6,14 +6,7 @@ from typing import Any, Callable, Literal, Mapping
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import (
-    Config,
-    ParametersType,
-    PipelineConfig,
-    PrimitiveType,
-    SubmitFunctionType,
-    submitter_job,
-)
+from pyantz.infrastructure.config.base import *
 from pyantz.infrastructure.core.status import Status
 
 comparators: dict[str, Callable[[Any, Any], bool]] = {

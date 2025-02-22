@@ -12,7 +12,7 @@ import shutil
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
-from pyantz.infrastructure.config.base import ParametersType, simple_job
+from pyantz.infrastructure.config.base import *
 from pyantz.infrastructure.core.status import Status
 
 

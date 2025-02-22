@@ -6,7 +6,7 @@ import shutil
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import ParametersType, simple_job
+from pyantz.infrastructure.config.base import *
 from pyantz.infrastructure.core.status import Status
 
 

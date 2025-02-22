@@ -8,7 +8,7 @@ In those cases, use a NOP
 
 import logging
 
-from pyantz.infrastructure.config.base import ParametersType, simple_job
+from pyantz.infrastructure.config.base import *
 from pyantz.infrastructure.core.status import Status
 
 

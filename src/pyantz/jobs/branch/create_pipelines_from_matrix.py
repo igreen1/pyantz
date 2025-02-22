@@ -22,13 +22,7 @@ from typing import Any, Callable, Generator, Mapping
 import pandas as pd
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import (
-    Config,
-    ParametersType,
-    PipelineConfig,
-    PrimitiveType,
-    submitter_job,
-)
+from pyantz.infrastructure.config.base import *
 from pyantz.infrastructure.core.status import Status
 
 
