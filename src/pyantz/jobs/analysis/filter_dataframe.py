@@ -2,7 +2,6 @@
 
 import logging
 import os
-import shutil
 
 import pandas as pd
 from pydantic import BaseModel
