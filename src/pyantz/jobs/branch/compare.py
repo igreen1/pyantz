@@ -36,7 +36,7 @@ comparators: dict[str, Callable[[Any, Any], bool]] = {
 }
 
 
-@submitter_job
+@submitter_job(Parameters)
 def compare(
     parameters: ParametersType,
     submit_fn: SubmitFunctionType,

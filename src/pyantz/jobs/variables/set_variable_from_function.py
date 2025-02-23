@@ -21,7 +21,7 @@ class Parameters(BaseModel, frozen=True):
     pipeline_config_template: PipelineConfig
 
 
-@mutable_job
+@mutable_job(Parameters)
 def set_variable_from_function(
     parameters: ParametersType,
     variables: Mapping[str, PrimitiveType],

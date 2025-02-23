@@ -6,7 +6,7 @@ Parameters may contain variables which need resolving. This module
 import re
 from collections.abc import Mapping as MappingABC
 from operator import add, mul, sub, truediv
-from typing import Mapping, overload, TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Mapping, Union, overload
 
 from pydantic import BaseModel
 
@@ -17,8 +17,8 @@ VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
 
 
 def resolve_variables(
-    parameters: 'ParametersType', variables: Mapping[str, 'PrimitiveType']
-) -> 'ParametersType':
+    parameters: "ParametersType", variables: Mapping[str, "PrimitiveType"]
+) -> "ParametersType":
     """Provided paramters, return the parameters with any variables interpolated
 
     Args:
@@ -43,28 +43,29 @@ def resolve_variables(
     }
 
 
-def is_variable(token: 'PrimitiveType') -> bool:
+def is_variable(token: "PrimitiveType") -> bool:
     """Returns true if the provided token is a variable expression"""
     return VARIABLE_PATTERN.match(str(token)) is not None
 
 
 @overload
 def _resolve_value(
-    val: 'PrimitiveType', variables: Mapping[str, 'PrimitiveType']
-) -> 'PrimitiveType':
+    val: "PrimitiveType", variables: Mapping[str, "PrimitiveType"]
+) -> "PrimitiveType":
     pass
 
 
 @overload
 def _resolve_value(
-    val: list['PrimitiveType'], variables: Mapping[str, 'PrimitiveType']
-) -> list['PrimitiveType']:
+    val: list["PrimitiveType"], variables: Mapping[str, "PrimitiveType"]
+) -> list["PrimitiveType"]:
     pass
 
 
 def _resolve_value(
-    val: Union['PrimitiveType', list['PrimitiveType']], variables: Mapping[str, 'PrimitiveType']
-) -> Union['PrimitiveType', list['PrimitiveType']]:
+    val: Union["PrimitiveType", list["PrimitiveType"]],
+    variables: Mapping[str, "PrimitiveType"],
+) -> Union["PrimitiveType", list["PrimitiveType"]]:
     """Given a value return the value with any variables resolved/removed
 
     Args:
@@ -97,7 +98,7 @@ def _resolve_value(
     return val
 
 
-def _infer_type(val: str) -> 'PrimitiveType':
+def _infer_type(val: str) -> "PrimitiveType":
     """Change type to best fitting primitive type
 
     Examples:
@@ -135,8 +136,8 @@ def _infer_type(val: str) -> 'PrimitiveType':
 
 
 def _resolve_variable_expression(
-    variable_expression: str, variables: Mapping[str, 'PrimitiveType']
-) -> 'PrimitiveType':
+    variable_expression: str, variables: Mapping[str, "PrimitiveType"]
+) -> "PrimitiveType":
     """Turn expressions of variables into one literal
 
     Variables can be expressions, combining literals and variables with simple math
@@ -167,8 +168,8 @@ def _resolve_variable_expression(
 
 
 def _resolve_variable_expression_recursive(
-    variable_expression: str, variables: Mapping[str, 'PrimitiveType']
-) -> 'PrimitiveType':
+    variable_expression: str, variables: Mapping[str, "PrimitiveType"]
+) -> "PrimitiveType":
     """Turn expressions of variables into one literal
 
     Variables can be expressions, combining literals and variables with simple math
@@ -207,8 +208,8 @@ def _resolve_variable_expression_recursive(
     for op_char, op_fn in operations:
         if op_char in variable_expression:
             i = variable_expression.find(op_char)
-            lval: 'PrimitiveType' = variable_expression[:i].rstrip()
-            rval: 'PrimitiveType' = variable_expression[i + 1 :].lstrip()
+            lval: "PrimitiveType" = variable_expression[:i].rstrip()
+            rval: "PrimitiveType" = variable_expression[i + 1 :].lstrip()
 
             lval = _resolve_variable_expression_recursive(
                 str(lval), variables=variables
@@ -222,7 +223,7 @@ def _resolve_variable_expression_recursive(
                 lval = _infer_type(lval)
                 if not isinstance(lval, (int, float)):
                     raise RuntimeError(
-                        f'Unable to resolve perform operation ({op_char})'
+                        f"Unable to resolve perform operation ({op_char})"
                         ' with "{lval}" and "{rval}"'
                     )
 
@@ -242,8 +243,8 @@ def _resolve_variable_expression_recursive(
 
 
 def _resolve_token(
-    var_token: str, variables: Mapping[str, 'PrimitiveType']
-) -> 'PrimitiveType':
+    var_token: str, variables: Mapping[str, "PrimitiveType"]
+) -> "PrimitiveType":
     """For the provided token, if its a variable name return the variable
 
     Args:

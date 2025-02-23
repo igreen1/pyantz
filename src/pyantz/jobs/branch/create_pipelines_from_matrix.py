@@ -33,7 +33,7 @@ class Parameters(BaseModel, frozen=True):
     pipeline_config_template: PipelineConfig
 
 
-@submitter_job
+@submitter_job(Parameters)
 def create_pipelines_from_matrix(
     parameters: ParametersType,
     submit_fn: Callable[[Config], None],

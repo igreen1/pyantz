@@ -14,15 +14,19 @@ This function will run any number of entirely user defined pipelines
 """
 
 import logging
-from typing import Mapping, TypeAlias
+from typing import Mapping
 
 from pyantz.infrastructure.config.base import *
 from pyantz.infrastructure.core.status import Status
 
-ParallelPipelinesParametersType: TypeAlias = list[PipelineConfig]
+
+class ParallelPipelinesParameters(BaseModel, frozen=True):
+    """See parallel pipelines docstring"""
+
+    pipelines: list[PipelineConfig]
 
 
-@submitter_job
+@submitter_job(ParallelPipelinesParameters)
 def parallel_pipelines(
     parameters: ParametersType,
     submit_fn: SubmitFunctionType,
@@ -47,21 +51,11 @@ def parallel_pipelines(
         logger.error("Parallel pipeline requires parameters")
         return Status.ERROR
 
-    params_validated = [
-        PipelineConfig.model_validate({"name": key, **value.model_dump()})
-        for key, value in parameters.items()
-        if isinstance(value, PipelineConfig)
-    ]
-
-    if len(params_validated) != len(parameters):
-        logger.error(
-            "One of the passed parameters in parallel pipelines is not a pipeline config"
-        )
-        return Status.ERROR
+    params_validated = ParallelPipelinesParameters.model_validate(parameters)
 
     logger.debug("Submitting %d new pipelines", len(params_validated))
 
-    for new_pipeline in params_validated:
+    for new_pipeline in params_validated.pipelines:
         submit_fn(
             Config.model_validate({"variables": variables, "config": new_pipeline})
         )

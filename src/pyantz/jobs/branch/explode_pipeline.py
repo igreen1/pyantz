@@ -20,7 +20,7 @@ class Parameters(BaseModel, frozen=True):
     pipeline_config_template: PipelineConfig
 
 
-@submitter_job
+@submitter_job(Parameters)
 def explode_pipeline(
     parameters: ParametersType,
     submit_fn: SubmitFunctionType,

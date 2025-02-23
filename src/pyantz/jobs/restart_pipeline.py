@@ -27,7 +27,7 @@ class Parameters(BaseModel, frozen=True):
     right: PrimitiveType
 
 
-@submitter_job
+@submitter_job(Parameters)
 def restart_pipeline(
     parameters: ParametersType,
     submit_fn: SubmitFunctionType,

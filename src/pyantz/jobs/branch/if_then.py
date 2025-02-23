@@ -23,7 +23,7 @@ class Parameters(BaseModel, frozen=True):
     if_false: PipelineConfig
 
 
-@submitter_job
+@submitter_job(Parameters)
 def if_then(
     parameters: ParametersType,
     submit_fn: SubmitFunctionType,
