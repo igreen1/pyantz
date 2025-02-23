@@ -11,7 +11,7 @@ from pyantz.infrastructure.core.status import Status
 class Parameters(BaseModel, frozen=True):
     """See assert_variable docstring"""
 
-    given_val: str
+    given_val: PrimitiveType
     expected_value: PrimitiveType
 
 
