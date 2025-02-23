@@ -51,7 +51,7 @@ def filter_dataframe(parameters: ParametersType, logger: logging.Logger) -> Stat
     filtered_data = data.query(
         filter_parameters.query_string,
         local_dict=filter_parameters.captured_variables,
-        global_dict={}
+        global_dict={},
     )
     if filter_parameters.output_file is not None:
         filtered_data.to_parquet(filter_parameters.output_file)

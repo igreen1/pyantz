@@ -27,9 +27,9 @@ class Parameters(BaseModel, frozen=True):
 
     left_hand_side: str
     right_hand_side: PrimitiveType
-    pipeline_config_template: PipelineConfig
 
 
+@mutable_job(Parameters)
 def change_variable(
     parameters: ParametersType,
     variables: Mapping[str, PrimitiveType],
@@ -42,7 +42,6 @@ def change_variable(
     Parameters {
         left_hand_side (str): name of the variable to change (left of equal sign)
         right_hand_side (str | int | bool | float): value to set the variable to
-        pipeline_config_template (PipelineConfig): pipeline to spawn from this one
     }
 
     Args:

@@ -75,11 +75,12 @@ def get_job_type(fn: Callable[..., Any]) -> str | None:
 
 
 def get_function_by_name_strongly_typed(
-    func_type_name: str,
+    func_type_name: str, strict: bool | None = None
 ) -> Callable[[Any], Callable[..., Any] | None]:
     """Returns a function Calls get_function_by_name and checks that the function type is correct
 
     Uses strict rules for internal functions; otherwise uses non-strict
+        can be overriden with the strict argument
     If strict is True,
         requires that the function is wrapped in the correct wrapper from job_decorators.py
     if strict is false,
@@ -87,10 +88,12 @@ def get_function_by_name_strongly_typed(
 
     Args:
         func_type_name: the name of the wrapper in job_decorators
+        strict: overrides the default behavior if provided, see notes above
     """
 
     # strict for PyAntz jobs because we should at least be consistent!
-    strict: bool = func_type_name.startswith("pyantz.jobs")
+    if strict is None:
+        strict = func_type_name.startswith("pyantz")
 
     def typed_get_function_by_name(
         func_name_or_any: Any,
@@ -149,74 +152,8 @@ def get_function_by_name(func_name_or_any: Any) -> Callable[..., Any] | None:
     return func
 
 
-class MutableJobConfig(BaseModel, frozen=True):
-    """Configuration of a submitter job, with different function param types
-    These jobs gain access to the submit function and can submit
-        entirely new pipelines of execution
-
-    However, they must ALWAYS BE FINAL
-    """
-
-    type: Literal["mutable_job"]
-    name: str = "some job"
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
-    function: Annotated[
-        MutableJobFunctionType,
-        BeforeValidator(get_function_by_name_strongly_typed("mutable")),
-    ]
-    parameters: ParametersType
-
-    @field_serializer("function")
-    def serialize_function(self, func: MutableJobFunctionType, _info):
-        """To serialize function, store the import path to the func
-        instead of its handle as a str
-        """
-        return func.__module__ + "." + func.__name__
-
-
-class SubmitterJobConfig(BaseModel, frozen=True):
-    """Configuration of a submitter job, with different function param types
-    These jobs gain access to the submit function and can submit
-        entirely new pipelines of execution
-
-    However, they must ALWAYS BE FINAL
-    """
-
-    type: Literal["submitter_job"]
-    name: str = "some job"
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
-    function: Annotated[
-        SubmitterJobFunctionType,
-        BeforeValidator(get_function_by_name_strongly_typed("submitter")),
-    ]
-    parameters: ParametersType
-
-    @field_serializer("function")
-    def serialize_function(self, func: SubmitterJobFunctionType, _info):
-        """To serialize function, store the import path to the func
-        instead of its handle as a str
-        """
-        return func.__module__ + "." + func.__name__
-
-
-class JobConfig(BaseModel, frozen=True):
-    """Configuration of a job"""
-
-    type: Literal["job"] | Literal["simple_job"]
-    name: str = "some job"
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
-    function: Annotated[
-        JobFunctionType,
-        BeforeValidator(get_function_by_name_strongly_typed("simple")),
-    ]
-    parameters: ParametersType
-
-    @field_serializer("function")
-    def serialize_function(self, func: JobFunctionType, _info):
-        """To serialize function, store the import path to the func
-        instead of its handle as a str
-        """
-        return func.__module__ + "." + func.__name__
+class _AbstractJobConfig(BaseModel, frozen=True):
+    """holds common functions for the various job configs"""
 
     @model_validator(mode="after")
     def check_parameters_match(self: "JobConfig") -> "JobConfig":
@@ -229,7 +166,9 @@ class JobConfig(BaseModel, frozen=True):
         params_model = getattr(self.function, _PYANTZ_PARAMS_MODEL_FIELD)
         if params_model is None:
             return self
-        if not issubclass(params_model, BaseModel):
+        if not isinstance(params_model, type) or not issubclass(
+            params_model, BaseModel
+        ):
             raise ValueError(
                 f"Invalid parameters mode for function {self.function.__name__}"
             )
@@ -254,6 +193,76 @@ class JobConfig(BaseModel, frozen=True):
                 f"Parameters do not match expected parameters for function {self.function.__name__}"
             )
         return self
+
+
+class MutableJobConfig(_AbstractJobConfig):
+    """Configuration of a submitter job, with different function param types
+    These jobs gain access to the submit function and can submit
+        entirely new pipelines of execution
+
+    However, they must ALWAYS BE FINAL
+    """
+
+    type: Literal["mutable_job"]
+    name: str = "some job"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
+    function: Annotated[
+        MutableJobFunctionType,
+        BeforeValidator(get_function_by_name_strongly_typed("mutable")),
+    ]
+    parameters: ParametersType
+
+    @field_serializer("function")
+    def serialize_function(self, func: JobFunctionType, _info):
+        """To serialize function, store the import path to the func
+        instead of its handle as a str
+        """
+        return func.__module__ + "." + func.__name__
+
+
+class SubmitterJobConfig(_AbstractJobConfig):
+    """Configuration of a submitter job, with different function param types
+    These jobs gain access to the submit function and can submit
+        entirely new pipelines of execution
+
+    However, they must ALWAYS BE FINAL
+    """
+
+    type: Literal["submitter_job"]
+    name: str = "some job"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
+    function: Annotated[
+        SubmitterJobFunctionType,
+        BeforeValidator(get_function_by_name_strongly_typed("submitter")),
+    ]
+    parameters: ParametersType
+
+    @field_serializer("function")
+    def serialize_function(self, func: JobFunctionType, _info):
+        """To serialize function, store the import path to the func
+        instead of its handle as a str
+        """
+        return func.__module__ + "." + func.__name__
+
+
+class JobConfig(_AbstractJobConfig):
+    """Configuration of a job"""
+
+    type: Literal["job"] | Literal["simple_job"]
+    name: str = "some job"
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
+    function: Annotated[
+        JobFunctionType,
+        BeforeValidator(get_function_by_name_strongly_typed("simple")),
+    ]
+    parameters: ParametersType
+
+    @field_serializer("function")
+    def serialize_function(self, func: JobFunctionType, _info):
+        """To serialize function, store the import path to the func
+        instead of its handle as a str
+        """
+        return func.__module__ + "." + func.__name__
 
 
 class PipelineConfig(BaseModel, frozen=True):
