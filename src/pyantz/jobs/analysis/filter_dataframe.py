@@ -16,6 +16,7 @@ class FilterDataFrameParameters(BaseModel, frozen=True):
     input_file: str
     query_string: str
     output_file: str | None
+    captured_variables: Mapping[str, PrimitiveType] | None = None
 
 
 @simple_job(FilterDataFrameParameters)
@@ -47,7 +48,11 @@ def filter_dataframe(parameters: ParametersType, logger: logging.Logger) -> Stat
         return Status.ERROR
 
     data = pd.read_parquet(filter_parameters.input_file, dtype_backend="pyarrow")
-    filtered_data = data.query(filter_parameters.query_string)
+    filtered_data = data.query(
+        filter_parameters.query_string,
+        local_dict=filter_parameters.captured_variables,
+        global_dict={}
+    )
     if filter_parameters.output_file is not None:
         filtered_data.to_parquet(filter_parameters.output_file)
 
