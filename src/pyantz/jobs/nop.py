@@ -12,7 +12,7 @@ from pyantz.infrastructure.config.base import *
 from pyantz.infrastructure.core.status import Status
 
 
-@simple_job
+@simple_job(None)
 def nop(_parameters: ParametersType, _logger: logging.Logger) -> Status:
     """Do nothing"""
     return Status.SUCCESS

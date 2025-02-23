@@ -18,7 +18,7 @@ class Parameters(BaseModel, frozen=True):
     infer_name: bool = False
 
 
-@simple_job
+@simple_job(Parameters)
 def copy(parameters: ParametersType, logger: logging.Logger) -> Status:
     """Copy file or directory from parameters.soruce to parameters.destination
 

@@ -15,7 +15,7 @@ class Parameters(BaseModel, frozen=True):
     expected_value: PrimitiveType
 
 
-@simple_job
+@simple_job(Parameters)
 def assert_value(parameters: ParametersType, logger: logging.Logger) -> Status:
     """Return ERROR if the variable doesn't match expectations
 

@@ -18,7 +18,7 @@ class FilterDataFrameParameters(BaseModel, frozen=True):
     output_file: str | None
 
 
-@simple_job
+@simple_job(FilterDataFrameParameters)
 def filter_dataframe(parameters: ParametersType, logger: logging.Logger) -> Status:
     """Filter a dataframe based on a query
 

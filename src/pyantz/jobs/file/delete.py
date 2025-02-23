@@ -22,7 +22,7 @@ class Parameters(BaseModel, frozen=True):
     path: Annotated[str, BeforeValidator(lambda x: x if os.path.exists(x) else None)]
 
 
-@simple_job
+@simple_job(Parameters)
 def delete(parameters: ParametersType, logger: logging.Logger) -> Status:
     """Deletes parameters.path
 

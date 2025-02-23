@@ -16,7 +16,7 @@ class MakeDirsModel(BaseModel):
     exist_ok: bool = False
 
 
-@simple_job
+@simple_job(MakeDirsModel)
 def make_dirs(parameters: ParametersType, logger: logging.Logger) -> Status:
     """Make directories for a given path
 

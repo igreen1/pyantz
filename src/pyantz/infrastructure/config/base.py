@@ -17,10 +17,12 @@ from pydantic import (
     Field,
     field_serializer,
     validate_call,
+    model_validator
 )
 from typing_extensions import Annotated, Unpack
 
 from pyantz.infrastructure.core.status import Status
+from pyantz.infrastructure.core.variables import is_variable
 
 from .local_submitter import LocalSubmitterConfig
 
@@ -52,7 +54,8 @@ MutableJobFunctionType: TypeAlias = Callable[
     ],
 ]
 
-_SPECIAL_ATTRIBUTE_NAME: str = "__pyantz_job_type__"
+_PYANTZ_JOB_TYPE_FIELD: str = "__pyantz_job_type__"
+_PYANTZ_PARAMS_MODEL_FIELD: str = "__pyantz_param_model__"
 
 
 def get_job_type(fn: Callable[..., Any]) -> str | None:
@@ -66,8 +69,8 @@ def get_job_type(fn: Callable[..., Any]) -> str | None:
     :return: if the function is marked, return the mark type; else None
     :rtype: str | None
     """
-    if hasattr(fn, _SPECIAL_ATTRIBUTE_NAME):
-        return getattr(fn, _SPECIAL_ATTRIBUTE_NAME)
+    if hasattr(fn, _PYANTZ_JOB_TYPE_FIELD):
+        return getattr(fn, _PYANTZ_JOB_TYPE_FIELD)
     return None
 
 
@@ -214,6 +217,38 @@ class JobConfig(BaseModel, frozen=True):
         instead of its handle as a str
         """
         return func.__module__ + "." + func.__name__
+    
+    @model_validator(mode='after')
+    def check_parameters_match(self: "JobConfig") -> "JobConfig":
+        """Checks that the config parameters match the expected parameters for the function
+        """
+
+        if not hasattr(self.function, _PYANTZ_PARAMS_MODEL_FIELD):
+            return self
+        
+        # check if we must validate in the first place
+        params_model = getattr(self.function, _PYANTZ_PARAMS_MODEL_FIELD)
+        if params_model is None:
+            if self.parameters is None or not self.parameters:
+                return self
+            raise ValueError('Job expected no parameters (null) but parameters passed for func %s', self.function.__name__)
+        if not issubclass(params_model, BaseModel):
+            raise ValueError("Invalid parameters mode for function %s", self.function.__name__)
+    
+        # If the parameters are None or not a mapping, error in validation
+        if self.parameters is None:
+            raise ValueError("Parameters cannot be None for function %s", self.function.__name__)
+        if not isinstance(self.parameters, Mapping):
+            raise ValueError("Parameters must be a mapping for function %s", self.function.__name__)
+        
+        # Validate the parameters against the model
+        # because fields may be variable, validation is only performed when the fields are ALL non-variable
+        # variable fields MUST be checked at run time because they may be dependent on the context of the run
+        if any(is_variable(field) for field in self.parameters.values()):
+            return self
+        if not params_model.model_validate(self.parameters):
+            raise ValueError("Parameters do not match expected parameters for function %s", self.function.__name__)
+        return self
 
 
 class PipelineConfig(BaseModel, frozen=True):
@@ -274,7 +309,7 @@ def mutable_job(
     ) -> tuple[Status, Mapping[str, PrimitiveType]]:
         return fn(params, variables, logger)
 
-    setattr(_mutable_job, _SPECIAL_ATTRIBUTE_NAME, "mutable")
+    setattr(_mutable_job, _PYANTZ_JOB_TYPE_FIELD, "mutable")
     return _mutable_job
 
 
@@ -295,25 +330,35 @@ def submitter_job(fn: SubmitterJobFunctionType) -> SubmitterJobFunctionType:
     ) -> Status:
         return fn(params, submitter, variables, pipeline_config, logger)
 
-    setattr(_submitter_job, _SPECIAL_ATTRIBUTE_NAME, "submitter")
+    setattr(_submitter_job, _PYANTZ_JOB_TYPE_FIELD, "submitter")
     return _submitter_job
 
 
 def simple_job(
-    fn: Callable[[ParametersType, logging.Logger], Status],
-) -> JobFunctionType:
-    """Wrap a simple job to
-    1. Allow it to accept variable args if a user incorrectly marks job
-    2. Allow for type checking in the pydantic model
+    params_model: BaseModel | None
+) -> Callable[[BaseModel], Callable[[ParametersType, logging.Logger], Status]]:
+    """Wrap a simple job and add its parameters model to its definition to allow
+        the configuration parser to validate the parameters
     """
+    def mark_simple_job(
+        fn: Callable[[ParametersType, logging.Logger], Status],
+    ) -> JobFunctionType:
+        """Wrap a simple job to
+        1. Allow it to accept variable args if a user incorrectly marks job
+        2. Allow for type checking in the pydantic model
+        """
 
-    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
-    @wraps(fn)
-    def _simple_job(
-        params: ParametersType,
-        logger: logging.Logger,
-    ) -> Status:
-        return fn(params, logger)
+        @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
+        @wraps(fn)
+        def _simple_job(
+            params: ParametersType,
+            logger: logging.Logger,
+        ) -> Status:
+            return fn(params, logger)
 
-    setattr(_simple_job, _SPECIAL_ATTRIBUTE_NAME, "simple")
-    return _simple_job
+        setattr(_simple_job, _PYANTZ_JOB_TYPE_FIELD, "simple")
+        setattr(_simple_job, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
+        return _simple_job
+    return mark_simple_job
+
+

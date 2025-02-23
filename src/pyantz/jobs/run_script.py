@@ -24,7 +24,7 @@ class Parameters(BaseModel, frozen=True):
     current_working_dir: str | None = None
 
 
-@simple_job
+@simple_job(Parameters)
 def run_script(parameters: ParametersType, logger: logging.Logger) -> Status:
     """Run the script provided by parameters
 
