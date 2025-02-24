@@ -18,7 +18,6 @@ class Parameters(BaseModel, frozen=True):
     right_hand_side: Annotated[
         Callable[..., PrimitiveType], BeforeValidator(get_function_by_name)
     ]
-    pipeline_config_template: PipelineConfig
 
 
 @mutable_job(Parameters)
@@ -36,8 +35,6 @@ def set_variable_from_function(
             for example, if you'd call `from cool.fun.module import my_func` then you'd write
             "function": "cool.fun.module.my_func"
         args: list of args that will be * expanded into the function
-
-        pipeline_config_template (PipelineConfig): pipeline to spawn from this one
     }
 
     Args:
