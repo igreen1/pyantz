@@ -96,7 +96,6 @@ def generate_configs(
 
     for idx, row in case_matrix.iterrows():
         pipeline_base["name"] = f"pipeline_{idx}"
-        print(pipeline_base)
         yield Config.model_validate(
             {
                 "config": pipeline_base,

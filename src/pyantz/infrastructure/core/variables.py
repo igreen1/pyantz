@@ -161,7 +161,6 @@ def _resolve_variable_expression(
     Returns:
         PrimitiveType: the variable expression as simplified as possible
     """
-    print("parent call: ", variable_expression)
     return _resolve_variable_expression_recursive(
         variable_expression=variable_expression.strip(), variables=variables
     )

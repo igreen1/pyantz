@@ -26,7 +26,6 @@ def make_dirs(parameters: ParametersType, logger: logging.Logger) -> Status:
     params_parsed = MakeDirsModel.model_validate(parameters)
 
     try:
-        print(params_parsed.exist_ok)
         os.makedirs(params_parsed.path, exist_ok=params_parsed.exist_ok)
     except FileExistsError as exc:
         logger.error("Directory %s already exists", params_parsed.path, exc_info=exc)

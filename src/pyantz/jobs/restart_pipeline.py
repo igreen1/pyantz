@@ -22,9 +22,9 @@ comparators: dict[str, Callable[[Any, Any], bool]] = {
 class Parameters(BaseModel, frozen=True):
     """Provides optional configuration of the restart pipeline job"""
 
-    comparator: Literal["<", ">", "<=", ">=", "==", "!="]
-    left: PrimitiveType
-    right: PrimitiveType
+    comparator: Literal["<", ">", "<=", ">=", "==", "!="] | None = None
+    left: PrimitiveType | None = None
+    right: PrimitiveType | None = None
 
 
 @submitter_job(Parameters)
@@ -49,6 +49,12 @@ def restart_pipeline(
 
     if parameters != {}:
         params_parsed = Parameters.model_validate(parameters)
+        if (
+            params_parsed.comparator is None
+            or params_parsed.left is None
+            or params_parsed.right is None
+        ):
+            raise RuntimeError("Invalid parameters for restart pipeline")
         result = comparators[params_parsed.comparator](
             params_parsed.left, params_parsed.right
         )
