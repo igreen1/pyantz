@@ -25,7 +25,9 @@ class Parameters(BaseModel, frozen=True):
 
 
 @config_base.simple_job(Parameters)
-def run_script(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
+def run_script(
+    parameters: config_base.ParametersType, logger: logging.Logger
+) -> Status:
     """Run the script provided by parameters
 
     Args:

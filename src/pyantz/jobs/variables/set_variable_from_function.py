@@ -16,7 +16,8 @@ class Parameters(BaseModel, frozen=True):
     left_hand_side: str
     args: list[config_base.PrimitiveType] | None
     right_hand_side: Annotated[
-        Callable[..., config_base.PrimitiveType], BeforeValidator(config_base.get_function_by_name)
+        Callable[..., config_base.PrimitiveType],
+        BeforeValidator(config_base.get_function_by_name),
     ]
 
 

@@ -67,5 +67,9 @@ def restart_pipeline(
     new_pipeline = pipeline_config.model_dump()
     new_pipeline["curr_stage"] = 0
 
-    submit_fn(config_base.Config.model_validate({"variables": variables, "config": new_pipeline}))
+    submit_fn(
+        config_base.Config.model_validate(
+            {"variables": variables, "config": new_pipeline}
+        )
+    )
     return Status.FINAL

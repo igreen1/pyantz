@@ -2,10 +2,10 @@
 
 import logging
 import os
+from typing import Mapping
 
 import pandas as pd
 from pydantic import BaseModel
-from typing import Mapping
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -21,7 +21,9 @@ class FilterDataFrameParameters(BaseModel, frozen=True):
 
 
 @config_base.simple_job(FilterDataFrameParameters)
-def filter_dataframe(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
+def filter_dataframe(
+    parameters: config_base.ParametersType, logger: logging.Logger
+) -> Status:
     """Filter a dataframe based on a query
 
     ParametersType {

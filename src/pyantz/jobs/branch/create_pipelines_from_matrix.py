@@ -22,7 +22,6 @@ from typing import Any, Callable, Generator, Mapping
 import pandas as pd
 from pydantic import BaseModel
 
-
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 

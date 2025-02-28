@@ -16,9 +16,10 @@ This function will run any number of entirely user defined pipelines
 import logging
 from typing import Mapping
 
+from pydantic import BaseModel
+
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
-from pydantic import BaseModel
 
 
 class ParallelPipelinesParameters(BaseModel, frozen=True):
@@ -58,7 +59,9 @@ def parallel_pipelines(
 
     for new_pipeline in params_validated.pipelines:
         submit_fn(
-            config_base.Config.model_validate({"variables": variables, "config": new_pipeline})
+            config_base.Config.model_validate(
+                {"variables": variables, "config": new_pipeline}
+            )
         )
 
     return Status.FINAL

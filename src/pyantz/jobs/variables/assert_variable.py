@@ -16,7 +16,9 @@ class Parameters(BaseModel, frozen=True):
 
 
 @config_base.simple_job(Parameters)
-def assert_value(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
+def assert_value(
+    parameters: config_base.ParametersType, logger: logging.Logger
+) -> Status:
     """Return ERROR if the variable doesn't match expectations
 
     Parameters {

@@ -11,14 +11,15 @@ from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
 import pyantz.infrastructure.config.base as config_base
-
 from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
     """See if then docstring"""
 
-    function: Annotated[Callable[..., bool], BeforeValidator(config_base.get_function_by_name)]
+    function: Annotated[
+        Callable[..., bool], BeforeValidator(config_base.get_function_by_name)
+    ]
     args: list[config_base.PrimitiveType] | None
     if_true: config_base.PipelineConfig
     if_false: config_base.PipelineConfig

@@ -18,7 +18,7 @@ from pydantic import (
     model_validator,
     validate_call,
 )
-from typing_extensions import Annotated, Unpack
+from typing_extensions import Annotated
 
 from pyantz.infrastructure.core.status import Status
 from pyantz.infrastructure.core.variables import is_variable
@@ -158,13 +158,12 @@ class _AbstractJobConfig(BaseModel, frozen=True):
     name: str = "some job"
     id: uuid.UUID = Field(default_factory=uuid.uuid4, validate_default=True)
 
-    
     @field_serializer("function")
     def serialize_function(self, func: JobFunctionType, info):
         """To serialize function, store the import path to the func
         instead of its handle as a str
         """
-        if hasattr(func, '__wrapped__'):
+        if hasattr(func, "__wrapped__"):
             print("WRAPPED", func)
             return self.serialize_function(func.__wrapped__, info)
         return func.__module__ + "." + func.__name__
@@ -200,7 +199,11 @@ class _AbstractJobConfig(BaseModel, frozen=True):
         if any(isinstance(field, BaseModel) for field in self.parameters.values()):
             # cannot check jobs or pipelines
             return self
-        if any(is_variable(field) for field in self.parameters.values() if isinstance(field, PrimitiveType)):
+        if any(
+            is_variable(field)
+            for field in self.parameters.values()
+            if isinstance(field, PrimitiveType)
+        ):
             return self
         if not params_model.model_validate(self.parameters):
             raise ValueError(
@@ -321,7 +324,7 @@ def mutable_job(params_model: type[BaseModel] | None) -> Callable[
 
         setattr(_mutable_job, _PYANTZ_JOB_TYPE_FIELD, "mutable")
         setattr(_mutable_job, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
-        setattr(_mutable_job, '__wrapped__', fn)
+        setattr(_mutable_job, "__wrapped__", fn)
         return _mutable_job
 
     return mark_mutable_job
@@ -329,7 +332,7 @@ def mutable_job(params_model: type[BaseModel] | None) -> Callable[
 
 def submitter_job(
     params_model: type[BaseModel] | None,
-) ->Callable[[SubmitterJobFunctionType], SubmitterJobFunctionType]:
+) -> Callable[[SubmitterJobFunctionType], SubmitterJobFunctionType]:
     """Wrap a submitter job and add its parameters model to its definition to allow
     the configuration parser to validate the parameters
     """
@@ -352,7 +355,7 @@ def submitter_job(
 
         setattr(_submitter_job, _PYANTZ_JOB_TYPE_FIELD, "submitter")
         setattr(_submitter_job, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
-        setattr(_submitter_job, '__wrapped__', fn)
+        setattr(_submitter_job, "__wrapped__", fn)
         return _submitter_job
 
     return mark_submitter_job
@@ -360,10 +363,7 @@ def submitter_job(
 
 def simple_job(
     params_model: type[BaseModel] | None,
-) -> Callable[
-    [Callable[[ParametersType, logging.Logger], Status]],
-    JobFunctionType
-]:
+) -> Callable[[Callable[[ParametersType, logging.Logger], Status]], JobFunctionType]:
     """Wrap a simple job and add its parameters model to its definition to allow
     the configuration parser to validate the parameters
     """
@@ -385,28 +385,28 @@ def simple_job(
 
         setattr(_simple_job, _PYANTZ_JOB_TYPE_FIELD, "simple")
         setattr(_simple_job, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
-        setattr(_simple_job, '__wrapped__', fn)
+        setattr(_simple_job, "__wrapped__", fn)
         return _simple_job
 
     return mark_simple_job
 
-__all__ = [
-    'simple_job',
-    'submitter_job',
-    'mutable_job',
-    'InitialConfig',
-    'Config',
-    'LoggingConfig',
-    'PipelineConfig',
-    'JobConfig',
-    'SubmitterJobConfig',
-    'MutableJobConfig',
-    'ParametersType',
-    'PrimitiveType',
-    'get_function_by_name',
-    'get_function_by_name_strongly_typed',
-    'SubmitFunctionType',
-    'MutableJobFunctionType',
-    'JobFunctionType',
 
+__all__ = [
+    "simple_job",
+    "submitter_job",
+    "mutable_job",
+    "InitialConfig",
+    "Config",
+    "LoggingConfig",
+    "PipelineConfig",
+    "JobConfig",
+    "SubmitterJobConfig",
+    "MutableJobConfig",
+    "ParametersType",
+    "PrimitiveType",
+    "get_function_by_name",
+    "get_function_by_name_strongly_typed",
+    "SubmitFunctionType",
+    "MutableJobFunctionType",
+    "JobFunctionType",
 ]
