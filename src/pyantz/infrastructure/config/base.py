@@ -28,7 +28,7 @@ from .local_submitter import LocalSubmitterConfig
 PrimitiveType: TypeAlias = str | int | float | bool
 AntzConfig: TypeAlias = Union["Config", "PipelineConfig", "JobConfig"]
 ParametersType: TypeAlias = (
-    Mapping[str, PrimitiveType | list[PrimitiveType] | AntzConfig] | None
+    Mapping[str, PrimitiveType | list[PrimitiveType] | AntzConfig | list[AntzConfig]] | None
 )
 SubmitFunctionType: TypeAlias = Callable[["Config"], None]
 JobFunctionType: TypeAlias = Callable[
@@ -164,7 +164,6 @@ class _AbstractJobConfig(BaseModel, frozen=True):
         instead of its handle as a str
         """
         if hasattr(func, "__wrapped__"):
-            print("WRAPPED", func)
             return self.serialize_function(func.__wrapped__, info)
         return func.__module__ + "." + func.__name__
 
