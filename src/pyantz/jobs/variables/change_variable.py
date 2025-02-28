@@ -18,7 +18,7 @@ from typing import Mapping
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -26,17 +26,17 @@ class Parameters(BaseModel, frozen=True):
     """See change variable docs"""
 
     left_hand_side: str
-    right_hand_side: PrimitiveType
+    right_hand_side: config_base.PrimitiveType
 
 
-@mutable_job(Parameters)
+@config_base.mutable_job(Parameters)
 def change_variable(
-    parameters: ParametersType,
-    variables: Mapping[str, PrimitiveType],
+    parameters: config_base.ParametersType,
+    variables: Mapping[str, config_base.PrimitiveType],
     logger: logging.Logger,
     *_,
     **__,
-) -> tuple[Status, Mapping[str, PrimitiveType]]:
+) -> tuple[Status, Mapping[str, config_base.PrimitiveType]]:
     """Change a variable to a new value
 
     Parameters {

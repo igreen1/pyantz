@@ -22,7 +22,8 @@ from typing import Any, Callable, Generator, Mapping
 import pandas as pd
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import *
+
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -30,15 +31,15 @@ class Parameters(BaseModel, frozen=True):
     """The parameters required for the copy command"""
 
     matrix_path: str | os.PathLike[str]
-    pipeline_config_template: PipelineConfig
+    pipeline_config_template: config_base.PipelineConfig
 
 
-@submitter_job(Parameters)
+@config_base.submitter_job(Parameters)
 def create_pipelines_from_matrix(
-    parameters: ParametersType,
-    submit_fn: Callable[[Config], None],
-    variables: Mapping[str, PrimitiveType],
-    _pipeline_config: PipelineConfig,
+    parameters: config_base.ParametersType,
+    submit_fn: Callable[[config_base.Config], None],
+    variables: Mapping[str, config_base.PrimitiveType],
+    _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
     """Copy file or directory from parameters.soruce to parameters.destination
@@ -66,8 +67,8 @@ def create_pipelines_from_matrix(
 
 
 def generate_configs(
-    params: Parameters, variables: Mapping[str, PrimitiveType]
-) -> Generator[Config, None, None]:
+    params: Parameters, variables: Mapping[str, config_base.PrimitiveType]
+) -> Generator[config_base.Config, None, None]:
     """Create a generator for row of the matrix
 
     Args:
@@ -96,7 +97,7 @@ def generate_configs(
 
     for idx, row in case_matrix.iterrows():
         pipeline_base["name"] = f"pipeline_{idx}"
-        yield Config.model_validate(
+        yield config_base.Config.model_validate(
             {
                 "config": pipeline_base,
                 "variables": {

@@ -123,7 +123,7 @@ class LocalProc(mp.Process):
 
         def submit_fn(config: Config) -> None:
             """Submit a pipeline to this submitter"""
-            self._queue.put(config)
+            self._queue.put(config.model_dump())
 
         while not self._is_dead.value:
             try:

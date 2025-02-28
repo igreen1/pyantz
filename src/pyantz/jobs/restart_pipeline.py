@@ -6,7 +6,7 @@ from typing import Any, Callable, Literal, Mapping
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 comparators: dict[str, Callable[[Any, Any], bool]] = {
@@ -23,16 +23,16 @@ class Parameters(BaseModel, frozen=True):
     """Provides optional configuration of the restart pipeline job"""
 
     comparator: Literal["<", ">", "<=", ">=", "==", "!="] | None = None
-    left: PrimitiveType | None = None
-    right: PrimitiveType | None = None
+    left: config_base.PrimitiveType | None = None
+    right: config_base.PrimitiveType | None = None
 
 
-@submitter_job(Parameters)
+@config_base.submitter_job(Parameters)
 def restart_pipeline(
-    parameters: ParametersType,
-    submit_fn: SubmitFunctionType,
-    variables: Mapping[str, PrimitiveType],
-    pipeline_config: PipelineConfig,
+    parameters: config_base.ParametersType,
+    submit_fn: config_base.SubmitFunctionType,
+    variables: Mapping[str, config_base.PrimitiveType],
+    pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
     """Create a series of parallel pipelines based on user input
@@ -67,5 +67,5 @@ def restart_pipeline(
     new_pipeline = pipeline_config.model_dump()
     new_pipeline["curr_stage"] = 0
 
-    submit_fn(Config.model_validate({"variables": variables, "config": new_pipeline}))
+    submit_fn(config_base.Config.model_validate({"variables": variables, "config": new_pipeline}))
     return Status.FINAL

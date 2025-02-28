@@ -8,11 +8,11 @@ In those cases, use a NOP
 
 import logging
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
-@simple_job(None)
-def nop(_parameters: ParametersType, _logger: logging.Logger) -> Status:
+@config_base.simple_job(None)
+def nop(_parameters: config_base.ParametersType, _logger: logging.Logger) -> Status:
     """Do nothing"""
     return Status.SUCCESS

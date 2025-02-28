@@ -5,7 +5,7 @@ import os
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -16,8 +16,8 @@ class MakeDirsModel(BaseModel):
     exist_ok: bool = False
 
 
-@simple_job(MakeDirsModel)
-def make_dirs(parameters: ParametersType, logger: logging.Logger) -> Status:
+@config_base.simple_job(MakeDirsModel)
+def make_dirs(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
     """Make directories for a given path
 
     Args:

@@ -9,7 +9,7 @@ from typing import Mapping
 
 from pydantic import BaseModel, PositiveInt
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -17,15 +17,15 @@ class Parameters(BaseModel, frozen=True):
     """See explode pipeline docs"""
 
     num_pipelines: PositiveInt
-    pipeline_config_template: PipelineConfig
+    pipeline_config_template: config_base.PipelineConfig
 
 
-@submitter_job(Parameters)
+@config_base.submitter_job(Parameters)
 def explode_pipeline(
-    parameters: ParametersType,
-    submit_fn: SubmitFunctionType,
-    variables: Mapping[str, PrimitiveType],
-    _pipeline_config: PipelineConfig,
+    parameters: config_base.ParametersType,
+    submit_fn: config_base.SubmitFunctionType,
+    variables: Mapping[str, config_base.PrimitiveType],
+    _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
     """Create a series of parallel pipelines based on user input
@@ -46,7 +46,7 @@ def explode_pipeline(
 
     for i in range(params_parsed.num_pipelines):
         submit_fn(
-            Config.model_validate(
+            config_base.Config.model_validate(
                 {
                     "variables": {**variables, "PIPELINE_ID": i},
                     "config": params_parsed.pipeline_config_template,

@@ -6,7 +6,7 @@ from typing import Callable, Mapping
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -14,18 +14,18 @@ class Parameters(BaseModel, frozen=True):
     """See change variable docs"""
 
     left_hand_side: str
-    args: list[PrimitiveType] | None
+    args: list[config_base.PrimitiveType] | None
     right_hand_side: Annotated[
-        Callable[..., PrimitiveType], BeforeValidator(get_function_by_name)
+        Callable[..., config_base.PrimitiveType], BeforeValidator(config_base.get_function_by_name)
     ]
 
 
-@mutable_job(Parameters)
+@config_base.mutable_job(Parameters)
 def set_variable_from_function(
-    parameters: ParametersType,
-    variables: Mapping[str, PrimitiveType],
+    parameters: config_base.ParametersType,
+    variables: Mapping[str, config_base.PrimitiveType],
     logger: logging.Logger,
-) -> tuple[Status, Mapping[str, PrimitiveType]]:
+) -> tuple[Status, Mapping[str, config_base.PrimitiveType]]:
     """Change a variable to a new value based on a function return
 
     ChangeVariableParameters {

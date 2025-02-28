@@ -7,7 +7,7 @@ import subprocess  # nosec
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -24,8 +24,8 @@ class Parameters(BaseModel, frozen=True):
     current_working_dir: str | None = None
 
 
-@simple_job(Parameters)
-def run_script(parameters: ParametersType, logger: logging.Logger) -> Status:
+@config_base.simple_job(Parameters)
+def run_script(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
     """Run the script provided by parameters
 
     Args:

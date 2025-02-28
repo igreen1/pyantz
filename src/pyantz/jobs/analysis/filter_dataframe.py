@@ -5,8 +5,9 @@ import os
 
 import pandas as pd
 from pydantic import BaseModel
+from typing import Mapping
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -16,11 +17,11 @@ class FilterDataFrameParameters(BaseModel, frozen=True):
     input_file: str
     query_string: str
     output_file: str | None
-    captured_variables: Mapping[str, PrimitiveType] | None = None
+    captured_variables: Mapping[str, config_base.PrimitiveType] | None = None
 
 
-@simple_job(FilterDataFrameParameters)
-def filter_dataframe(parameters: ParametersType, logger: logging.Logger) -> Status:
+@config_base.simple_job(FilterDataFrameParameters)
+def filter_dataframe(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
     """Filter a dataframe based on a query
 
     ParametersType {

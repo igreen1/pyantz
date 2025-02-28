@@ -16,22 +16,23 @@ This function will run any number of entirely user defined pipelines
 import logging
 from typing import Mapping
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
+from pydantic import BaseModel
 
 
 class ParallelPipelinesParameters(BaseModel, frozen=True):
     """See parallel pipelines docstring"""
 
-    pipelines: list[PipelineConfig]
+    pipelines: list[config_base.PipelineConfig]
 
 
-@submitter_job(ParallelPipelinesParameters)
+@config_base.submitter_job(ParallelPipelinesParameters)
 def parallel_pipelines(
-    parameters: ParametersType,
-    submit_fn: SubmitFunctionType,
-    variables: Mapping[str, PrimitiveType],
-    _pipeline_config: PipelineConfig,
+    parameters: config_base.ParametersType,
+    submit_fn: config_base.SubmitFunctionType,
+    variables: Mapping[str, config_base.PrimitiveType],
+    _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
     **__,
 ) -> Status:
@@ -53,11 +54,11 @@ def parallel_pipelines(
 
     params_validated = ParallelPipelinesParameters.model_validate(parameters)
 
-    logger.debug("Submitting %d new pipelines", len(params_validated))
+    logger.debug("Submitting %d new pipelines", len(params_validated.pipelines))
 
     for new_pipeline in params_validated.pipelines:
         submit_fn(
-            Config.model_validate({"variables": variables, "config": new_pipeline})
+            config_base.Config.model_validate({"variables": variables, "config": new_pipeline})
         )
 
     return Status.FINAL

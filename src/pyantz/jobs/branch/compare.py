@@ -12,7 +12,7 @@ from typing import Any, Callable, Literal, Mapping
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -20,10 +20,10 @@ class Parameters(BaseModel, frozen=True):
     """See compare function docstring"""
 
     comparator: Literal["<", ">", "<=", ">=", "==", "!="]
-    left: PrimitiveType
-    right: PrimitiveType
-    if_true: PipelineConfig
-    if_false: PipelineConfig
+    left: config_base.PrimitiveType
+    right: config_base.PrimitiveType
+    if_true: config_base.PipelineConfig
+    if_false: config_base.PipelineConfig
 
 
 comparators: dict[str, Callable[[Any, Any], bool]] = {
@@ -36,12 +36,12 @@ comparators: dict[str, Callable[[Any, Any], bool]] = {
 }
 
 
-@submitter_job(Parameters)
+@config_base.submitter_job(Parameters)
 def compare(
-    parameters: ParametersType,
-    submit_fn: SubmitFunctionType,
-    variables: Mapping[str, PrimitiveType],
-    _pipeline_config: PipelineConfig,
+    parameters: config_base.ParametersType,
+    submit_fn: config_base.SubmitFunctionType,
+    variables: Mapping[str, config_base.PrimitiveType],
+    _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
     """Split the execution based on a comparison between two values (left/right)
@@ -88,13 +88,13 @@ def compare(
 
     if result:
         submit_fn(
-            Config.model_validate(
+            config_base.Config.model_validate(
                 {"variables": variables, "config": parameters_parsed.if_true}
             )
         )
     else:
         submit_fn(
-            Config.model_validate(
+            config_base.Config.model_validate(
                 {"variables": variables, "config": parameters_parsed.if_false}
             )
         )

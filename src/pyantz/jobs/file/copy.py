@@ -6,7 +6,7 @@ import shutil
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
@@ -18,8 +18,8 @@ class Parameters(BaseModel, frozen=True):
     infer_name: bool = False
 
 
-@simple_job(Parameters)
-def copy(parameters: ParametersType, logger: logging.Logger) -> Status:
+@config_base.simple_job(Parameters)
+def copy(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
     """Copy file or directory from parameters.soruce to parameters.destination
 
     ParametersType {

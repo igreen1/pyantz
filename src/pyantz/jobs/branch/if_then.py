@@ -10,25 +10,26 @@ from typing import Callable, Mapping
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
+
 from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
     """See if then docstring"""
 
-    function: Annotated[Callable[..., bool], BeforeValidator(get_function_by_name)]
-    args: list[PrimitiveType] | None
-    if_true: PipelineConfig
-    if_false: PipelineConfig
+    function: Annotated[Callable[..., bool], BeforeValidator(config_base.get_function_by_name)]
+    args: list[config_base.PrimitiveType] | None
+    if_true: config_base.PipelineConfig
+    if_false: config_base.PipelineConfig
 
 
-@submitter_job(Parameters)
+@config_base.submitter_job(Parameters)
 def if_then(
-    parameters: ParametersType,
-    submit_fn: SubmitFunctionType,
-    variables: Mapping[str, PrimitiveType],
-    _pipeline_config: PipelineConfig,
+    parameters: config_base.ParametersType,
+    submit_fn: config_base.SubmitFunctionType,
+    variables: Mapping[str, config_base.PrimitiveType],
+    _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
     """Branch execution based on the boolean output of a user-defined function
@@ -58,14 +59,14 @@ def if_then(
     ):
         logger.debug("Function evaluated to true")
         submit_fn(
-            Config.model_validate(
+            config_base.Config.model_validate(
                 {"variables": variables, "config": params_parsed.if_true}
             )
         )
     else:
         logger.debug("Function evaluated to false")
         submit_fn(
-            Config.model_validate(
+            config_base.Config.model_validate(
                 {"variables": variables, "config": params_parsed.if_false}
             )
         )

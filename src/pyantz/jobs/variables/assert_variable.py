@@ -4,19 +4,19 @@ import logging
 
 from pydantic import BaseModel
 
-from pyantz.infrastructure.config.base import *
+import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
     """See assert_variable docstring"""
 
-    given_val: PrimitiveType
-    expected_value: PrimitiveType
+    given_val: config_base.PrimitiveType
+    expected_value: config_base.PrimitiveType
 
 
-@simple_job(Parameters)
-def assert_value(parameters: ParametersType, logger: logging.Logger) -> Status:
+@config_base.simple_job(Parameters)
+def assert_value(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
     """Return ERROR if the variable doesn't match expectations
 
     Parameters {
