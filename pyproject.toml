@@ -6,7 +6,7 @@ authors = [
     {name = "Ian",email = "dev@iangreen.dev"}
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.10,<4"
 dependencies = [
     "pandas (>=2.2.3,<3.0.0)",
     "pydantic (>=2.10.6,<3.0.0)",
@@ -36,6 +36,7 @@ coverage = "^7.6.12"
 pylint = "^3.3.4"
 pytest-xdist = "^3.6.1"
 pandas-stubs = "^2.2.3.241126"
+pyarrow-stubs = "^17.17"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
