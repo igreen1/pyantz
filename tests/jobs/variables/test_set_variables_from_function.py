@@ -7,7 +7,6 @@ from typing import TypeVar
 from pyantz.infrastructure.config.base import Config, PipelineConfig
 from pyantz.infrastructure.core.pipeline import run_pipeline
 from pyantz.infrastructure.core.status import Status
-from pyantz.jobs.variables.set_variable_from_function import set_variable_from_function
 
 T = TypeVar("T")
 

@@ -2,7 +2,6 @@
 
 import logging
 
-import pytest
 
 from pyantz.infrastructure.config.base import PipelineConfig
 from pyantz.infrastructure.core.pipeline import run_pipeline

@@ -44,5 +44,5 @@ def test_filter_dataframe(tmpdir) -> None:
     assert filtered_data["b"].iloc[1] == 3.3
     assert filtered_data["c"].iloc[0] == "b"
     assert filtered_data["c"].iloc[1] == "c"
-    assert filtered_data["d"].iloc[0] == False
-    assert filtered_data["d"].iloc[1] == True
+    assert not filtered_data["d"].iloc[0]
+    assert filtered_data["d"].iloc[1]

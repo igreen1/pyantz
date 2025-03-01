@@ -11,14 +11,9 @@ from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config.base import (
+        AntzConfig,
         ParametersType,
         PrimitiveType,
-        AntzConfig,
-        Config,
-        PipelineConfig,
-        JobConfig,
-        SubmitterJobConfig,
-        MutableJobConfig
     )
 
 VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
@@ -66,25 +61,27 @@ def _resolve_value(
 ) -> list["PrimitiveType"]:
     pass
 
-@overload
-def _resolve_value(
-    val: AntzConfig,
-    variables: Mapping[str, "PrimitiveType"]
-) -> AntzConfig:
-    pass
 
 @overload
 def _resolve_value(
-    val: list[AntzConfig],
-    variables: Mapping[str, "PrimitiveType"]
-) -> list[AntzConfig]:
+    val: "AntzConfig", variables: Mapping[str, "PrimitiveType"]
+) -> "AntzConfig":
+    pass
+
+
+@overload
+def _resolve_value(
+    val: list["AntzConfig"], variables: Mapping[str, "PrimitiveType"]
+) -> list["AntzConfig"]:
     pass
 
 
 def _resolve_value(
-    val: Union["PrimitiveType", list["PrimitiveType"], AntzConfig, list[AntzConfig]],
+    val: Union[
+        "PrimitiveType", list["PrimitiveType"], "AntzConfig", list["AntzConfig"]
+    ],
     variables: Mapping[str, "PrimitiveType"],
-) -> Union["PrimitiveType", list["PrimitiveType"], AntzConfig, list[AntzConfig]]:
+) -> Union["PrimitiveType", list["PrimitiveType"], "AntzConfig", list["AntzConfig"]]:
     """Given a value return the value with any variables resolved/removed
 
     Args:
@@ -95,18 +92,18 @@ def _resolve_value(
         PrimitiveType: provided value with any variables tokens
             replaced with value of the variable
     """
-    pydantic_models = (BaseModel, PipelineConfig, JobConfig, MutableJobConfig, SubmitterJobConfig, Config)
-
-    if isinstance(val, pydantic_models):
+    if isinstance(val, BaseModel):
         return val
 
     if isinstance(val, list):
-        if any(isinstance(subval, pydantic_models) for subval in val):
+        if any(isinstance(subval, BaseModel) for subval in val):
             return val
         result: list[PrimitiveType] = []
-        for elem in result:
+        for elem in val:
             if not isinstance(elem, (int, float, bool, str)):
-                raise ValueError("Mixed types in list. Please pass only primitives or pydantic models in a list")
+                raise ValueError(
+                    "Mixed types in list. Please pass only primitives or pydantic models in a list"
+                )
             result.append(_resolve_value(elem, variables=variables))
         return result
 
