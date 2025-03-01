@@ -4,14 +4,22 @@ Parameters may contain variables which need resolving. This module
 """
 
 import re
-from collections.abc import Mapping as MappingABC
 from operator import add, mul, sub, truediv
 from typing import TYPE_CHECKING, Mapping, Union, overload
 
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from pyantz.infrastructure.config.base import ParametersType, PrimitiveType
+    from pyantz.infrastructure.config.base import (
+        ParametersType,
+        PrimitiveType,
+        AntzConfig,
+        Config,
+        PipelineConfig,
+        JobConfig,
+        SubmitterJobConfig,
+        MutableJobConfig
+    )
 
 VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
 
@@ -32,19 +40,16 @@ def resolve_variables(
         return None
     if variables is None:
         return parameters
-    params = parameters
     return {
-        k: (
-            _resolve_value(val, variables)
-            if not isinstance(val, (MappingABC, BaseModel))
-            else val
-        )
-        for k, val in params.items()
+        key: _resolve_value(value, variables=variables)
+        for key, value in parameters.items()
     }
 
 
-def is_variable(token: "PrimitiveType") -> bool:
+def is_variable(token: "PrimitiveType | list[PrimitiveType]") -> bool:
     """Returns true if the provided token is a variable expression"""
+    if isinstance(token, list):
+        return any(is_variable(val) for val in token)
     return VARIABLE_PATTERN.match(str(token)) is not None
 
 
@@ -61,11 +66,25 @@ def _resolve_value(
 ) -> list["PrimitiveType"]:
     pass
 
+@overload
+def _resolve_value(
+    val: AntzConfig,
+    variables: Mapping[str, "PrimitiveType"]
+) -> AntzConfig:
+    pass
+
+@overload
+def _resolve_value(
+    val: list[AntzConfig],
+    variables: Mapping[str, "PrimitiveType"]
+) -> list[AntzConfig]:
+    pass
+
 
 def _resolve_value(
-    val: Union["PrimitiveType", list["PrimitiveType"]],
+    val: Union["PrimitiveType", list["PrimitiveType"], AntzConfig, list[AntzConfig]],
     variables: Mapping[str, "PrimitiveType"],
-) -> Union["PrimitiveType", list["PrimitiveType"]]:
+) -> Union["PrimitiveType", list["PrimitiveType"], AntzConfig, list[AntzConfig]]:
     """Given a value return the value with any variables resolved/removed
 
     Args:
@@ -76,9 +95,20 @@ def _resolve_value(
         PrimitiveType: provided value with any variables tokens
             replaced with value of the variable
     """
+    pydantic_models = (BaseModel, PipelineConfig, JobConfig, MutableJobConfig, SubmitterJobConfig, Config)
+
+    if isinstance(val, pydantic_models):
+        return val
 
     if isinstance(val, list):
-        return [_resolve_value(elem, variables=variables) for elem in val]
+        if any(isinstance(subval, pydantic_models) for subval in val):
+            return val
+        result: list[PrimitiveType] = []
+        for elem in result:
+            if not isinstance(elem, (int, float, bool, str)):
+                raise ValueError("Mixed types in list. Please pass only primitives or pydantic models in a list")
+            result.append(_resolve_value(elem, variables=variables))
+        return result
 
     if not isinstance(val, str):
         return val  # only strings have variable tokens
