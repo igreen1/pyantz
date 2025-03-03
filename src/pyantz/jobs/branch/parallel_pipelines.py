@@ -14,7 +14,7 @@ This function will run any number of entirely user defined pipelines
 """
 
 import logging
-from typing import Mapping
+from collections.abc import Mapping
 
 from pydantic import BaseModel
 

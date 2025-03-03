@@ -3,7 +3,8 @@
 import json
 import logging
 import os
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
@@ -12,15 +13,15 @@ import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
-class Parameters(BaseModel, frozen=True):
-    """The parameters required for the copy command"""
+class SimpleParameters(BaseModel, frozen=True):
+    """The parameters required for the simple job edit json command"""
 
     path: Annotated[str, BeforeValidator(lambda x: x if os.path.exists(x) else None)]
     field: str
     value: config_base.PrimitiveType | list[config_base.PrimitiveType]
 
 
-@config_base.simple_job(Parameters)
+@config_base.simple_job(SimpleParameters)
 def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
     """Edit a json file to set a field with a new value
 
@@ -49,7 +50,7 @@ def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) ->
         Status: SUCCESS if completed successfully, otherwise false
     """
 
-    params_parsed = Parameters.model_validate(parameters)
+    params_parsed = SimpleParameters.model_validate(parameters)
 
     try:
         with open(params_parsed.path, "r") as fh:
@@ -71,7 +72,6 @@ def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) ->
         return Status.ERROR
 
     return Status.SUCCESS
-
 
 def nested_edit(
     original_json: Mapping[str, Any],

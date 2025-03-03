@@ -6,7 +6,8 @@ This file takes the initial config and sets up everything
 import argparse
 import json
 import warnings
-from typing import Any, Mapping
+from typing import Any
+from collections.abc import Mapping
 
 from pyantz.infrastructure.config.base import InitialConfig
 from pyantz.infrastructure.submitters.local import run_local_submitter

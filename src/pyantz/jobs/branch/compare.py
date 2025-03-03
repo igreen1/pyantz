@@ -8,7 +8,8 @@ By default, ANTZ supports conditions based on primitive types (lt, gt, ge, le, n
 
 import logging
 import operator
-from typing import Any, Callable, Literal, Mapping
+from typing import Any, Callable, Literal
+from collections.abc import Mapping
 
 from pydantic import BaseModel
 

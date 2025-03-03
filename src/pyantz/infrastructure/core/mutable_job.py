@@ -4,7 +4,7 @@
 
 import logging
 from copy import deepcopy
-from typing import Mapping
+from collections.abc import Mapping
 
 from pyantz.infrastructure.config.base import MutableJobConfig, PrimitiveType
 from pyantz.infrastructure.core.status import Status

@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable, Literal, Mapping, TypeAlias, Union
+from typing import Any, Callable, Literal, TypeAlias, Union
+from collections.abc import Mapping
 
 from pydantic import (
     BaseModel,
@@ -20,7 +21,6 @@ from pydantic import (
 from typing_extensions import Annotated
 
 from pyantz.infrastructure.config.get_functions import (
-    get_function_by_name,
     get_function_by_name_strongly_typed,
     get_params_model,
     set_job_type,

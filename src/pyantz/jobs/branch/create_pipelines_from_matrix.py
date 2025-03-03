@@ -17,7 +17,8 @@ This will create three pipelines and set the **variables** for each
 
 import logging
 import os
-from typing import Any, Callable, Generator, Mapping
+from typing import Any, Callable, Generator
+from collections.abc import Mapping
 
 import pandas as pd
 from pydantic import BaseModel

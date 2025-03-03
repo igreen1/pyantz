@@ -14,7 +14,7 @@ For example, a user could set up two models where the first takes arg 'a' and
 """
 
 import logging
-from typing import Mapping
+from collections.abc import Mapping
 
 from pydantic import BaseModel
 

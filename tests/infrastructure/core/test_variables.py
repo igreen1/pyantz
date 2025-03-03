@@ -1,6 +1,6 @@
 """Test variable resolution module"""
 
-from typing import Mapping
+from collections.abc import Mapping
 
 import pytest
 

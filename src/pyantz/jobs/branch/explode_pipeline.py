@@ -5,7 +5,7 @@ with a new variables PIPELINE_ID set to a counter
 """
 
 import logging
-from typing import Mapping
+from collections.abc import Mapping
 
 from pydantic import BaseModel, PositiveInt
 

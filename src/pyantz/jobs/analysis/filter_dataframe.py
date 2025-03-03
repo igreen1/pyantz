@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Mapping
+from collections.abc import Mapping
 
 import pandas as pd
 from pydantic import BaseModel

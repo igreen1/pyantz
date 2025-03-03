@@ -6,7 +6,7 @@ Each job performs one user-assigned task and returns its state.
 # pylint: disable=duplicate-code
 
 import logging
-from typing import Mapping
+from collections.abc import Mapping
 
 from pyantz.infrastructure.config.base import JobConfig, PrimitiveType
 from pyantz.infrastructure.core.status import Status

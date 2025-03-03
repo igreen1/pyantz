@@ -5,7 +5,8 @@ Parameters may contain variables which need resolving. This module
 
 import re
 from operator import add, mul, sub, truediv
-from typing import TYPE_CHECKING, Mapping, Union, overload
+from typing import TYPE_CHECKING, Union, overload
+from collections.abc import Mapping
 
 from pydantic import BaseModel
 
@@ -22,6 +23,7 @@ VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
 def resolve_variables(
     parameters: "ParametersType", variables: Mapping[str, "PrimitiveType"]
 ) -> "ParametersType":
+
     """Provided paramters, return the parameters with any variables interpolated
 
     Args:

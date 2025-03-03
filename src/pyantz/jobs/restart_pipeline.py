@@ -2,7 +2,8 @@
 
 import logging
 import operator
-from typing import Any, Callable, Literal, Mapping
+from typing import Any, Callable, Literal
+from collections.abc import Mapping
 
 from pydantic import BaseModel
 

@@ -47,7 +47,7 @@ def get_job_type(fn: Callable[..., Any]) -> str | None:
 
 
 def get_function_by_name_strongly_typed(
-    func_type_name: str, strict: bool | None = None
+    func_type_name: str | tuple[str, ...], strict: bool | None = None
 ) -> Callable[[Any], Callable[..., Any] | None]:
     """Returns a function Calls get_function_by_name and checks that the function type is correct
 
@@ -64,7 +64,10 @@ def get_function_by_name_strongly_typed(
     """
     # strict for PyAntz jobs because we should at least be consistent!
     if strict is None:
-        strict = func_type_name.startswith("pyantz")
+        if isinstance(func_type_name, str):
+            strict = func_type_name.startswith("pyantz")
+        else:
+            strict = all(name.startswith('pyantz') for name in func_type_name)
 
     def typed_get_function_by_name(
         func_name_or_any: Any,
@@ -77,9 +80,13 @@ def get_function_by_name_strongly_typed(
             return None
         if job_type is None:
             return func_handle
-        if job_type != func_type_name:
-            return None
-        return func_handle
+        if isinstance(func_type_name, str):
+            if job_type != func_type_name:
+                return None
+            return func_handle
+        if job_type in func_type_name:
+            return func_handle
+        return None
 
     return typed_get_function_by_name
 

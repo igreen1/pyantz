@@ -1,7 +1,8 @@
 """Call a user provided function and set the value of a variable to the return"""
 
 import logging
-from typing import Callable, Mapping
+from typing import Callable
+from collections.abc import Mapping
 
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
