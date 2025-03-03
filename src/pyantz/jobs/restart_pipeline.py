@@ -23,8 +23,8 @@ class Parameters(BaseModel, frozen=True):
     """Provides optional configuration of the restart pipeline job"""
 
     comparator: Literal["<", ">", "<=", ">=", "==", "!="] | None = None
-    left: config_base.PrimitiveType | None = None
-    right: config_base.PrimitiveType | None = None
+    left: config_base.PrimitiveType = None
+    right: config_base.PrimitiveType = None
 
 
 @config_base.submitter_job(Parameters)

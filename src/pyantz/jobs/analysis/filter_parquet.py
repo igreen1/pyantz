@@ -5,10 +5,19 @@ import os
 
 import pyarrow.parquet
 from pydantic import BaseModel, BeforeValidator
+from typing import TypeAlias, Literal
 from typing_extensions import Annotated
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
+
+FilterType: TypeAlias = list[list[
+    tuple[
+        str, 
+        Literal['==', '=', '!=', '>', '>=', '<', '<='],
+        int | float | bool | str
+    ]
+    ]]
 
 
 class FilterParquetParameters(BaseModel, frozen=True):
@@ -21,8 +30,9 @@ class FilterParquetParameters(BaseModel, frozen=True):
         str,
         BeforeValidator(lambda x: x if os.path.exists(os.path.dirname(x)) else None),
     ]
-    filters: list[config_base.PrimitiveType]  # Todo: lengths % 3 = 0
-
+    left: str
+    op: Literal['==', '=', '!=', '>', '>=', '<', '<=']
+    right: str | int | float | bool
 
 @config_base.simple_job(FilterParquetParameters)
 def filter_parquet(
@@ -32,21 +42,16 @@ def filter_parquet(
 
     params = FilterParquetParameters.model_validate(parameters)
 
-    if len(params.filters) % 3 != 0:
-        logger.error('Filters should be a flat list of tuples. Got non-trio data %s', params.filters)
-        raise ValueError("Length of filters should be a multiple of three")
+    filters = [[(
+        params.left,
+        params.op,
+        params.right
+    )]]
+    
+    logger.debug('Reading %s with filters %s', params.input_file, filters)
 
-    if len(params.filters) > 0:
-        filters = [
-            [
-                (params.filters[i], params.filters[i + 1], params.filters[i + 2])
-                for i in range(0, len(params.filters), 3)
-            ]
-        ]
-    else:
-        filters = None
-
-    table = pyarrow.parquet.read_table(params.input_file, filters=filters)
+    # adding type ignore because the liskov logic here is wrong
+    table = pyarrow.parquet.read_table(params.input_file, filters=filters) # type: ignore
 
     pyarrow.parquet.write_table(table, params.output_file)
 

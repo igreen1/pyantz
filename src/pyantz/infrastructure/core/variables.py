@@ -246,6 +246,11 @@ def _resolve_variable_expression_recursive(
 
             if not isinstance(lval, (int, float)):
                 # try to convert to a numeric
+                if lval is None:
+                    raise RuntimeError(
+                        f"Unable to resolve perform operation ({op_char})"
+                        ' with "{lval}" and "{rval}"'
+                    )
                 lval = _infer_type(lval)
                 if not isinstance(lval, (int, float)):
                     raise RuntimeError(
@@ -255,6 +260,11 @@ def _resolve_variable_expression_recursive(
 
             if not isinstance(rval, (int, float)):
                 # try to convert to a numeric
+                if rval is None:
+                    raise RuntimeError(
+                        f"Unable to resolve perform operation ({op_char})"
+                        ' with "{lval}" and "{rval}"'
+                    )
                 rval = _infer_type(rval)
                 if not isinstance(rval, (int, float)):
                     raise RuntimeError(

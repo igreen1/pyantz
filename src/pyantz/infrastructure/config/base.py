@@ -25,7 +25,7 @@ from pyantz.infrastructure.core.variables import is_variable
 
 from .local_submitter import LocalSubmitterConfig
 
-PrimitiveType: TypeAlias = str | int | float | bool
+PrimitiveType: TypeAlias = str | int | float | bool | None
 AntzConfig: TypeAlias = Union[
     "Config", "PipelineConfig", "JobConfig", "SubmitterJobConfig", "MutableJobConfig"
 ]
