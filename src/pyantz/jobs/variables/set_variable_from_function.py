@@ -8,6 +8,7 @@ from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
 
 import pyantz.infrastructure.config.base as config_base
+import pyantz.infrastructure.config.get_functions as importers
 from pyantz.infrastructure.core.status import Status
 
 
@@ -18,7 +19,7 @@ class Parameters(BaseModel, frozen=True):
     args: list[config_base.PrimitiveType] | None
     right_hand_side: Annotated[
         Callable[..., config_base.PrimitiveType],
-        BeforeValidator(config_base.get_function_by_name),
+        BeforeValidator(importers.get_function_by_name),
     ]
 
 
