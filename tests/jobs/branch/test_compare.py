@@ -52,6 +52,7 @@ def test_true_comparison() -> None:
     )
 
     q = queue.Queue()
+
     def submit_fn(job_config):
         q.put(job_config)
 
@@ -104,6 +105,7 @@ def test_false_direct_comparison() -> None:
     )
 
     q = queue.Queue()
+
     def submit_fn(job_config):
         q.put(job_config)
 
@@ -156,6 +158,7 @@ def test_comparison_with_variables_true() -> None:
     )
 
     q = queue.Queue()
+
     def submit_fn(job_config):
         q.put(job_config)
 
@@ -210,6 +213,7 @@ def test_comparison_with_variables_false() -> None:
     )
 
     q = queue.Queue()
+
     def submit_fn(job_config):
         q.put(job_config)
 

@@ -4,7 +4,6 @@ This is the base level of the configuration for the core components
 
 from __future__ import annotations
 
-import importlib
 import logging
 import uuid
 from typing import Any, Callable, Literal, Mapping, TypeAlias, Union
@@ -20,6 +19,13 @@ from pydantic import (
 )
 from typing_extensions import Annotated
 
+from pyantz.infrastructure.config.get_functions import (
+    get_function_by_name,
+    get_function_by_name_strongly_typed,
+    get_params_model,
+    set_job_type,
+    set_params_model,
+)
 from pyantz.infrastructure.core.status import Status
 from pyantz.infrastructure.core.variables import is_variable
 
@@ -56,102 +62,6 @@ MutableJobFunctionType: TypeAlias = Callable[
     ],
 ]
 
-_PYANTZ_JOB_TYPE_FIELD: str = "__pyantz_job_type__"
-_PYANTZ_PARAMS_MODEL_FIELD: str = "__pyantz_param_model__"
-
-
-def get_job_type(fn: Callable[..., Any]) -> str | None:
-    """For a provided callable, return what type of job it is
-
-    This API is guaranteed to be stable; our implementation of how
-        to mark functions is not. SO **USE THIS** to check
-
-    :param fn: any function which may or may not be marked
-    :type fn: Callable[..., Any]
-    :return: if the function is marked, return the mark type; else None
-    :rtype: str | None
-    """
-    if hasattr(fn, _PYANTZ_JOB_TYPE_FIELD):
-        return getattr(fn, _PYANTZ_JOB_TYPE_FIELD)
-    return None
-
-
-def get_function_by_name_strongly_typed(
-    func_type_name: str, strict: bool | None = None
-) -> Callable[[Any], Callable[..., Any] | None]:
-    """Returns a function Calls get_function_by_name and checks that the function type is correct
-
-    Uses strict rules for internal functions; otherwise uses non-strict
-        can be overriden with the strict argument
-    If strict is True,
-        requires that the function is wrapped in the correct wrapper from job_decorators.py
-    if strict is false,
-        if the function is not wrapped in any of those wrappers, will skip checking
-
-    Args:
-        func_type_name: the name of the wrapper in job_decorators
-        strict: overrides the default behavior if provided, see notes above
-    """
-    # strict for PyAntz jobs because we should at least be consistent!
-    if strict is None:
-        strict = func_type_name.startswith("pyantz")
-
-    def typed_get_function_by_name(
-        func_name_or_any: Any,
-    ) -> Callable[..., Any] | None:
-        func_handle = get_function_by_name(func_name_or_any)
-        if func_handle is None:
-            return func_handle
-        job_type = get_job_type(func_handle)
-        if job_type is None and strict:
-            return None
-        if job_type is None:
-            return func_handle
-        if job_type != func_type_name:
-            return None
-        return func_handle
-
-    return typed_get_function_by_name
-
-
-def get_function_by_name(func_name_or_any: Any) -> Callable[..., Any] | None:
-    """Links to the function described by config
-
-    Args:
-        config (JobConfig): configuration of the job to link
-
-    Returns:
-        Callable[[ParametersType, Callable[[PipelineConfig], None]], Status] } None:
-            a function that takes parameters and a
-            submitter callable and returns a status after executing
-            Returns None if it is unable to find the correct function
-
-    """
-
-    if not isinstance(func_name_or_any, str):
-        return None
-
-    name: str = func_name_or_any
-
-    components = name.split(".")
-    func_name = components[-1]
-    mod_name = ".".join(components[:-1])
-
-    try:
-        mod = importlib.import_module(mod_name)
-    except ModuleNotFoundError as _:
-        return None
-
-    if not hasattr(mod, func_name):
-        return None
-
-    func = getattr(mod, func_name)
-
-    if not callable(func):
-        return None
-
-    return func
-
 
 class _AbstractJobConfig(BaseModel, frozen=True):
     """holds common functions for the various job configs"""
@@ -174,11 +84,10 @@ class _AbstractJobConfig(BaseModel, frozen=True):
     def check_parameters_match(self: "_AbstractJobConfig") -> "_AbstractJobConfig":
         """Checks that the config parameters match the expected parameters for the function"""
 
-        if not hasattr(self.function, _PYANTZ_PARAMS_MODEL_FIELD):
+        params_model = get_params_model(self.function)
+        if params_model is None:
             return self
 
-        # check if we must validate in the first place
-        params_model = getattr(self.function, _PYANTZ_PARAMS_MODEL_FIELD)
         if params_model is None:
             return self
         if not isinstance(params_model, type) or not issubclass(
@@ -324,8 +233,8 @@ def mutable_job(params_model: type[BaseModel] | None) -> Callable[
         ) -> tuple[Status, Mapping[str, PrimitiveType]]:
             return fn(params, variables, logger)
 
-        setattr(_mutable_job, _PYANTZ_JOB_TYPE_FIELD, "mutable")
-        setattr(_mutable_job, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
+        set_job_type(_mutable_job, "mutable")
+        set_params_model(_mutable_job, params_model)
         setattr(_mutable_job, "__wrapped__", fn)
         return _mutable_job
 
@@ -355,8 +264,8 @@ def submitter_job(
         ) -> Status:
             return fn(params, submitter, variables, pipeline_config, logger)
 
-        setattr(_submitter_job, _PYANTZ_JOB_TYPE_FIELD, "submitter")
-        setattr(_submitter_job, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
+        set_job_type(_submitter_job, "submitter")
+        set_params_model(_submitter_job, params_model)
         setattr(_submitter_job, "__wrapped__", fn)
         return _submitter_job
 
@@ -385,8 +294,8 @@ def simple_job(
         ) -> Status:
             return fn(params, logger)
 
-        setattr(_simple_job, _PYANTZ_JOB_TYPE_FIELD, "simple")
-        setattr(_simple_job, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
+        set_job_type(_simple_job, "simple")
+        set_params_model(_simple_job, params_model)
         setattr(_simple_job, "__wrapped__", fn)
         return _simple_job
 
@@ -406,8 +315,6 @@ __all__ = [
     "MutableJobConfig",
     "ParametersType",
     "PrimitiveType",
-    "get_function_by_name",
-    "get_function_by_name_strongly_typed",
     "SubmitFunctionType",
     "MutableJobFunctionType",
     "JobFunctionType",

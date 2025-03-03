@@ -7,6 +7,8 @@ from pyantz.infrastructure.config.base import (
     JobConfig,
     MutableJobConfig,
     SubmitterJobConfig,
+)
+from pyantz.infrastructure.config.get_functions import (
     get_function_by_name_strongly_typed,
     get_job_type,
 )

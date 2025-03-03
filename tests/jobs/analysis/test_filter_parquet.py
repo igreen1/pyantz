@@ -33,9 +33,9 @@ def test_filter_parquet_job(tmpdir: Path) -> None:
         "parameters": {
             "input_file": input_file,
             "output_file": output_file,
-            'left': 'a',
-            'op': '>',
-            'right': 50
+            "left": "a",
+            "op": ">",
+            "right": 50,
         },
     }
 
@@ -51,4 +51,3 @@ def test_filter_parquet_job(tmpdir: Path) -> None:
     pandas.testing.assert_frame_equal(
         expected.reset_index(drop=True), result.reset_index(drop=True)
     )
-

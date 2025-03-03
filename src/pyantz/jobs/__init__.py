@@ -3,12 +3,12 @@
 import importlib as _importlib
 from typing import Any as _Any
 
-from pyantz.infrastructure.config.base import (
-    get_job_type,
-)
 from pyantz.infrastructure.config.base import mutable_job as mark_mutable
 from pyantz.infrastructure.config.base import simple_job as mark_simple
 from pyantz.infrastructure.config.base import submitter_job as mark_submitter
+from pyantz.infrastructure.config.get_functions import (
+    get_job_type,
+)
 
 
 def get_job_parameter_schema(job_full_name: str) -> dict[str, _Any] | None:
