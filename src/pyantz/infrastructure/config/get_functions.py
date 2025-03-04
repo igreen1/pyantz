@@ -78,9 +78,9 @@ def get_function_by_name_strongly_typed(
     ) -> Callable[..., Any] | None:
         func_handle = get_function_by_name(func_name_or_any)
         job_type = get_job_type(func_handle)
-        if (job_type is None and strict) or func_handle is None:
-            return func_handle
-        if job_type is None:  # not strict, fine
+        if job_type is None and strict:
+            return None
+        if job_type is None:
             return func_handle
         if isinstance(func_type_name, str):
             if job_type != func_type_name:
