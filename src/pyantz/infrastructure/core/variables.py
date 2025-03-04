@@ -38,43 +38,42 @@ def resolve_variables(
         return None
     if variables is None or variables == {}:
         return parameters
-    
+
     return {
         key: _recursive_resolve_variables(value, variables=variables)
         for key, value in parameters.items()
     }
 
+
 @overload
 def _recursive_resolve_variables(
-    parameters: 'AntzConfig',
-    variables: Mapping[str, 'PrimitiveType']
-) -> 'AntzConfig': ...
+    parameters: "AntzConfig", variables: Mapping[str, "PrimitiveType"]
+) -> "AntzConfig": ...
 @overload
 def _recursive_resolve_variables(
-    parameters: list['AntzConfig'],
-    variables: Mapping[str, 'PrimitiveType']
-) -> list['AntzConfig']: ...
+    parameters: list["AntzConfig"], variables: Mapping[str, "PrimitiveType"]
+) -> list["AntzConfig"]: ...
 @overload
 def _recursive_resolve_variables(
-    parameters: 'JsonValue',
-    variables: Mapping[str, 'PrimitiveType']
-) -> 'JsonValue': ...
+    parameters: "JsonValue", variables: Mapping[str, "PrimitiveType"]
+) -> "JsonValue": ...
+
 
 def _recursive_resolve_variables(
-    parameters: Union['AntzConfig', list['AntzConfig'], JsonValue],
-    variables: Mapping[str, 'PrimitiveType']
+    parameters: Union["AntzConfig", list["AntzConfig"], JsonValue],
+    variables: Mapping[str, "PrimitiveType"],
 ) -> AntzConfig | list[AntzConfig] | JsonValue:
     """Adjust variables in the values within a parameter dictionary"""
 
     if isinstance(parameters, list):
         # mypy doesn't understand that list[JsonValue] is just JsonValue ...
-        return [_recursive_resolve_variables(val, variables) for val in parameters] # type: ignore
+        return [_recursive_resolve_variables(val, variables) for val in parameters]  # type: ignore
     if isinstance(parameters, str):
         return _resolve_value(parameters, variables=variables)
     if isinstance(parameters, (int, float, bool)):
         return parameters
     if parameters is None:
-        return parameters 
+        return parameters
     if is_config(parameters):
         return parameters
     if isinstance(parameters, Mapping):
@@ -85,7 +84,8 @@ def _recursive_resolve_variables(
 
     return parameters
 
-def is_config(parameters: Union[Mapping[str, Any], 'AntzConfig']) -> bool:
+
+def is_config(parameters: Union[Mapping[str, Any], "AntzConfig"]) -> bool:
     """Checks if parameters is a config pydantic model"""
     if isinstance(parameters, BaseModel):
         return True

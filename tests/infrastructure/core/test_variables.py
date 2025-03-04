@@ -117,43 +117,39 @@ def test_nested_variable_resolution() -> None:
 
     variables = _variables
     input_dict = {
-        'val': '%{a}',
-        'idk': {
-            'type': 'job',
-            'function': 'pyantz.jobs.nop.nop',
-            'parameters': {
-                'test': '%{a}',
+        "val": "%{a}",
+        "idk": {
+            "type": "job",
+            "function": "pyantz.jobs.nop.nop",
+            "parameters": {
+                "test": "%{a}",
             },
         },
-        'hello': {
-            'there': {
-                'general': 1,
-                'kenobi': '%{b}',
+        "hello": {
+            "there": {
+                "general": 1,
+                "kenobi": "%{b}",
             },
         },
-        'list': {
-            'nested_list': ['%{c}', 'there']
-        }
+        "list": {"nested_list": ["%{c}", "there"]},
     }
 
     expected_dict = {
-        'val': 1,
-        'idk': {
-            'type': 'job',
-            'function': 'pyantz.jobs.nop.nop',
-            'parameters': {
-                'test': '%{a}',
+        "val": 1,
+        "idk": {
+            "type": "job",
+            "function": "pyantz.jobs.nop.nop",
+            "parameters": {
+                "test": "%{a}",
             },
         },
-        'hello': {
-            'there': {
-                'general': 1,
-                'kenobi': 2,
+        "hello": {
+            "there": {
+                "general": 1,
+                "kenobi": 2,
             },
         },
-        'list': {
-            'nested_list': ['hello', 'there']
-        }
+        "list": {"nested_list": ["hello", "there"]},
     }
 
     output_dict = resolve_variables(input_dict, variables=variables)
