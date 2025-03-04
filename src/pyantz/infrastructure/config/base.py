@@ -6,18 +6,18 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Any, Callable, Literal, TypeAlias, Union
 from collections.abc import Mapping
+from typing import Any, Callable, Literal, TypeAlias, Union
 
 from pydantic import (
     BaseModel,
     BeforeValidator,
     ConfigDict,
     Field,
+    JsonValue,
     field_serializer,
     model_validator,
     validate_call,
-    JsonValue,
 )
 from typing_extensions import Annotated
 
@@ -36,7 +36,9 @@ PrimitiveType: TypeAlias = str | int | float | bool | None
 AntzConfig: TypeAlias = Union[
     "Config", "PipelineConfig", "JobConfig", "SubmitterJobConfig", "MutableJobConfig"
 ]
-ParametersType: TypeAlias = Mapping[str, AntzConfig | list[AntzConfig] | JsonValue] | None
+ParametersType: TypeAlias = (
+    Mapping[str, AntzConfig | list[AntzConfig] | JsonValue] | None
+)
 SubmitFunctionType: TypeAlias = Callable[["Config"], None]
 JobFunctionType: TypeAlias = Callable[
     ["ParametersType", logging.Logger],

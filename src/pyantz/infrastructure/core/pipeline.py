@@ -1,8 +1,8 @@
 """A pipeline is a set of tasks to perform in series"""
 
 import logging
-from typing import Callable
 from collections.abc import Mapping
+from typing import Callable
 
 from pyantz.infrastructure.config.base import (
     Config,

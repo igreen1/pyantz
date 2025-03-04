@@ -3,8 +3,8 @@
 # pylint: disable=duplicate-code
 
 import logging
-from copy import deepcopy
 from collections.abc import Mapping
+from copy import deepcopy
 
 from pyantz.infrastructure.config.base import MutableJobConfig, PrimitiveType
 from pyantz.infrastructure.core.status import Status

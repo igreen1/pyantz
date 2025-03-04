@@ -3,8 +3,8 @@
 import json
 import logging
 import os
-from typing import Any
 from collections.abc import Mapping
+from typing import Any
 
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated
@@ -53,7 +53,7 @@ def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) ->
     params_parsed = SimpleParameters.model_validate(parameters)
 
     try:
-        with open(params_parsed.path, "r") as fh:
+        with open(params_parsed.path, "r", encoding='utf-8') as fh:
             original_json = json.load(fh)
     except IOError as exc:
         logger.debug("Unable to open json", exc_info=exc)
@@ -64,7 +64,7 @@ def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) ->
     )
 
     try:
-        with open(params_parsed.path, "w") as fh:
+        with open(params_parsed.path, "w", encoding='utf-8') as fh:
             json.dump(new_json, fh)
     except IOError as exc:
         logger.debug("Unable to save json", exc_info=exc)
@@ -89,7 +89,8 @@ def nested_edit(
         because it uses the ** operator to copy value and overwrite
 
     Args:
-        original_json (Mapping[str, config_base.PrimitiveType  |  None  |  list[config_base.PrimitiveType]]):
+        original_json 
+            (Mapping[str, config_base.PrimitiveType | None | list[config_base.PrimitiveType]]):
             the dictionary to edit
         key (str): the key to edit in the original_json
         value (config_base.PrimitiveType | list[config_base.PrimitiveType]): value to set in key

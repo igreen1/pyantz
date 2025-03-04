@@ -5,8 +5,8 @@ If that function returns False, then take path 2
 """
 
 import logging
-from typing import Callable
 from collections.abc import Mapping
+from typing import Callable
 
 from pydantic import BaseModel, BeforeValidator
 from typing_extensions import Annotated

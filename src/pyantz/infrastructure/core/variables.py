@@ -4,11 +4,11 @@ Parameters may contain variables which need resolving. This module
 """
 
 import re
-from operator import add, mul, sub, truediv
-from typing import TYPE_CHECKING, Union, overload, Any
 from collections.abc import Mapping
+from operator import add, mul, sub, truediv
+from typing import TYPE_CHECKING, Any, Union, overload
 
-from pydantic import BaseModel, ValidationError, JsonValue
+from pydantic import BaseModel, JsonValue, ValidationError
 
 import pyantz.infrastructure.config.base as config_base
 
@@ -20,20 +20,6 @@ if TYPE_CHECKING:
     )
 
 VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
-
-
-@overload
-def resolve_variables(
-    parameters: JsonValue, variables: Mapping[str, "PrimitiveType"] | None
-) -> JsonValue: ...
-@overload
-def resolve_variables(
-    parameters: "AntzConfig", variables: Mapping[str, "PrimitiveType"] | None
-) -> "AntzConfig": ...
-@overload
-def resolve_variables(
-    parameters: list["AntzConfig"], variables: Mapping[str, "PrimitiveType"] | None
-) -> list["AntzConfig"]: ...
 
 
 def resolve_variables(
@@ -52,26 +38,57 @@ def resolve_variables(
         return None
     if variables is None or variables == {}:
         return parameters
+    
+    return {
+        key: _recursive_resolve_variables(value, variables=variables)
+        for key, value in parameters.items()
+    }
 
+@overload
+def _recursive_resolve_variables(
+    parameters: 'AntzConfig',
+    variables: Mapping[str, 'PrimitiveType']
+) -> 'AntzConfig': ...
+@overload
+def _recursive_resolve_variables(
+    parameters: list['AntzConfig'],
+    variables: Mapping[str, 'PrimitiveType']
+) -> list['AntzConfig']: ...
+@overload
+def _recursive_resolve_variables(
+    parameters: 'JsonValue',
+    variables: Mapping[str, 'PrimitiveType']
+) -> 'JsonValue': ...
+
+def _recursive_resolve_variables(
+    parameters: Union['AntzConfig', list['AntzConfig'], JsonValue],
+    variables: Mapping[str, 'PrimitiveType']
+) -> AntzConfig | list[AntzConfig] | JsonValue:
+    """Adjust variables in the values within a parameter dictionary"""
+
+    if isinstance(parameters, list):
+        # mypy doesn't understand that list[JsonValue] is just JsonValue ...
+        return [_recursive_resolve_variables(val, variables) for val in parameters] # type: ignore
+    if isinstance(parameters, str):
+        return _resolve_value(parameters, variables=variables)
     if isinstance(parameters, (int, float, bool)):
         return parameters
-    elif isinstance(parameters, str):
-        return _resolve_value(parameters, variables=variables)
-    elif isinstance(parameters, list):
-        # mypy doesn't recognize that list[JsonValue] is just JsonValue :/
-        return [resolve_variables(val, variables=variables) for val in parameters]  # type: ignore
-    elif isinstance(parameters, Mapping):
-        if is_config(parameters):
-            return parameters  # don't resolve variables in sub-configs
+    if parameters is None:
+        return parameters 
+    if is_config(parameters):
+        return parameters
+    if isinstance(parameters, Mapping):
         return {
-            key: resolve_variables(value, variables=variables)
+            key: _recursive_resolve_variables(value, variables=variables)
             for key, value in parameters.items()
         }
-    raise RuntimeError("Unknown type in variable resolution %s", type(parameters))
 
+    return parameters
 
-def is_config(parameters: Mapping[str, Any]) -> bool:
+def is_config(parameters: Union[Mapping[str, Any], 'AntzConfig']) -> bool:
     """Checks if parameters is a config pydantic model"""
+    if isinstance(parameters, BaseModel):
+        return True
     for model_name in [
         "JobConfig",
         "SubmitterJobConfig",
