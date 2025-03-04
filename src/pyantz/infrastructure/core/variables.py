@@ -62,7 +62,7 @@ def _recursive_resolve_variables(
 def _recursive_resolve_variables(
     parameters: Union["AntzConfig", list["AntzConfig"], JsonValue],
     variables: Mapping[str, "PrimitiveType"],
-) -> Union['AntzConfig', list['AntzConfig'], JsonValue]:
+) -> Union["AntzConfig", list["AntzConfig"], JsonValue]:
     """Adjust variables in the values within a parameter dictionary"""
 
     if isinstance(parameters, list):
@@ -70,9 +70,7 @@ def _recursive_resolve_variables(
         return [_recursive_resolve_variables(val, variables) for val in parameters]  # type: ignore
     if isinstance(parameters, str):
         return _resolve_value(parameters, variables=variables)
-    if isinstance(parameters, (int, float, bool)):
-        return parameters
-    if parameters is None:
+    if isinstance(parameters, (int, float, bool)) or parameters is None:
         return parameters
     if is_config(parameters):
         return parameters

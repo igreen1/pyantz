@@ -1,3 +1,5 @@
+"""Functions to dynamically import and tag functions from a configuration"""
+
 import importlib
 from typing import Any, Callable
 
@@ -30,7 +32,7 @@ def get_params_model(fn: Callable[..., Any]) -> type[BaseModel] | None:
     return None
 
 
-def get_job_type(fn: Callable[..., Any]) -> str | None:
+def get_job_type(fn: Callable[..., Any] | None) -> str | None:
     """For a provided callable, return what type of job it is
 
     This API is guaranteed to be stable; our implementation of how
@@ -41,6 +43,8 @@ def get_job_type(fn: Callable[..., Any]) -> str | None:
     :return: if the function is marked, return the mark type; else None
     :rtype: str | None
     """
+    if fn is None:
+        return fn
     if hasattr(fn, _PYANTZ_JOB_TYPE_FIELD):
         return getattr(fn, _PYANTZ_JOB_TYPE_FIELD)
     return None
@@ -73,12 +77,10 @@ def get_function_by_name_strongly_typed(
         func_name_or_any: Any,
     ) -> Callable[..., Any] | None:
         func_handle = get_function_by_name(func_name_or_any)
-        if func_handle is None:
-            return func_handle
         job_type = get_job_type(func_handle)
-        if job_type is None and strict:
-            return None
-        if job_type is None:
+        if (job_type is None and strict) or func_handle is None:
+            return func_handle
+        if job_type is None:  # not strict, fine
             return func_handle
         if isinstance(func_type_name, str):
             if job_type != func_type_name:
