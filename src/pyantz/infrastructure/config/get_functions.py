@@ -67,7 +67,7 @@ def get_function_by_name_strongly_typed(
         if isinstance(func_type_name, str):
             strict = func_type_name.startswith("pyantz")
         else:
-            strict = all(name.startswith('pyantz') for name in func_type_name)
+            strict = all(name.startswith("pyantz") for name in func_type_name)
 
     def typed_get_function_by_name(
         func_name_or_any: Any,

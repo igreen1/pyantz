@@ -73,6 +73,7 @@ def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) ->
 
     return Status.SUCCESS
 
+
 def nested_edit(
     original_json: Mapping[str, Any],
     key: str,

@@ -28,16 +28,6 @@ def test_validation_with_nop() -> None:
             logging.getLogger("test"),
         )
     with pytest.raises(ValidationError):
-        nop(
-            {"hello": {"there": "kenobi"}},
-            logging.getLogger("test"),
-        )
-    with pytest.raises(ValidationError):
-        nop(
-            {"hello": {"type": "pipeline"}},
-            logging.getLogger("test"),
-        )
-    with pytest.raises(ValidationError):
         nop({}, None)
     with pytest.raises(ValidationError):
         nop({}, [])

@@ -17,7 +17,7 @@ from pydantic import (
     field_serializer,
     model_validator,
     validate_call,
-    Tag,
+    JsonValue,
 )
 from typing_extensions import Annotated
 
@@ -36,10 +36,7 @@ PrimitiveType: TypeAlias = str | int | float | bool | None
 AntzConfig: TypeAlias = Union[
     "Config", "PipelineConfig", "JobConfig", "SubmitterJobConfig", "MutableJobConfig"
 ]
-ParametersType: TypeAlias = (
-    Mapping[str, PrimitiveType | list[PrimitiveType] | AntzConfig | list[AntzConfig]]
-    | None
-)
+ParametersType: TypeAlias = Mapping[str, AntzConfig | list[AntzConfig] | JsonValue] | None
 SubmitFunctionType: TypeAlias = Callable[["Config"], None]
 JobFunctionType: TypeAlias = Callable[
     ["ParametersType", logging.Logger],
@@ -177,7 +174,7 @@ class PipelineConfig(BaseModel, frozen=True):
     stages: list[
         Annotated[
             Union[MutableJobConfig, SubmitterJobConfig, JobConfig],
-            Field(discriminator='type')
+            Field(discriminator="type"),
         ]
     ]
     # stages: list[JobConfig | SubmitterJobConfig | MutableJobConfig]

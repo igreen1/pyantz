@@ -5,10 +5,12 @@ Parameters may contain variables which need resolving. This module
 
 import re
 from operator import add, mul, sub, truediv
-from typing import TYPE_CHECKING, Union, overload
+from typing import TYPE_CHECKING, Union, overload, Any
 from collections.abc import Mapping
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, JsonValue
+
+import pyantz.infrastructure.config.base as config_base
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config.base import (
@@ -20,10 +22,23 @@ if TYPE_CHECKING:
 VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
 
 
+@overload
 def resolve_variables(
-    parameters: "ParametersType", variables: Mapping[str, "PrimitiveType"]
-) -> "ParametersType":
+    parameters: JsonValue, variables: Mapping[str, "PrimitiveType"] | None
+) -> JsonValue: ...
+@overload
+def resolve_variables(
+    parameters: "AntzConfig", variables: Mapping[str, "PrimitiveType"] | None
+) -> "AntzConfig": ...
+@overload
+def resolve_variables(
+    parameters: list["AntzConfig"], variables: Mapping[str, "PrimitiveType"] | None
+) -> list["AntzConfig"]: ...
 
+
+def resolve_variables(
+    parameters: "ParametersType", variables: Mapping[str, "PrimitiveType"] | None
+) -> "ParametersType":
     """Provided paramters, return the parameters with any variables interpolated
 
     Args:
@@ -35,12 +50,41 @@ def resolve_variables(
     """
     if parameters is None:
         return None
-    if variables is None:
+    if variables is None or variables == {}:
         return parameters
-    return {
-        key: _resolve_value(value, variables=variables)
-        for key, value in parameters.items()
-    }
+
+    if isinstance(parameters, (int, float, bool)):
+        return parameters
+    elif isinstance(parameters, str):
+        return _resolve_value(parameters, variables=variables)
+    elif isinstance(parameters, list):
+        # mypy doesn't recognize that list[JsonValue] is just JsonValue :/
+        return [resolve_variables(val, variables=variables) for val in parameters]  # type: ignore
+    elif isinstance(parameters, Mapping):
+        if is_config(parameters):
+            return parameters  # don't resolve variables in sub-configs
+        return {
+            key: resolve_variables(value, variables=variables)
+            for key, value in parameters.items()
+        }
+    raise RuntimeError("Unknown type in variable resolution %s", type(parameters))
+
+
+def is_config(parameters: Mapping[str, Any]) -> bool:
+    """Checks if parameters is a config pydantic model"""
+    for model_name in [
+        "JobConfig",
+        "SubmitterJobConfig",
+        "MutableJobConfig",
+        "Config",
+        "PipelineConfig",
+    ]:
+        try:
+            getattr(config_base, model_name).model_validate(parameters)
+            return True
+        except ValidationError:
+            continue
+    return False
 
 
 def is_variable(token: "PrimitiveType | list[PrimitiveType]") -> bool:

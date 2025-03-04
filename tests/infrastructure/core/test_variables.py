@@ -110,3 +110,51 @@ def test_parameter_variable_expressions() -> None:
     }
 
     assert output_parameters == resolve_variables(input_parameters, variables=variables)
+
+
+def test_nested_variable_resolution() -> None:
+    """Test that nested dictionaries and lists are resolved but not if they're a job"""
+
+    variables = _variables
+    input_dict = {
+        'val': '%{a}',
+        'idk': {
+            'type': 'job',
+            'function': 'pyantz.jobs.nop.nop',
+            'parameters': {
+                'test': '%{a}',
+            },
+        },
+        'hello': {
+            'there': {
+                'general': 1,
+                'kenobi': '%{b}',
+            },
+        },
+        'list': {
+            'nested_list': ['%{c}', 'there']
+        }
+    }
+
+    expected_dict = {
+        'val': 1,
+        'idk': {
+            'type': 'job',
+            'function': 'pyantz.jobs.nop.nop',
+            'parameters': {
+                'test': '%{a}',
+            },
+        },
+        'hello': {
+            'there': {
+                'general': 1,
+                'kenobi': 2,
+            },
+        },
+        'list': {
+            'nested_list': ['hello', 'there']
+        }
+    }
+
+    output_dict = resolve_variables(input_dict, variables=variables)
+    assert output_dict == expected_dict
