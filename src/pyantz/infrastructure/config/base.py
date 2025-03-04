@@ -17,6 +17,7 @@ from pydantic import (
     field_serializer,
     model_validator,
     validate_call,
+    Tag,
 )
 from typing_extensions import Annotated
 
@@ -173,7 +174,13 @@ class PipelineConfig(BaseModel, frozen=True):
     status: int = Status.READY
     max_allowed_restarts: int = 0
     curr_restarts: int = 0
-    stages: list[JobConfig | SubmitterJobConfig | MutableJobConfig]
+    stages: list[
+        Annotated[
+            Union[MutableJobConfig, SubmitterJobConfig, JobConfig],
+            Field(discriminator='type')
+        ]
+    ]
+    # stages: list[JobConfig | SubmitterJobConfig | MutableJobConfig]
 
 
 class LoggingConfig(BaseModel, frozen=True):
