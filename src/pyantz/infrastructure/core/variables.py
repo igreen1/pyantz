@@ -62,7 +62,7 @@ def _recursive_resolve_variables(
 def _recursive_resolve_variables(
     parameters: Union["AntzConfig", list["AntzConfig"], JsonValue],
     variables: Mapping[str, "PrimitiveType"],
-) -> AntzConfig | list[AntzConfig] | JsonValue:
+) -> Union['AntzConfig', list['AntzConfig'], JsonValue]:
     """Adjust variables in the values within a parameter dictionary"""
 
     if isinstance(parameters, list):
