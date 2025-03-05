@@ -31,7 +31,6 @@ disable = "W0401,W0614"
 [dependency-groups]
 dev = [
     "bandit>=1.8.3",
-    "coverage>=7.6.12",
     "hypothesis>=6.127.6",
     "isort>=6.0.1",
     "mypy>=1.15.0",
@@ -39,6 +38,7 @@ dev = [
     "pyarrow-stubs>=17.17",
     "pylint>=3.3.4",
     "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
     "ruff>=0.9.9",
 ]

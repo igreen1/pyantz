@@ -1,7 +1,7 @@
 .pytest*
 .venv*
 **__pycache__**
-.coverage
+.coverage*
 .mypy_cache
 .vscode
 .idea
