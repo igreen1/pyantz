@@ -46,7 +46,6 @@ def test_make_dir_exist_ok_false(tmpdir):
 
 
 def test_success_in_pipeline(tmpdir) -> None:
-
     path = os.path.join(tmpdir, "test_dir")
     parameters = {"path": path, "exist_ok": True}
 
@@ -80,7 +79,6 @@ def test_success_in_pipeline(tmpdir) -> None:
 
 
 def test_error_in_pipeline(tmpdir) -> None:
-
     path = os.path.join(tmpdir, "test_dir")
     parameters = {"path": path, "exist_ok": False}
 
@@ -113,7 +111,6 @@ def test_error_in_pipeline(tmpdir) -> None:
 
 
 def test_submit_to_local(tmpdir) -> None:
-
     path = os.path.join(tmpdir, "test_dir")
     parameters = {"path": path, "exist_ok": True}
 

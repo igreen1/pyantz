@@ -8,7 +8,6 @@ from pyantz.jobs.analysis.filter_dataframe import filter_dataframe
 
 
 def test_filter_dataframe(tmpdir) -> None:
-
     data = pd.DataFrame(
         {
             "a": [1, 2, 3],

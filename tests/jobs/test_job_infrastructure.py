@@ -39,7 +39,6 @@ def test_no_job_type() -> None:
 
 
 def test_no_job_function_name() -> None:
-
     job_config = {"type": "job", "name": "nop_job", "function": 1, "parameters": {}}
 
     with pytest.raises(ValidationError):
@@ -108,7 +107,6 @@ def test_job_config_rejects_wrong_type() -> None:
 
 
 def test_bad_parameters_type_is_rejected() -> None:
-
     job_config = {
         "type": "job",
         "function": "tests.jobs.test_job_infrastructure.nop_job_with_bad_parameters",

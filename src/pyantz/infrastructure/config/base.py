@@ -207,7 +207,9 @@ class InitialConfig(BaseModel, frozen=True):
     logging_config: LoggingConfig = LoggingConfig()
 
 
-def mutable_job(params_model: type[BaseModel] | None) -> Callable[
+def mutable_job(
+    params_model: type[BaseModel] | None,
+) -> Callable[
     [
         Callable[
             ["ParametersType", Mapping[str, PrimitiveType], logging.Logger],

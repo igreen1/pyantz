@@ -69,7 +69,6 @@ def test_edit_simple_json(data: dict[str, Any], key, value) -> None:
 def test_nested_dictionary_2_level(
     data: dict[str, dict[str, Any]], key1, key2, value
 ) -> None:
-
     assume("." not in key1 and "." not in key2)
 
     expected = deepcopy(data)

@@ -228,7 +228,6 @@ def test_comparison_with_variables_false() -> None:
 
 
 def test_submit_to_local(tmpdir) -> None:
-
     path = os.path.join(tmpdir, "test_dir")
     parameters = {"path": path, "exist_ok": True}
 

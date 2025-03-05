@@ -13,3 +13,4 @@
 .ruff_cache
 dist
 .hypothesis
+dist/*

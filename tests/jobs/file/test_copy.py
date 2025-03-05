@@ -16,7 +16,6 @@ logger.setLevel(0)
 
 
 def test_copy_file(tmpdir: str | os.PathLike[str]) -> None:
-
     dir_path = os.fspath(tmpdir)
     src_dir = os.path.join(dir_path, "a")
     dst_dir = os.path.join(dir_path, "b")
@@ -50,7 +49,6 @@ def test_copy_file(tmpdir: str | os.PathLike[str]) -> None:
 
 
 def test_copy_dir(tmpdir: str | os.PathLike[str]) -> None:
-
     dir_path = os.fspath(tmpdir)
     src_dir = os.path.join(dir_path, "a")
     dst_dir = os.path.join(dir_path, "b")
@@ -90,7 +88,6 @@ def test_copy_dir(tmpdir: str | os.PathLike[str]) -> None:
 
 
 def test_copy_dir_to_existing_file(tmpdir: str | os.PathLike[str]) -> None:
-
     dir_path = os.fspath(tmpdir)
     src_dir = os.path.join(dir_path, "a")
     dst_dir = os.path.join(dir_path, "b")
@@ -124,7 +121,6 @@ def test_copy_dir_to_existing_file(tmpdir: str | os.PathLike[str]) -> None:
 
 
 def test_copy_file_to_existing_dir(tmpdir: str | os.PathLike[str]) -> None:
-
     dir_path = os.fspath(tmpdir)
     src_dir = os.path.join(dir_path, "a")
     dst_dir = os.path.join(dir_path, "b")
