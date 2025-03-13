@@ -142,7 +142,7 @@ def test_multiproducer_multi_consumer(tmpdir) -> None:
     file_db = os.fspath(os.path.join(tmpdir, 'queue.db'))
     some_content = """{"some_field": ["some_valud"]}"""
         
-    with concurrent.futures.ProcessPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
 
         submit_result = {
             executor.submit(
