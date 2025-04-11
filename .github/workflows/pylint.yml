@@ -16,12 +16,12 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install poetry
-        poetry install --with dev
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        source $HOME/.local/bin/env
+        make sync
     - name: Analysing the code with pylint
       run: |
-        poetry run pylint src
+        uv run pylint src
     - name: Checking the format with black
       run: |
-        poetry run black --check src
+        uv run black --check src
