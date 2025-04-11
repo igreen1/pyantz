@@ -15,6 +15,10 @@ TODO
 -> use pyarrow
 --> support using dask, pandas or pyarrow as the backend
 
+slurm
+
+make various analysis libraries optional
+
 
 - make dirs
 call os make dirs

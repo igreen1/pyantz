@@ -14,3 +14,6 @@ lint:
 
 build:
 	uv build
+
+sync:
+	uv sync --all-extras
