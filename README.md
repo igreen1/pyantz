@@ -11,7 +11,6 @@ TODO
     batch submit
 -> GUI to create the jobs
 -> check the arg types of the functions in the job 
--> call the pydantic classes of each job
 -> use pyarrow
 --> support using dask, pandas or pyarrow as the backend
 
@@ -20,8 +19,6 @@ slurm
 make various analysis libraries optional
 
 
-- make dirs
-call os make dirs
 - edit yaml
 edit fields (multiple!) set values
 ---> accepts two lists. the first is a list of str (paths to edit) and the second it values

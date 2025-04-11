@@ -32,7 +32,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="antz")
     parser.add_argument(
         "--config",
-        "c",
+        "-c",
         help="Path to the configuration of the entire analysis pipeline",
         required=True,
     )
