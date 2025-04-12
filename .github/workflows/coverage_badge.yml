@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - main
+      - master
 name: CI
 
 jobs:
@@ -25,11 +25,13 @@ jobs:
             python-version: ${{ matrix.python-version }}
   
         - name: Install the project
-          run: uv sync --all-extras --dev
+          run: |
+            uv sync --all-extras --dev
+            uv 
   
         - name: Run ruff lint
           # For example, using `pytest`
           run: uv run pytest tests --cov=src
 
         - name: Run coverage-badge on own test coverage
-          run: python -m coverage_badge
+          run: uvx run coverage-badge
