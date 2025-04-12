@@ -26,7 +26,7 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run ruff lint
-        run: uv run ruff check pyantz
+        run: uv run ruff check src
 
       - name: Run pylint
-        run: uv run pylint pyantz
+        run: uv run pylint src
