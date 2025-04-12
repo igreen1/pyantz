@@ -11,6 +11,10 @@ format:
 
 lint:
 	uv run ruff check src
+	uv run pylint src
+
+type:
+	uv run mypy src
 
 build:
 	uv build

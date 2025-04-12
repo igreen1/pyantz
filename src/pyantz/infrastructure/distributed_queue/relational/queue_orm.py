@@ -13,11 +13,16 @@ from sqlalchemy.orm import (
 
 CHUNKSIZE: Final[int] = 2000
 
+# pylint: disable=too-few-public-methods
 
-class Base(DeclarativeBase): ...
+
+class Base(DeclarativeBase):
+    """The base class for our ORM"""
 
 
 class JobQueue(Base):
+    """The job queue table, holds the ordered list of jobs"""
+
     __tablename__: str = "queue"
 
     q_index: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -26,6 +31,8 @@ class JobQueue(Base):
 
 
 class JobConfigTable(Base):
+    """The job config table holds the configurations for the jobs in the queue"""
+
     __tablename__: str = "queue_items"
 
     job_id: Mapped[str] = mapped_column(primary_key=True)
@@ -34,6 +41,8 @@ class JobConfigTable(Base):
 
 
 class DependencyTable(Base):
+    """The dependency table holds the dependency graph of the jobs"""
+
     __tablename__: str = "dependencies"
 
     job_id: Mapped[str] = mapped_column(primary_key=True)
@@ -41,7 +50,12 @@ class DependencyTable(Base):
 
 
 class StatusTable(Base):
+    """The status table holds the current status of each job"""
+
     __tablename__: str = "job_status"
 
     job_id: Mapped[str] = mapped_column(primary_key=True)
     job_status: Mapped[int]
+
+
+# pylint: enable=too-few-public-methods

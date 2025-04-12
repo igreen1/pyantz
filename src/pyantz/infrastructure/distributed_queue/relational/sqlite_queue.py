@@ -22,6 +22,8 @@ from .queue_orm import (
 
 
 class SqliteQueue:
+    """The wrapper for the queue in sqlite"""
+
     def __init__(self, path: str | os.PathLike[str]) -> None:
         """Create a queue based on a sqlite backend"""
 
@@ -32,10 +34,10 @@ class SqliteQueue:
         except (sqlite3.OperationalError, sa.exc.OperationalError):
             pass  # tried to create at the same time as another process
 
-    def put(
+    def put(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         json_like: str | dict,
-        id: str,
+        job_id: str,
         priority: int = -1,
         depends_on: list[str] | None = None,
         max_attempts: int = 10,
@@ -44,7 +46,7 @@ class SqliteQueue:
 
         Args:
             json_like (str): configuration (jsonlike object) to place on the queue
-            id (str): unique id of the job being added to the queue
+            job_id (str): unique id of the job being added to the queue
             priority (int, optional): priority where bigger number means more important.
                 Defaults to -1.
             depends_on (list[str] | None, optional):
@@ -57,7 +59,10 @@ class SqliteQueue:
         for _ in range(max_attempts):
             try:
                 return self._put(
-                    json_like=json_like, id=id, priority=priority, depends_on=depends_on
+                    json_like=json_like,
+                    job_id=job_id,
+                    priority=priority,
+                    depends_on=depends_on,
                 )
             except (sqlite3.OperationalError, sa.exc.OperationalError):
                 pass  # keep trying, may be a deadlock issue
@@ -66,7 +71,7 @@ class SqliteQueue:
     def _put(
         self,
         json_like: str | dict,
-        id: str,
+        job_id: str,
         priority: int = -1,
         depends_on: list[str] | None = None,
     ) -> bool:
@@ -74,7 +79,7 @@ class SqliteQueue:
 
         Args:
             json_like (str): configuration (jsonlike object) to place on the queue
-            id (str): unique id of the job being added to the queue
+            job_id (str): unique id of the job being added to the queue
             priority (int, optional): priority where bigger number means more important.
                 Defaults to -1.
             depends_on (list[str] | None, optional):
@@ -99,21 +104,21 @@ class SqliteQueue:
                 yield json_like[i : i + CHUNKSIZE]
 
         with Session(self._engine) as sesh:
-            job_queue = JobQueue(job_id=id, priority=priority)
+            job_queue = JobQueue(job_id=job_id, priority=priority)
             sesh.add(job_queue)
 
             job_configs = [
-                JobConfigTable(job_id=id, job_subindex=i, job_config_content=chunk)
+                JobConfigTable(job_id=job_id, job_subindex=i, job_config_content=chunk)
                 for i, chunk in enumerate(chunks())
             ]
             sesh.add_all(job_configs)
 
-            job_status = StatusTable(job_id=id, job_status=Status.READY)
+            job_status = StatusTable(job_id=job_id, job_status=Status.READY)
             sesh.add(job_status)
 
             if depends_on is not None:
                 job_dependencies = [
-                    DependencyTable(job_id=id, depends_on=dependency_id)
+                    DependencyTable(job_id=job_id, depends_on=dependency_id)
                     for dependency_id in depends_on
                 ]
                 sesh.add_all(job_dependencies)
@@ -121,9 +126,10 @@ class SqliteQueue:
             sesh.commit()
         return True
 
-    def set_status(self, id: str, status: int) -> bool:
+    def set_status(self, job_id: str, status: int) -> bool:
+        """Set the status of the job_id to the provided status"""
         with Session(self._engine) as sesh:
-            stmt = sa.select(StatusTable).where(StatusTable.job_id == id)
+            stmt = sa.select(StatusTable).where(StatusTable.job_id == job_id)
             job_orm = sesh.scalars(stmt).one()
             job_orm.job_status = status
             sesh.commit()
@@ -142,7 +148,11 @@ class SqliteQueue:
         with self._engine.connect() as conn:
             result = [
                 row[0]
-                for row in conn.execute(sa.select(sa.func.count(JobQueue.job_id)))
+                for row in conn.execute(
+                    sa.select(
+                        sa.func.count(JobQueue.job_id)  # pylint: disable=not-callable
+                    )
+                )
             ][0]
         return result
 
@@ -233,12 +243,12 @@ class SqliteQueue:
             )
             contents_query_result = sesh.execute(contents_query)
             if contents_query_result is None:
-                raise RuntimeError("No contents for job id %s", job_id)
+                raise queue.Empty()
             content_chunks = [
                 row[0] for row in contents_query_result if row is not None
             ]
             if len(content_chunks) == 0:
-                raise RuntimeError("Empty/no chunks for job id %s", job_id)
+                raise queue.Empty()
             contents = "".join(content_chunks)
 
             # not really required but for housekeeping, commit our transaction
