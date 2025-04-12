@@ -9,4 +9,5 @@ from .job_array_limits_max_running import JobArrayLimitsMaxRunning
 
 class JobArrayLimitsMax(BaseModel):
     """v0.0.42 JOB_ARRAY_LIMITS_MAX"""
+
     running: Optional[JobArrayLimitsMaxRunning]
