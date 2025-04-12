@@ -21,6 +21,9 @@ pyarrow = [
 pandas = [
     "pandas>=2.2.3",
 ]
+slurm = [
+    "requests>=2.32.3",
+]
 
 [project.scripts]
 pyantz = "pyantz:main"
