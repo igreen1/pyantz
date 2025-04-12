@@ -26,9 +26,7 @@ jobs:
         run: uv sync --all-extras --dev
 
       - name: Run ruff lint
-        # For example, using `pytest`
-        run: uv run ruff lint pyantz
+        run: uv run ruff check pyantz
 
       - name: Run pylint
-        # For example, using `pytest`
-        run: uv run ruff lint pyantz
+        run: uv run pylint pyantz
