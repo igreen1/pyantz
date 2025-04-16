@@ -1,0 +1,70 @@
+"""https://slurm.schedmd.com/rest_api.html#v0.0.42_node"""
+
+from typing import Any, Optional
+
+from pydantic import BaseModel
+
+from .acct_gather_energy import AcctGatherEnergy
+from .uint64_no_val_struct import Uint64NoValStruct
+
+
+class Node(BaseModel):
+    """v0.0.42 NODE"""
+
+    architecture: Optional[str]
+    burstbuffer_network_address: Optional[str]
+    boards: Optional[int]
+    boot_time: Optional[Uint64NoValStruct]
+    cluster_name: Optional[str]
+    cores: Optional[int]
+    specialized_cores: Optional[int]
+    cpu_binding: Optional[int]
+    cpu_load: Optional[int]
+    free_mem: Optional[Uint64NoValStruct]
+    cpus: Optional[int]
+    effective_cpus: Optional[int]
+    specialized_cpus: Optional[str]
+    energy: Optional[AcctGatherEnergy]
+    external_sensors: Optional[Any]
+    extra: Optional[str]
+    power: Optional[Any]
+    features: Optional[list[str]]
+    active_features: Optional[list[str]]
+    gpu_spec: Optional[str]
+    gres: Optional[str]
+    gres_drained: Optional[str]
+    gres_used: Optional[str]
+    instance_id: Optional[str]
+    instance_type: Optional[str]
+    last_busy: Optional[Uint64NoValStruct]
+    mcs_label: Optional[str]
+    specialized_memory: Optional[int]
+    name: Optional[str]
+    next_state_after_reboot: Optional[list[str]]
+    address: Optional[str]
+    hostname: Optional[str]
+    state: Optional[list[str]]
+    operating_system: Optional[str]
+    owner: Optional[str]
+    partitions: Optional[list[str]]
+    port: Optional[int]
+    real_memory: Optional[int]
+    res_cores_per_gpu: Optional[int]
+    comment: Optional[str]
+    reason: Optional[str]
+    reason_changed_at: Optional[Uint64NoValStruct]
+    reason_set_by_user: Optional[str]
+    resume_after: Optional[Uint64NoValStruct]
+    reservation: Optional[str]
+    alloc_memory: Optional[int]
+    alloc_cpus: Optional[int]
+    alloc_idle_cpus: Optional[int]
+    tres_used: Optional[str]
+    tres_weighted: Optional[float]
+    slurmd_start_time: Optional[Uint64NoValStruct]
+    sockets: Optional[int]
+    thread: Optional[int]
+    temporary_disk: Optional[int]
+    weight: Optional[int]
+    tres: Optional[str]
+    version: Optional[str]
