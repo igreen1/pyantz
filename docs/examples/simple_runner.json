@@ -1,0 +1,38 @@
+{
+    "submitter_config" {
+        "local"
+    },
+    "config": {
+        "type": "pipeline",
+        "jobs": [
+            {
+                "type": "submitter_job",
+                "function": "pyantz.jobs.branch.create_pipelines_from_matrix.create_pipelines_from_matrix",
+                "parameters": {
+                    "pipeline_config_template": {
+                        "type": "pipeline", 
+                        "jobs": [
+                            {
+                                "type": "mutable_job",
+                                "function": "pyantz.jobs.variables.assign_environment_variable.assign_environment_variable",
+                                "parameters": {
+                                    "environmental_variables": {
+                                        "my_account": "%{my_account_from_csv}"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "simple_job",
+                                "function": "pyantz.jobs.dispatch.run_command.run_command",
+                                "parameters": {
+                                    "cmd": ["sbatch", "--wckey=%{wckey}", "myscript", "$env_var", "%{arg1}", "arg2"]
+                                }
+                            }
+                        ]
+                    }
+                }
+                
+            }
+        ]
+    }
+}
