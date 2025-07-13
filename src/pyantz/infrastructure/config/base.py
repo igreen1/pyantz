@@ -204,7 +204,9 @@ class InitialConfig(BaseModel, frozen=True):
     """The configuration of both the jobs and the submitters"""
 
     analysis_config: Config
-    submitter_config: LocalSubmitterConfig | SlurmBasicSubmitter = Field(discriminator="type")
+    submitter_config: LocalSubmitterConfig | SlurmBasicSubmitter = Field(
+        discriminator="type"
+    )
     logging_config: LoggingConfig = LoggingConfig()
 
 

@@ -11,6 +11,7 @@ from pyantz.infrastructure.core.status import Status
 
 class Parameters(BaseModel, frozen=True):
     """See change variable docs"""
+
     environmental_variables: dict[str, str]
 
 

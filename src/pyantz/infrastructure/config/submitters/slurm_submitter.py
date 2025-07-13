@@ -1,5 +1,5 @@
-"""Configuration of the slurm submitter
-"""
+"""Configuration of the slurm submitter"""
+
 from typing import Literal
 import enum
 
@@ -14,11 +14,11 @@ class RetryPolicy(enum.StrEnum):
     include: only submit to nodes with previously successful jobs
     current: only submit to the current node
     """
-    NAIVE = 'naive'
-    EXCLUDE = 'exclude'
-    INCLUDE = 'include'
-    CURRENT = 'current'
 
+    NAIVE = "naive"
+    EXCLUDE = "exclude"
+    INCLUDE = "include"
+    CURRENT = "current"
 
 
 class SlurmBasicSubmitter(BaseModel, frozen=True):
@@ -45,6 +45,6 @@ class SlurmBasicSubmitter(BaseModel, frozen=True):
     max_submit_retries: int = 0
     retry_policy: RetryPolicy = RetryPolicy.NAIVE
     submit_wait_time: int = 3
-    slurm_command: Literal['sbatch'] = 'sbatch'
+    slurm_command: Literal["sbatch"] = "sbatch"
     working_directory: DirectoryPath
-    grid_cmd_args: list[str] = Field(..., default_factory=lambda: []) # type: ignore
+    grid_cmd_args: list[str] = Field(..., default_factory=lambda: [])  # type: ignore

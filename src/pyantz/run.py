@@ -13,6 +13,7 @@ from pyantz.infrastructure.config.base import InitialConfig
 from pyantz.infrastructure.submitters.local import run_local_submitter
 from pyantz.infrastructure.submitters.slurm.basic_slurm import run_slurm_local
 
+
 def run(config: Mapping[str, Any]) -> None:
     """Run the provided configuration
 
@@ -24,7 +25,7 @@ def run(config: Mapping[str, Any]) -> None:
     if validated_config.submitter_config.type == "local":
         thread_handle = run_local_submitter(validated_config)
         thread_handle.join()  # wait for child threads to finish
-    if validated_config.submitter_config.type == 'slurm_basic':
+    if validated_config.submitter_config.type == "slurm_basic":
         run_slurm_local(validated_config)
     else:
         raise RuntimeError("Unknown submitter type")
