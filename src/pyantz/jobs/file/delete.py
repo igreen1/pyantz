@@ -9,8 +9,7 @@ import logging
 import os
 import shutil
 
-from pydantic import BaseModel, BeforeValidator
-from typing_extensions import Annotated
+from pydantic import BaseModel
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -19,7 +18,7 @@ from pyantz.infrastructure.core.status import Status
 class Parameters(BaseModel, frozen=True):
     """The parameters required for the copy command"""
 
-    path: Annotated[str, BeforeValidator(lambda x: x if os.path.exists(x) else None)]
+    path: str
 
 
 @config_base.simple_job(Parameters)

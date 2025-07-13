@@ -22,6 +22,10 @@ def run_local_submitter(config: InitialConfig) -> threading.Thread:
         Callable[[PipelineConfig], None]: callable that accepts a pipeline config
             and places it on the queue
     """
+    if config.submitter_config.type != "local":
+        raise ValueError(
+            f"Cannot run local submitter with type: {config.submitter_config.type}"
+        )
     try:
         # we have significant threading, so complete isolation is required
         mp.set_start_method("spawn", force=True)

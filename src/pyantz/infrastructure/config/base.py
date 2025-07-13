@@ -31,6 +31,7 @@ from pyantz.infrastructure.core.status import Status
 from pyantz.infrastructure.core.variables import is_variable
 
 from .local_submitter import LocalSubmitterConfig
+from .submitters.slurm_submitter import SlurmBasicSubmitter
 
 PrimitiveType: TypeAlias = str | int | float | bool | None
 AntzConfig: TypeAlias = Union[
@@ -203,7 +204,9 @@ class InitialConfig(BaseModel, frozen=True):
     """The configuration of both the jobs and the submitters"""
 
     analysis_config: Config
-    submitter_config: LocalSubmitterConfig = Field(discriminator="type")
+    submitter_config: LocalSubmitterConfig | SlurmBasicSubmitter = Field(
+        discriminator="type"
+    )
     logging_config: LoggingConfig = LoggingConfig()
 
 

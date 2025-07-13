@@ -11,13 +11,14 @@ from pyantz.infrastructure.core.status import Status
 
 class Parameters(BaseModel, frozen=True):
     """See change variable docs"""
+
     environmental_variables: dict[str, str]
 
 
 @config_base.simple_job(Parameters)
 def assign_environment_variable(
     parameters: config_base.ParametersType,
-    logger: logging.Logger,
+    logger: logging.Logger,  # pylint: disable=unused-argument
 ) -> Status:
     """Change a variable to a new value based on a function return
 

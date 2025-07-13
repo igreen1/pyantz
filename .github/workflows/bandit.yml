@@ -16,6 +16,6 @@ jobs:
           python-version: "3.12"
 
       - name: Run Bandit
-        env: 
-          EXCLUDE_FILES: test/*
+        env:
+          EXCLUDE_FILES: tests/*
         run: bash <(curl -s https://raw.githubusercontent.com/CICDToolbox/bandit/master/pipeline.sh)

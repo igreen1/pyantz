@@ -10,19 +10,17 @@ TODO
     on failure of submission, retyr with different node
     batch submit
 -> GUI to create the jobs
--> check the arg types of the functions in the job 
+-> check the arg types of the functions in the job
 -> use pyarrow
 --> support using dask, pandas or pyarrow as the backend
 
 slurm
 
-make various analysis libraries optional
-
 
 - edit yaml
 edit fields (multiple!) set values
 ---> accepts two lists. the first is a list of str (paths to edit) and the second it values
----> must be of the same length, checked at runtime :( 
+---> must be of the same length, checked at runtime :(
 
 - edit json
 ---> same as edit yaml above
@@ -51,11 +49,11 @@ CRUD sql server
 
 # Plot
 - scatter x/y with color options
-- hist 
+- hist
 - stacked hist
 
 # Aggregation
-- merge parquets 
+- merge parquets
 - concatenate parquets
 - filter parquet
 - count parquet
@@ -70,4 +68,4 @@ CRUD sql server
 take one example pipeline and produce a PIPELINE ID variable for each in range
 - generate simple case matrix
 for one variable being modified, create pipelines for range of values for the variable (only integers)
-- 
+-
