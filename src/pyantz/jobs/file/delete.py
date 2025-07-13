@@ -19,7 +19,7 @@ from pyantz.infrastructure.core.status import Status
 class Parameters(BaseModel, frozen=True):
     """The parameters required for the copy command"""
 
-    path: Annotated[str, BeforeValidator(lambda x: x if os.path.exists(x) else None)]
+    path: str
 
 
 @config_base.simple_job(Parameters)

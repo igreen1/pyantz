@@ -16,6 +16,8 @@ import uuid
 import subprocess
 import logging
 import re
+import stat
+from textwrap import dedent
 
 from pyantz.infrastructure.config.submitters.slurm_submitter import SlurmBasicSubmitter
 from pyantz.infrastructure.config.base import Config, InitialConfig
@@ -62,15 +64,16 @@ def _submit_job_to_grid(config: InitialConfig) -> bool:
         raise ValueError("Only SBATCH currently supported")
 
     # create the sbatch file
-    sbatch_file: str = f"""#!/bin/bash
+    sbatch_file: str = dedent(f"""#!/bin/bash
     python {__file__} ${{1}}
-    """
+    """)
     sbatch_file_path: str = os.path.join(
         config.submitter_config.working_directory, f"{job_uuid}_submit.sh"
     )
 
     with open(sbatch_file_path, "w", encoding="utf-8") as fh:
         fh.write(sbatch_file)
+    os.chmod(sbatch_file_path, stat.S_IXGRP | stat.S_IXUSR | stat.S_IXOTH)
 
     # write out the configuration
     config_file_path: str = os.path.join(
@@ -78,16 +81,19 @@ def _submit_job_to_grid(config: InitialConfig) -> bool:
     )
     with open(config_file_path, "w", encoding="utf-8") as fh:
         fh.write(config.model_dump_json())
+    os.chmod(config_file_path, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
+
+    sbatch_cmd = [
+        "sbatch",
+        *config.submitter_config.grid_cmd_args,
+        sbatch_file_path,
+        "-c",
+        config_file_path,
+    ]
 
     # now actually perform the sbatch
     sbatch_result = subprocess.run(
-        [
-            "sbatch",
-            *config.submitter_config.grid_cmd_args,
-            sbatch_file_path,
-            "-c",
-            config_file_path,
-        ],
+        sbatch_cmd,
         check=True,
         stdout=subprocess.PIPE,
     )
