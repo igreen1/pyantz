@@ -57,7 +57,7 @@ def run_command(
             with open(params_parsed.stderr_file, "wb") as fh:
                 fh.write(result.stderr)
 
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-exception-caught
         logger.error("Unknown error in submitting!", exc_info=e)
         return Status.ERROR
 

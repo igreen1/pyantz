@@ -18,7 +18,7 @@ class Parameters(BaseModel, frozen=True):
 @config_base.simple_job(Parameters)
 def assign_environment_variable(
     parameters: config_base.ParametersType,
-    logger: logging.Logger,
+    logger: logging.Logger, # pylint: disable=unused-argument
 ) -> Status:
     """Change a variable to a new value based on a function return
 

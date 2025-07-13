@@ -53,7 +53,7 @@ def filter_dataframe(
     data = pd.read_parquet(filter_parameters.input_file, dtype_backend="pyarrow")
     filtered_data = data.query(
         filter_parameters.query_string,
-        local_dict=filter_parameters.captured_variables,
+        local_dict=filter_parameters.captured_variables, # type: ignore
         global_dict={},
     )
     if filter_parameters.output_file is not None:
