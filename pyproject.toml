@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "igreen1", email = "dev@iangreen.dev" }
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.10.6",
     "rich>=13.9.4",
