@@ -49,8 +49,7 @@ def run_command(
             env=params_parsed.environmental_variables,
             cwd=params_parsed.cwd,
             check=check,
-            shell=True,
-        )
+        ) # nosec
         if params_parsed.stdout_file:
             with open(params_parsed.stdout_file, "wb") as fh:
                 fh.write(result.stdout)
