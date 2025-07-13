@@ -9,8 +9,7 @@ import logging
 import os
 import shutil
 
-from pydantic import BaseModel, BeforeValidator
-from typing_extensions import Annotated
+from pydantic import BaseModel
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status

@@ -1,12 +1,8 @@
 """Runs configurations on a slurm grid"""
 
 from .restful.models.job_submit_req import JobSubmitReq
-from .restful.models.job_desc_msg import JobDescMsg
-from pyantz.infrastructure.config.base import Config, InitialConfig, LoggingConfig
-from pyantz.infrastructure.core.manager import run_manager
-from pyantz.infrastructure.log.multiproc_logging import ANTZ_LOG_ROOT_NAME, get_listener
+from pyantz.infrastructure.config.base import InitialConfig
 import argparse
-import json
 
 
 def run_slurm_submitter(config: InitialConfig) -> None:
