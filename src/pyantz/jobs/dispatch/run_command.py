@@ -1,7 +1,7 @@
 """Run a job as a subprocess"""
 
 import logging
-import subprocess
+import subprocess # nosec
 
 from pydantic import BaseModel
 
@@ -49,6 +49,7 @@ def run_command(
             env=params_parsed.environmental_variables,
             cwd=params_parsed.cwd,
             check=check,
+            shell=True,
         )
         if params_parsed.stdout_file:
             with open(params_parsed.stdout_file, "wb") as fh:

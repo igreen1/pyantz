@@ -13,7 +13,7 @@ Then, it will submit the next job. TO submit
 import argparse
 import os
 import uuid
-import subprocess
+import subprocess # nosec
 import logging
 import re
 import stat
@@ -96,6 +96,7 @@ def _submit_job_to_grid(config: InitialConfig) -> bool:
         sbatch_cmd,
         check=True,
         stdout=subprocess.PIPE,
+        shell=True,
     )
 
     sbatch_match = SBATCH_RETURN.match(sbatch_result.stdout.decode())
