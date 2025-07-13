@@ -25,10 +25,13 @@ def run(config: Mapping[str, Any]) -> None:
     if validated_config.submitter_config.type == "local":
         thread_handle = run_local_submitter(validated_config)
         thread_handle.join()  # wait for child threads to finish
-    if validated_config.submitter_config.type == "slurm_basic":
+    elif validated_config.submitter_config.type == "slurm_basic":
         run_slurm_local(validated_config)
     else:
-        raise RuntimeError("Unknown submitter type")
+        print(validated_config.submitter_config.type)
+        raise RuntimeError(
+            f"Unknown submitter type: {validated_config.submitter_config.type}"
+        )
 
 
 if __name__ == "__main__":

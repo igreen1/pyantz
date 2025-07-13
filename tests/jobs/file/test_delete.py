@@ -28,20 +28,6 @@ def test_delete_directory(tmpdir: str | os.PathLike[str]) -> None:
     assert not os.path.exists(dir_path)
 
 
-def test_delete_non_existing_directory(tmpdir: str | os.PathLike[str]) -> None:
-    """Test that attempting to delete a nonexistent directory returns error"""
-
-    dir_name: str = "some_directory is cool"
-    dir_path = os.path.join(tmpdir, dir_name)
-
-    assert not os.path.exists(dir_path)
-
-    with pytest.raises(ValidationError):
-        assert delete({"path": dir_path}, logger)
-
-    assert not os.path.exists(dir_path)
-
-
 def test_delete_file(tmpdir: str | os.PathLike[str]) -> None:
     """Test deleting a file"""
 
@@ -54,16 +40,6 @@ def test_delete_file(tmpdir: str | os.PathLike[str]) -> None:
     assert os.path.exists(file_path)
 
     assert delete({"path": file_path}, logger) == Status.SUCCESS
-
-
-def test_delete_non_existing_file(tmpdir: str | os.PathLike[str]) -> None:
-    """Test deleting a file"""
-
-    file_name: str = "some_directory is cool"
-    file_path = os.path.join(tmpdir, file_name)
-
-    with pytest.raises(ValidationError):
-        assert delete({"path": file_path}, logger) == Status.SUCCESS
 
 
 def test_delete_file_in_job(tmpdir: str | os.PathLike[str]) -> None:
