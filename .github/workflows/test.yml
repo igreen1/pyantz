@@ -25,6 +25,6 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Run ruff lint
+      - name: Run pytes
         # For example, using `pytest`
         run: uv run pytest tests
