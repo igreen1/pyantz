@@ -20,7 +20,7 @@ import os
 from collections.abc import Mapping
 from typing import Any, Callable, Generator
 
-import pandas as pd
+import polars as pl
 from pydantic import BaseModel
 
 import pyantz.infrastructure.config.base as config_base
@@ -83,26 +83,28 @@ def generate_configs(
         RuntimeError: if the file type is not .parquet, .csv, or .xlsx
     """
 
-    case_matrix: pd.DataFrame
+    case_matrix: pl.DataFrame
     if os.path.splitext(params.matrix_path)[1] == ".csv":
-        case_matrix = pd.read_csv(params.matrix_path)
+        case_matrix = pl.read_csv(os.fspath(params.matrix_path))
     elif os.path.splitext(params.matrix_path)[1] == ".xlsx":
-        case_matrix = pd.read_excel(params.matrix_path)
+        case_matrix = pl.read_excel(os.fspath(params.matrix_path))
     elif os.path.splitext(params.matrix_path)[1] in (".parquet", ".parq"):
-        case_matrix = pd.read_parquet(params.matrix_path)
+        case_matrix = pl.read_parquet(os.fspath(params.matrix_path))
     else:
         raise RuntimeError("Unknown file type for the case matrix provided")
 
     pipeline_base: dict[str, Any] = params.pipeline_config_template.model_dump()
 
-    for idx, row in case_matrix.iterrows():
+    case_matrix_names: list[str] = case_matrix.columns
+
+    for idx, row in enumerate(case_matrix.iter_rows()):
         pipeline_base["name"] = f"pipeline_{idx}"
         yield config_base.Config.model_validate(
             {
                 "config": pipeline_base,
                 "variables": {
                     **variables,  # keep outer scope
-                    **dict(zip(row.index, row)),
+                    **dict(zip(case_matrix_names, row)),
                 },
             }
         )

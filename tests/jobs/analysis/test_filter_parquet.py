@@ -44,6 +44,6 @@ def test_filter_parquet_job(tmpdir: Path) -> None:
     assert os.path.exists(output_file)
     result = pl.read_parquet(output_file)
 
-    expected = original.filter(pl.col('a') > 50)
+    expected = original.filter(pl.col("a") > 50)
 
     assert expected.equals(result)

@@ -6,7 +6,7 @@ import queue
 import random
 import string
 
-import pandas as pd
+import polars as pl
 
 from pyantz.infrastructure.config.base import Config
 from pyantz.infrastructure.core.manager import run_manager
@@ -25,8 +25,8 @@ def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
         q.put(config)
 
     matrix_path: str | os.PathLike[str] = os.path.join(tmpdir, "matrix.csv")
-    pd.DataFrame({"var1": [1, 2, 3], "var3": ["b", "c", "d"]}).to_csv(
-        matrix_path, index=False
+    pl.DataFrame({"var1": [1, 2, 3], "var3": ["b", "c", "d"]}).write_csv(
+        os.fspath(matrix_path)
     )
 
     # make a file to copy

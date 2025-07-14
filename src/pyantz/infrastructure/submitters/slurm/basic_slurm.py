@@ -96,7 +96,7 @@ def _submit_job_to_grid(config: InitialConfig) -> bool:
         sbatch_cmd,
         check=True,
         stdout=subprocess.PIPE,
-    ) # nosec
+    )  # nosec
 
     sbatch_match = SBATCH_RETURN.match(sbatch_result.stdout.decode())
     if sbatch_match is None:

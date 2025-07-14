@@ -34,15 +34,16 @@ class FilterParquetParameters(BaseModel, frozen=True):
 
 
 _operator_mapping: dict[str, Callable[..., bool]] = {
-    '==': operator.eq,
-    '=': operator.eq,
-    '!=': operator.ne,
-    '~=': operator.ne,
-    '>': operator.gt,
-    '<': operator.lt,
-    '<=': operator.le,
-    '>=': operator.ge
+    "==": operator.eq,
+    "=": operator.eq,
+    "!=": operator.ne,
+    "~=": operator.ne,
+    ">": operator.gt,
+    "<": operator.lt,
+    "<=": operator.le,
+    ">=": operator.ge,
 }
+
 
 class FilterParquetParametersAfter(BaseModel, frozen=True):
     """Parameters for filter_parquet"""
@@ -56,7 +57,7 @@ class FilterParquetParametersAfter(BaseModel, frozen=True):
     op: Callable[..., bool]
     right: str | int | float | bool
 
-    @field_validator('op', mode='before')
+    @field_validator("op", mode="before")
     @classmethod
     def _op_transform(cls, value: Any) -> Any:
         """Transfor operator if its a string"""
@@ -77,12 +78,18 @@ def filter_parquet(
 
     columns: list[str] = lazy_frame.collect_schema().names()
 
-    lhs = pl.col(params.left) if isinstance(params.left, str) and params.left in columns else params.left
-    rhs = pl.col(params.right) if isinstance(params.right, str) and params.right in columns else params.right
+    lhs = (
+        pl.col(params.left)
+        if isinstance(params.left, str) and params.left in columns
+        else params.left
+    )
+    rhs = (
+        pl.col(params.right)
+        if isinstance(params.right, str) and params.right in columns
+        else params.right
+    )
 
-    pl.scan_parquet(params.input_file).filter(
-        params.op(lhs, rhs)
-    ).sink_parquet(
+    pl.scan_parquet(params.input_file).filter(params.op(lhs, rhs)).sink_parquet(
         params.output_file
     )
 
