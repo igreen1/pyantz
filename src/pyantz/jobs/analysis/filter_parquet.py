@@ -1,13 +1,13 @@
 """Filter a parquet file based on a filters argument"""
 
 import logging
-import os
 import operator
-from typing import Literal, TypeAlias, Callable, Any
+import os
+from typing import Any, Callable, Literal, TypeAlias
 
+import polars as pl
 from pydantic import BaseModel, BeforeValidator, FilePath, field_validator
 from typing_extensions import Annotated
-import polars as pl
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status

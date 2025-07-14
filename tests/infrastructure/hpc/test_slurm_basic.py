@@ -1,9 +1,10 @@
 """Test runnign on the slurm grid"""
 
-import shutil
-import pytest
 import os
+import shutil
 import time
+
+import pytest
 
 import pyantz.run
 

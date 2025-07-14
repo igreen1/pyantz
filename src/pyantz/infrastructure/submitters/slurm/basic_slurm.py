@@ -11,16 +11,16 @@ Then, it will submit the next job. TO submit
 """
 
 import argparse
-import os
-import uuid
-import subprocess  # nosec
 import logging
+import os
 import re
 import stat
+import subprocess  # nosec
+import uuid
 from textwrap import dedent
 
-from pyantz.infrastructure.config.submitters.slurm_submitter import SlurmBasicSubmitter
 from pyantz.infrastructure.config.base import Config, InitialConfig
+from pyantz.infrastructure.config.submitters.slurm_submitter import SlurmBasicSubmitter
 from pyantz.infrastructure.core.manager import run_manager
 from pyantz.infrastructure.log.multiproc_logging import ANTZ_LOG_ROOT_NAME
 
