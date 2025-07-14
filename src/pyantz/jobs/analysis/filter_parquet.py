@@ -2,11 +2,12 @@
 
 import logging
 import os
-from typing import Literal, TypeAlias
+import operator
+from typing import Literal, TypeAlias, Callable, Any
 
-import pyarrow.parquet
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel, BeforeValidator, FilePath, field_validator
 from typing_extensions import Annotated
+import polars as pl
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -25,16 +26,43 @@ FilterType: TypeAlias = list[
 class FilterParquetParameters(BaseModel, frozen=True):
     """Parameters for filter_parquet"""
 
-    input_file: Annotated[
-        str, BeforeValidator(lambda x: x if os.path.exists(x) else None)
-    ]
+    input_file: str
+    output_file: str
+    left: str
+    op: Literal["==", "=", "~=", "!=", ">", ">=", "<", "<="]
+    right: str | int | float | bool
+
+
+_operator_mapping: dict[str, Callable[..., bool]] = {
+    '==': operator.eq,
+    '=': operator.eq,
+    '!=': operator.ne,
+    '~=': operator.ne,
+    '>': operator.gt,
+    '<': operator.lt,
+    '<=': operator.le,
+    '>=': operator.ge
+}
+
+class FilterParquetParametersAfter(BaseModel, frozen=True):
+    """Parameters for filter_parquet"""
+
+    input_file: FilePath
     output_file: Annotated[
         str,
         BeforeValidator(lambda x: x if os.path.exists(os.path.dirname(x)) else None),
     ]
-    left: str
-    op: Literal["==", "=", "!=", ">", ">=", "<", "<="]
+    left: str | int | float | bool
+    op: Callable[..., bool]
     right: str | int | float | bool
+
+    @field_validator('op', mode='before')
+    @classmethod
+    def _op_transform(cls, value: Any) -> Any:
+        """Transfor operator if its a string"""
+        if isinstance(value, str):
+            return _operator_mapping.get(value, value)
+        return value
 
 
 @config_base.simple_job(FilterParquetParameters)
@@ -43,15 +71,19 @@ def filter_parquet(
 ) -> Status:
     """Filter the parquet file down"""
 
-    params = FilterParquetParameters.model_validate(parameters)
+    params = FilterParquetParametersAfter.model_validate(parameters)
 
-    filters = [[(params.left, params.op, params.right)]]
+    lazy_frame = pl.scan_parquet(params.input_file)
 
-    logger.debug("Reading %s with filters %s", params.input_file, filters)
+    columns: list[str] = lazy_frame.collect_schema().names()
 
-    # adding type ignore because the liskov logic here is wrong
-    table = pyarrow.parquet.read_table(params.input_file, filters=filters)  # type: ignore
+    lhs = pl.col(params.left) if isinstance(params.left, str) and params.left in columns else params.left
+    rhs = pl.col(params.right) if isinstance(params.right, str) and params.right in columns else params.right
 
-    pyarrow.parquet.write_table(table, params.output_file)
+    pl.scan_parquet(params.input_file).filter(
+        params.op(lhs, rhs)
+    ).sink_parquet(
+        params.output_file
+    )
 
     return Status.SUCCESS
