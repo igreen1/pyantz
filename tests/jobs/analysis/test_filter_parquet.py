@@ -29,11 +29,9 @@ def test_filter_parquet_job(tmpdir: Path) -> None:
         "type": "job",
         "function": "pyantz.jobs.analysis.filter_parquet.filter_parquet",
         "parameters": {
+            "filters": [[['a', '>', 50]]],
             "input_file": input_file,
             "output_file": output_file,
-            "left": "a",
-            "op": ">",
-            "right": 50,
         },
     }
 
