@@ -38,6 +38,7 @@ class FilterParquetParametersInvalidJson(BaseModel, frozen=True):
     output_file: str
     filters: FilterType
 
+
 _operator_mapping: dict[str, Callable[..., bool]] = {
     "==": operator.eq,
     "=": operator.eq,
