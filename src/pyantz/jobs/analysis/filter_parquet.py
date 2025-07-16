@@ -5,7 +5,6 @@ import operator
 
 from typing import Callable, Literal, TypeAlias
 from functools import reduce
-import operator
 
 import polars as pl
 from pydantic import BaseModel
@@ -94,7 +93,7 @@ def filter_parquet(
         lazy_frame.filter(filters).sink_parquet(
             params.output_file
         )
-    except Exception as exc:
+    except Exception as exc: # pylint: disable=broad-exception-caught
         logger.error('Unable to filter: ', exc_info=exc)
         return Status.ERROR
     return Status.SUCCESS
