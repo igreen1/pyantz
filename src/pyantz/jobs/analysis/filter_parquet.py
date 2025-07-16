@@ -14,24 +14,13 @@ from pyantz.infrastructure.core.status import Status
 
 FilterType: TypeAlias = list[
     list[
-        tuple[
+        list[
             int | float | bool | str,
             Literal["==", "=", "!=", ">", ">=", "<", "<="],
             int | float | bool | str,
         ]
     ]
 ]
-
-FilterTypeAfter: TypeAlias = list[
-    list[
-        tuple[
-            int | float | bool | str | pl.Expr,
-            Callable[..., bool],
-            int | float | bool | str | pl.Expr,
-        ]
-    ]
-]
-
 
 class FilterParquetParameters(BaseModel, frozen=True):
     """Parameters for filter_parquet"""
