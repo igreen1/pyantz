@@ -10,63 +10,29 @@ off of a school project
 ## Dev Notes
 
 TODO
--> GUI to create the jobs
--> check the arg types of the functions in the job
--> use pyarrow
---> support using dask, pandas or pyarrow as the backend
+ - GUI to create the jobs
+ - analysis jobs support directory parquet style
+ - edit yamls
+ - joins
+ - union (all rows from both)
+ - set difference (rows in the first relation but not the second)
+ - cartesian product (all possible combinations of rows)
+ - csv to parquet
+ - single file parquet to directory parquet
+ - directory parquet to single file parquet
+ - excel to parquet
+ - hdf5 (.h5) to parquet
+ - parquet to postgres
+ - parquet to mysql
+ - postgres query to parquet
+ - mysql query to parquet
+ - upload parquet to minio
+ - download parquet from minio
+ - create hvplot from parquet (scatter)
+ - join pipelines (will be very complicated due to architecture)
+ - aggregation functions (count, sum, min, max, xth percentile)
 
-slurm
-
-
-- edit yaml
-edit fields (multiple!) set values
----> accepts two lists. the first is a list of str (paths to edit) and the second it values
----> must be of the same length, checked at runtime :(
-
-- edit json
----> same as edit yaml above
-- edit csv
----> accepts column names, list of values
----> only one column at a time
-
-- convert csv to parquet
----> read csv and output to parquet
-- convert excel to parquet
-accepts path to excel and optionally the sheet name
----> read into memory and output to parquet
-- convert hdf5 to parquet
-accepts path and keys and reads into pandas
-outputs to parquet
-
-convert parquet to csv
-convert parquet to excel
-convert hdf5 to excel
-
-# DB
-CRUD postgres
-CRUD mysql
-CRUD minio
-CRUD sql server
-
-# Plot
-- scatter x/y with color options
-- hist
-- stacked hist
-
-# Aggregation
-- merge parquets
-- concatenate parquets
-- filter parquet
-- count parquet
-- sum parquet
-- min parquet
-- max parquet
-- xth percentile
-- groupby and agg
-
-# splitters
-- split template into N pipelines
-take one example pipeline and produce a PIPELINE ID variable for each in range
-- generate simple case matrix
-for one variable being modified, create pipelines for range of values for the variable (only integers)
--
+Possible
+ - dependent jobs?
+ - virtual jobs (composed of multiple jobs but simplifies configuration)
+    virtual jobs should allow users to define custom virtual jobs (templates). add API for this
