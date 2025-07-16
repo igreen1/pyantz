@@ -15,7 +15,7 @@ from pyantz.infrastructure.core.status import Status
 FilterType: TypeAlias = list[
     list[
         tuple[
-            int | float | bool | str |
+            int | float | bool | str,
             Literal["==", "=", "!=", ">", ">=", "<", "<="],
             int | float | bool | str,
         ]
