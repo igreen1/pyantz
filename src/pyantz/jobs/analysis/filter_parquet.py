@@ -22,6 +22,7 @@ FilterType: TypeAlias = list[
     ]
 ]
 
+
 class FilterParquetParameters(BaseModel, frozen=True):
     """Parameters for filter_parquet"""
 
