@@ -90,10 +90,8 @@ def filter_parquet(
     )
 
     try:
-        lazy_frame.filter(filters).sink_parquet(
-            params.output_file
-        )
-    except Exception as exc: # pylint: disable=broad-exception-caught
-        logger.error('Unable to filter: ', exc_info=exc)
+        lazy_frame.filter(filters).sink_parquet(params.output_file)
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        logger.error("Unable to filter: ", exc_info=exc)
         return Status.ERROR
     return Status.SUCCESS
