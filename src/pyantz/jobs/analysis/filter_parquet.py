@@ -7,15 +7,15 @@ from typing import Callable, Literal, TypeAlias
 from functools import reduce
 
 import polars as pl
-from pydantic import BaseModel
+from pydantic import BaseModel, FilePath
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 FilterType: TypeAlias = list[
     list[
-        list[
-            int | float | bool | str,
+        tuple[
+            int | float | bool | str |
             Literal["==", "=", "!=", ">", ">=", "<", "<="],
             int | float | bool | str,
         ]
@@ -28,8 +28,15 @@ class FilterParquetParameters(BaseModel, frozen=True):
 
     input_file: str
     output_file: str
-    filters: FilterType
+    filters: list[list[list[str | bool | int | float]]]
 
+
+class FilterParquetParametersInvalidJson(BaseModel, frozen=True):
+    """Cant create json with tuples, but important for type checking internally"""
+
+    input_file: FilePath
+    output_file: str
+    filters: FilterType
 
 _operator_mapping: dict[str, Callable[..., bool]] = {
     "==": operator.eq,
@@ -50,7 +57,7 @@ def filter_parquet(
 ) -> Status:
     """Filter the parquet file down"""
 
-    params = FilterParquetParameters.model_validate(parameters)
+    params = FilterParquetParametersInvalidJson.model_validate(parameters)
 
     lazy_frame = pl.scan_parquet(params.input_file)
     columns: list[str] = lazy_frame.collect_schema().names()
