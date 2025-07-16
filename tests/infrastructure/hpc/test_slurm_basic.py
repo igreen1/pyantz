@@ -1,18 +1,18 @@
-"""Test runnign on the slurm grid
-"""
+"""Test runnign on the slurm grid"""
 
-import shutil
-import pytest
 import os
+import shutil
 import time
+
+import pytest
 
 import pyantz.run
 
-HAS_SBATCH: bool = shutil.which('sbatch') is not None
+HAS_SBATCH: bool = shutil.which("sbatch") is not None
 
-@pytest.mark.skipif(not HAS_SBATCH, reason='Requies `sbatch` command to run')
+
+@pytest.mark.skipif(not HAS_SBATCH, reason="Requies `sbatch` command to run")
 def test_submitting_to_sbatch(tmpdir) -> None:
-
     dst_file = os.path.join(tmpdir, "end.txt")
 
     src_file = os.path.join(tmpdir, "start.txt")
@@ -46,7 +46,7 @@ def test_submitting_to_sbatch(tmpdir) -> None:
                         "parameters": {
                             "path": os.fspath(src_file),
                         },
-                    }
+                    },
                 ],
             },
         },
@@ -65,8 +65,7 @@ def test_submitting_to_sbatch(tmpdir) -> None:
     while os.path.exists(src_file):
         time.sleep(time_per_cycle)
         count += 1
-        if count*time_per_cycle > time_to_wait_s:
+        if count * time_per_cycle > time_to_wait_s:
             assert not os.path.exists(src_file)
-
 
     assert not os.path.exists(src_file)

@@ -1,7 +1,7 @@
 """Configuration of the slurm submitter"""
 
-from typing import Literal
 import enum
+from typing import Literal
 
 from pydantic import BaseModel, DirectoryPath, Field
 

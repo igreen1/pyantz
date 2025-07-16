@@ -1,14 +1,15 @@
+# PyAntz
 
- poetry run coverage run --source=src -m pytest
+Job runner and scheduling
+
+Setup configurations to chain together different jobs quickly and with minimal code. The goal here
+is to help those who need to quickly setup a local data pipeline for small projects. This spawned
+off of a school project
+
+
+## Dev Notes
 
 TODO
--> slurm
-    on failure of submission, retry with different node
-    batch submit
-    individual submit
--> windows hpc
-    on failure of submission, retyr with different node
-    batch submit
 -> GUI to create the jobs
 -> check the arg types of the functions in the job
 -> use pyarrow

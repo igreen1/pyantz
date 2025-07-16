@@ -30,7 +30,7 @@ from pyantz.infrastructure.config.get_functions import (
 from pyantz.infrastructure.core.status import Status
 from pyantz.infrastructure.core.variables import is_variable
 
-from .local_submitter import LocalSubmitterConfig
+from .submitters.local_submitter import LocalSubmitterConfig
 from .submitters.slurm_submitter import SlurmBasicSubmitter
 
 PrimitiveType: TypeAlias = str | int | float | bool | None
