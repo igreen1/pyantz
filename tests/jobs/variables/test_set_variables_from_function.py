@@ -11,14 +11,13 @@ from pyantz.infrastructure.core.status import Status
 T = TypeVar("T")
 
 
-def function_(arg1: T) -> T:
-    """Return the provided argument"""
+def function_[T](arg1: T) -> T:
+    """Return the provided argument."""
     return arg1
 
 
 def test_set_variable_from_function() -> None:
     """Test setting a variable from a function."""
-
     q = queue.Queue()
 
     def submit_fn(config: Config) -> None:

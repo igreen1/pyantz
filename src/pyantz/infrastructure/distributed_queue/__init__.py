@@ -1,4 +1,4 @@
-"""A distributed queue allows for multiple producers and subscribers
+"""A distributed queue allows for multiple producers and subscribers.
 
 - Supports queue item dependency
 - Atomic writes/reads

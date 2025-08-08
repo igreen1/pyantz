@@ -1,6 +1,7 @@
-"""Default jobs for use in the configuration"""
+"""Default jobs for use in the configuration."""
 
 import importlib as _importlib
+from typing import TYPE_CHECKING
 from typing import Any as _Any
 
 from pyantz.infrastructure.config.base import mutable_job as mark_mutable
@@ -10,18 +11,23 @@ from pyantz.infrastructure.config.get_functions import (
     get_job_type,
 )
 
+from . import branch, file, nop, variables
+
+if TYPE_CHECKING:
+    from pydantic import BaseModel
+
 
 def get_job_parameter_schema(job_full_name: str) -> dict[str, _Any] | None:
-    """Get the required parameters for an antz job
+    """Get the required parameters for an antz job.
 
     Args:
         job_full_name (str): full name of the module and function
             eg. antz.jobs.copy.copy
     Returns:
-        dict[str, str]: {parameter_name -> type_name}
-    """
+        str: JSON of {parameter_name -> type_name}
 
-    if not isinstance(job_full_name, str):
+    """
+    if not isinstance(job_full_name, str):  # pyright: ignore[reportUnnecessaryIsInstance]
         return None
 
     name: str = job_full_name
@@ -35,17 +41,18 @@ def get_job_parameter_schema(job_full_name: str) -> dict[str, _Any] | None:
         return None
 
     if hasattr(mod, "Parameters"):
-        return getattr(mod, "Parameters").schema_json()
+        params: BaseModel = mod.parameters
+        return params.model_json_schema()
     return None
 
 
 __all__ = [
     "branch",
     "file",
-    "variables",
-    "nop",
     "get_job_type",
     "mark_mutable",
     "mark_simple",
     "mark_submitter",
+    "nop",
+    "variables",
 ]

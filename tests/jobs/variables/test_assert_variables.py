@@ -1,4 +1,4 @@
-"""Test asserting variables"""
+"""Test asserting variables."""
 
 import logging
 
@@ -8,8 +8,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 def test_assert_error() -> None:
-    """Assert that if non equal the variables are not equal an error is raised"""
-
+    """Assert that if non equal the variables are not equal an error is raised."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [
@@ -33,8 +32,7 @@ def test_assert_error() -> None:
 
 
 def test_assert_success() -> None:
-    """Assert that if equal the variables are equal no error is raised"""
-
+    """Assert that if equal the variables are equal no error is raised."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [

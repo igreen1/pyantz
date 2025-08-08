@@ -1,11 +1,10 @@
-"""Call a user provided function and set the value of a variable to the return"""
+"""Call a user provided function and set the value of a variable to the return."""
 
 import logging
-from collections.abc import Mapping
-from typing import Callable
+from collections.abc import Callable, Mapping
+from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator
-from typing_extensions import Annotated
 
 import pyantz.infrastructure.config.base as config_base
 import pyantz.infrastructure.config.get_functions as importers
@@ -13,7 +12,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """See change variable docs"""
+    """See change variable docs."""
 
     left_hand_side: str
     args: list[config_base.PrimitiveType] | None
@@ -29,7 +28,7 @@ def set_variable_from_function(
     variables: Mapping[str, config_base.PrimitiveType],
     logger: logging.Logger,
 ) -> tuple[Status, Mapping[str, config_base.PrimitiveType]]:
-    """Change a variable to a new value based on a function return
+    """Change a variable to a new value based on a function return.
 
     ChangeVariableParameters {
         left_hand_side (str): name of the variable to change (left of equal sign)
@@ -49,8 +48,8 @@ def set_variable_from_function(
 
     Returns:
         Status: SUCCESS if jobs successfully submitted; ERROR otherwise
-    """
 
+    """
     params_parsed = Parameters.model_validate(parameters)
 
     result = params_parsed.right_hand_side(

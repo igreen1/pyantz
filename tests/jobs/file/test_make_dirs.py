@@ -1,4 +1,4 @@
-"""Test the job for making directories"""
+"""Test the job for making directories."""
 
 import logging
 import os
@@ -13,9 +13,8 @@ test_logger = logging.getLogger(__name__)
 test_logger.setLevel(0)
 
 
-def test_make_dir_exist_ok_true(tmpdir):
-    """Test make_dirs with exist_ok=True"""
-
+def test_make_dir_exist_ok_true(tmpdir) -> None:
+    """Test make_dirs with exist_ok=True."""
     path = os.path.join(tmpdir, "test_dir")
     parameters = {"path": path, "exist_ok": True}
 
@@ -30,9 +29,8 @@ def test_make_dir_exist_ok_true(tmpdir):
     assert os.path.exists(path)
 
 
-def test_make_dir_exist_ok_false(tmpdir):
-    """Test make_dirs with exist_ok=False"""
-
+def test_make_dir_exist_ok_false(tmpdir) -> None:
+    """Test make_dirs with exist_ok=False."""
     path = os.path.join(tmpdir, "test_dir")
 
     parameters = {"path": path, "exist_ok": False}

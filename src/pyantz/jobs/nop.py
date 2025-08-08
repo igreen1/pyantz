@@ -1,4 +1,4 @@
-"""Do nothing
+"""Do nothing.
 
 Sometimes the syntax requires something to be filled in, but we
     don't want to do anything
@@ -14,5 +14,5 @@ from pyantz.infrastructure.core.status import Status
 
 @config_base.simple_job(None)
 def nop(_parameters: config_base.ParametersType, _logger: logging.Logger) -> Status:
-    """Do nothing"""
+    """Do nothing."""
     return Status.SUCCESS

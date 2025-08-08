@@ -1,1 +1,1 @@
-"""Test our infrastructure code"""
+"""Test our infrastructure code."""

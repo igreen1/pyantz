@@ -1,4 +1,4 @@
-"""Test running the main entry script with `run.py`"""
+"""Test running the main entry script with `run.py`."""
 
 import os
 import subprocess
@@ -9,8 +9,7 @@ from pyantz.infrastructure.config.base import (
 
 
 def test_run_py(tmpdir) -> None:
-    """Use make dirs job as an example to test the run script"""
-
+    """Use make dirs job as an example to test the run script."""
     path = os.path.join(tmpdir, "test_dir")
     parameters = {"path": path, "exist_ok": True}
 
@@ -31,7 +30,6 @@ def test_run_py(tmpdir) -> None:
     )
     cwd = os.path.dirname(os.path.normpath(__file__))
     repo_dir = os.path.abspath(os.path.join(cwd, os.pardir))
-    print(repo_dir)
     config_path = os.fspath(os.path.join(tmpdir, "config.json"))
 
     with open(config_path, "w", encoding="utf-8") as f:

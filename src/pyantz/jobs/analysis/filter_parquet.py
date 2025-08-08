@@ -1,10 +1,11 @@
-"""Filter a parquet file based on a filters argument"""
+"""Filter a parquet file based on a filters argument."""
 
 import logging
 import operator
-
-from typing import Callable, Literal, TypeAlias
+import pathlib
+from collections.abc import Callable
 from functools import reduce
+from typing import Literal
 
 import polars as pl
 from pydantic import BaseModel, FilePath
@@ -12,7 +13,7 @@ from pydantic import BaseModel, FilePath
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
-FilterType: TypeAlias = list[
+type FilterType = list[
     list[
         tuple[
             int | float | bool | str,
@@ -24,15 +25,15 @@ FilterType: TypeAlias = list[
 
 
 class FilterParquetParameters(BaseModel, frozen=True):
-    """Parameters for filter_parquet"""
+    """Parameters for filter_parquet."""
 
     input_file: str
     output_file: str
     filters: list[list[list[str | bool | int | float]]]
 
 
-class FilterParquetParametersInvalidJson(BaseModel, frozen=True):
-    """Cant create json with tuples, but important for type checking internally"""
+class _RuntimeParameters(BaseModel, frozen=True):
+    """Cant create json with tuples, but important for type checking internally."""
 
     input_file: FilePath
     output_file: str
@@ -56,19 +57,15 @@ def filter_parquet(
     parameters: config_base.ParametersType,
     logger: logging.Logger,  # pylint: disable=unused-argument
 ) -> Status:
-    """Filter the parquet file down"""
+    """Filter the parquet file down."""
+    params = _RuntimeParameters.model_validate(parameters)
 
-    params = FilterParquetParametersInvalidJson.model_validate(parameters)
-
-    lazy_frame = pl.scan_parquet(params.input_file)
+    input_file_path = pathlib.Path(params.input_file)
+    lazy_frame: pl.LazyFrame = pl.scan_parquet(input_file_path)  # pyright: ignore[reportUnknownMemberType]
     columns: list[str] = lazy_frame.collect_schema().names()
 
     def get_as_col_if_possible[T](col_name: T) -> T | pl.Expr:
-        return (
-            pl.col(col_name)
-            if isinstance(col_name, str) and col_name in columns
-            else col_name
-        )
+        return pl.col(col_name) if isinstance(col_name, str) and col_name in columns else col_name
 
     filters: bool | pl.Expr = reduce(
         operator.or_,
@@ -88,8 +85,8 @@ def filter_parquet(
     )
 
     try:
-        lazy_frame.filter(filters).sink_parquet(params.output_file)
+        lazy_frame.filter(filters).sink_parquet(params.output_file)  # pyright: ignore[reportUnknownMemberType]
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.error("Unable to filter: ", exc_info=exc)
+        logger.exception("Unable to filter: ", exc_info=exc)
         return Status.ERROR
     return Status.SUCCESS

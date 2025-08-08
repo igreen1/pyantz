@@ -1,6 +1,4 @@
-"""
-The object relational mapping of the queue in the RDBMS
-"""
+"""The object relational mapping of the queue in the RDBMS."""
 
 from typing import Final
 
@@ -17,11 +15,11 @@ CHUNKSIZE: Final[int] = 2000
 
 
 class Base(DeclarativeBase):
-    """The base class for our ORM"""
+    """The base class for our ORM."""
 
 
 class JobQueue(Base):
-    """The job queue table, holds the ordered list of jobs"""
+    """The job queue table, holds the ordered list of jobs."""
 
     __tablename__: str = "queue"
 
@@ -31,7 +29,7 @@ class JobQueue(Base):
 
 
 class JobConfigTable(Base):
-    """The job config table holds the configurations for the jobs in the queue"""
+    """The job config table holds the configurations for the jobs in the queue."""
 
     __tablename__: str = "queue_items"
 
@@ -41,7 +39,7 @@ class JobConfigTable(Base):
 
 
 class DependencyTable(Base):
-    """The dependency table holds the dependency graph of the jobs"""
+    """The dependency table holds the dependency graph of the jobs."""
 
     __tablename__: str = "dependencies"
 
@@ -50,7 +48,7 @@ class DependencyTable(Base):
 
 
 class StatusTable(Base):
-    """The status table holds the current status of each job"""
+    """The status table holds the current status of each job."""
 
     __tablename__: str = "job_status"
 

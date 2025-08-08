@@ -1,4 +1,4 @@
-"""Test running a pipelin"""
+"""Test running a pipelin."""
 
 import logging
 import queue
@@ -13,7 +13,7 @@ logger.setLevel(100000)  # don't log in tests
 
 
 def test_multiple_restarts_pipeline() -> None:
-    """Test that a pipeline can be restarted multiple times"""
+    """Test that a pipeline can be restarted multiple times."""
     test_queue = queue.Queue()
 
     def submit_fn(config) -> None:
@@ -49,8 +49,7 @@ def test_multiple_restarts_pipeline() -> None:
 
 
 def test_restarting_pipeline() -> None:
-    """Test that pipelines can restarte"""
-
+    """Test that pipelines can restarte."""
     test_queue = queue.Queue()
 
     def submit_fn(config) -> None:
@@ -114,7 +113,7 @@ def test_running_failed_pipeline() -> None:
 
 
 def test_running_error_pipeline() -> None:
-    """Test that a pipeline with an error quits without restart configuration"""
+    """Test that a pipeline with an error quits without restart configuration."""
     test_queue = queue.Queue()
 
     def submit_fn(config) -> None:
@@ -158,20 +157,21 @@ def test_disallow_job_after_submitter() -> None:
 
 
 def submitter_job(params, submit_fn, *args, **kwargs) -> Any:
-    """Submits a configuration"""
+    """Submits a configuration."""
     submit_fn({"config"})
 
 
 def successful_job(*args) -> Any:
-    """Return success"""
+    """Return success."""
     return Status.SUCCESS
 
 
 def failed_job(*args) -> Any:
-    """Return failure"""
+    """Return failure."""
     return Status.ERROR
 
 
 def error_job(*args) -> Any:
-    """Throws an error"""
-    raise Exception("Some error")
+    """Throws an error."""
+    msg = "Some error"
+    raise Exception(msg)

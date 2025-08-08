@@ -1,4 +1,4 @@
-"""Test the explode pipelines job"""
+"""Test the explode pipelines job."""
 
 import logging
 import queue
@@ -16,8 +16,7 @@ from pyantz.run import run
 
 
 def test_explode_pipelines_job_standalone() -> None:
-    """Test calling explode pipelines directly"""
-
+    """Test calling explode pipelines directly."""
     # Create a queue to store submitted pipelines
     submitted_pipelines = queue.Queue()
 
@@ -58,7 +57,7 @@ def test_explode_pipelines_job_standalone() -> None:
 
 
 def test_explode_pipelines_job_with_pipeline_config() -> None:
-    """Test calling explode inside a pipeline config"""
+    """Test calling explode inside a pipeline config."""
     # Create a queue to store submitted pipelines
     submitted_pipelines = queue.Queue()
 
@@ -110,8 +109,7 @@ def test_explode_pipelines_job_with_pipeline_config() -> None:
 
 
 def test_explode_pipelines_job_in_local_submitter() -> None:
-    """Test exploding the pipelines integrated with the local submitter"""
-
+    """Test exploding the pipelines integrated with the local submitter."""
     # Define parameters and variables
     parameters: ParametersType = {
         "num_pipelines": 3,

@@ -1,4 +1,4 @@
-"""If then conditionally submits a pipeline based on a conditional
+"""If then conditionally submits a pipeline based on a conditional.
 
 By default, ANTZ supports conditions based on primitive types (lt, gt, ge, le, ne, eq)
     but a user can specify their own comparator function to create a much more powerful operator
@@ -8,8 +8,8 @@ By default, ANTZ supports conditions based on primitive types (lt, gt, ge, le, n
 
 import logging
 import operator
-from collections.abc import Mapping
-from typing import Any, Callable, Literal
+from collections.abc import Callable, Mapping
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """See compare function docstring"""
+    """See compare function docstring."""
 
     comparator: Literal["<", ">", "<=", ">=", "==", "!="]
     left: config_base.PrimitiveType
@@ -45,7 +45,7 @@ def compare(
     _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
-    """Split the execution based on a comparison between two values (left/right)
+    """Split the execution based on a comparison between two values (left/right).
 
     Useful when paired with the "update variable"
 
@@ -77,8 +77,8 @@ def compare(
 
     Returns:
         Status: SUCCESS if the job didn't error; else ERROR
-    """
 
+    """
     parameters_parsed = Parameters.model_validate(parameters)
     logger.debug("Parameters successfully parsed")
 

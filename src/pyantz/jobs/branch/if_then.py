@@ -1,15 +1,14 @@
-"""If then allows a user to insert an arbitrary function that returns a boolean
+"""If then allows a user to insert an arbitrary function that returns a boolean.
 
 If that function returns True, then take path 1
 If that function returns False, then take path 2
 """
 
 import logging
-from collections.abc import Mapping
-from typing import Callable
+from collections.abc import Callable, Mapping
+from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator
-from typing_extensions import Annotated
 
 import pyantz.infrastructure.config.base as config_base
 import pyantz.infrastructure.config.get_functions as importers
@@ -17,11 +16,9 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """See if then docstring"""
+    """See if then docstring."""
 
-    function: Annotated[
-        Callable[..., bool], BeforeValidator(importers.get_function_by_name)
-    ]
+    function: Annotated[Callable[..., bool], BeforeValidator(importers.get_function_by_name)]
     args: list[config_base.PrimitiveType] | None
     if_true: config_base.PipelineConfig
     if_false: config_base.PipelineConfig
@@ -35,7 +32,7 @@ def if_then(
     _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
-    """Branch execution based on the boolean output of a user-defined function
+    """Branch execution based on the boolean output of a user-defined function.
 
     ParametersType {
         function (str): resolvable path to a specific function, including all the modules to import
@@ -54,12 +51,10 @@ def if_then(
 
     Returns:
         Status: SUCCESS if job completed successfully
-    """
 
+    """
     params_parsed = Parameters.model_validate(parameters)
-    if params_parsed.function(
-        *(params_parsed.args if params_parsed.args is not None else [])
-    ):
+    if params_parsed.function(*(params_parsed.args if params_parsed.args is not None else [])):
         logger.debug("Function evaluated to true")
         submit_fn(
             config_base.Config.model_validate(

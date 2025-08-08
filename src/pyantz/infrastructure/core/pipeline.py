@@ -1,8 +1,7 @@
-"""A pipeline is a set of tasks to perform in series"""
+"""A pipeline is a set of tasks to perform in series."""
 
 import logging
-from collections.abc import Mapping
-from typing import Callable
+from collections.abc import Callable, Mapping
 
 from pyantz.infrastructure.config.base import (
     Config,
@@ -24,7 +23,7 @@ def run_pipeline(
     submit_fn: Callable[[Config], None],
     logger: logging.Logger,
 ) -> Status:
-    """Run the provided pipeline
+    """Run the provided pipeline.
 
     Args:
         config (PipelineConfig): configuration of the pipeline to run
@@ -37,6 +36,7 @@ def run_pipeline(
 
     Returns:
         Status: the status of the pipeline after executing the next job
+
     """
     logger.debug("Starting pipeline %s", config.id)
 
@@ -44,15 +44,11 @@ def run_pipeline(
         # run the job
         curr_job = config.stages[config.curr_stage]
 
-        ret_status, variables = _run_child_job(
-            curr_job, config, variables, submit_fn, logger
-        )
+        ret_status, variables = _run_child_job(curr_job, config, variables, submit_fn, logger)
 
         # handle pipeline cleanup/termination
         if ret_status == Status.ERROR:
-            logger.warning(
-                "Error in stage %d of pipeline %s", config.curr_stage, config.id
-            )
+            logger.warning("Error in stage %d of pipeline %s", config.curr_stage, config.id)
             _restart(
                 config, variables=variables, submit_fn=submit_fn, logger=logger
             )  # optionally restart if setup for that
@@ -82,7 +78,7 @@ def _run_child_job(
     submit_fn: Callable[[Config], None],
     logger: logging.Logger,
 ) -> tuple[Status, Mapping[str, PrimitiveType]]:
-    """Run the child job of a pipeline
+    """Run the child job of a pipeline.
 
     Args:
         curr_job (JobConfig | MutableJobConfig | SubmitterJobConfig):
@@ -99,8 +95,8 @@ def _run_child_job(
         tuple[Status, Mapping[str, PrimitiveType]]:
             - Status of the child type returned
             - Updated variables (only changes for mutable types)
-    """
 
+    """
     final_flag: bool = False
 
     logger.debug("Calling run_job %s", curr_job.id)
@@ -127,7 +123,7 @@ def _run_child_job(
             pipeline_config,
             logger,
         )
-    elif isinstance(curr_job, MutableJobConfig):
+    elif isinstance(curr_job, MutableJobConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
         ret_status, new_vars = run_mutable_job(curr_job, variables, logger)
         if ret_status == Status.SUCCESS:
             variables = new_vars
@@ -139,9 +135,7 @@ def _run_child_job(
         logger.critical("Final Flag set but status is not final. Got %s", ret_status)
         return Status.ERROR, variables
     if not final_flag and ret_status == Status.FINAL:
-        logger.error(
-            "Final flag is set but the final flag was not set. This is not normal"
-        )
+        logger.error("Final flag is set but the final flag was not set. This is not normal")
     return ret_status, variables
 
 
@@ -151,24 +145,16 @@ def _success(
     submit_fn: Callable[[Config], None],
     logger: logging.Logger,
 ) -> None:
-    """Resubmit this pipeline setup for the next job after a success"""
+    """Resubmit this pipeline setup for the next job after a success."""
     logger.debug("Success in pipeline")
     next_config = config.model_dump()
     next_config["curr_stage"] += 1
     if next_config["curr_stage"] < len(next_config["stages"]):
         next_pipeline_config = PipelineConfig.model_validate(next_config)
-        logger.debug(
-            "Submittig next pipeline stage: %d", next_pipeline_config.curr_stage
-        )
-        submit_fn(
-            Config.model_validate(
-                {"variables": variables, "config": next_pipeline_config}
-            )
-        )
+        logger.debug("Submittig next pipeline stage: %d", next_pipeline_config.curr_stage)
+        submit_fn(Config.model_validate({"variables": variables, "config": next_pipeline_config}))
     else:
-        logger.debug(
-            "Pipeline %s completed successfully, exiting this execution line", config.id
-        )
+        logger.debug("Pipeline %s completed successfully, exiting this execution line", config.id)
 
 
 def _restart(
@@ -177,11 +163,8 @@ def _restart(
     submit_fn: Callable[[Config], None],
     logger: logging.Logger,
 ) -> None:
-    """Restart the config provided by updating and submit to submitter"""
-    if (
-        config.max_allowed_restarts == -1
-        or config.curr_restarts < config.max_allowed_restarts
-    ):
+    """Restart the config provided by updating and submit to submitter."""
+    if config.max_allowed_restarts == -1 or config.curr_restarts < config.max_allowed_restarts:
         logger.debug("Restarting pipeline after failure")
         new_config = config.model_dump()
         new_config["curr_restarts"] += 1
@@ -190,9 +173,7 @@ def _restart(
 
         new_pipeline_config = PipelineConfig.model_validate(new_config)
         new_config_cls = Config(config=new_pipeline_config, variables=variables)
-        logger.debug(
-            "Submitting restarted pipeline with id %s", new_config_cls.config.id
-        )
+        logger.debug("Submitting restarted pipeline with id %s", new_config_cls.config.id)
         submit_fn(new_config_cls)
     else:
         logger.debug("Not restarting pipeline; max restarts exceeded")

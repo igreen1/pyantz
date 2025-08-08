@@ -1,4 +1,4 @@
-"""Test the compare job"""
+"""Test the compare job."""
 
 import logging
 import os
@@ -12,8 +12,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 def test_true_comparison() -> None:
-    """Test that a comparison that is true returns the true pipeline"""
-
+    """Test that a comparison that is true returns the true pipeline."""
     job_config = {
         "type": "submitter_job",
         "parameters": {
@@ -53,7 +52,7 @@ def test_true_comparison() -> None:
 
     q = queue.Queue()
 
-    def submit_fn(job_config):
+    def submit_fn(job_config) -> None:
         q.put(job_config)
 
     status = run_pipeline(pipeline_config, {}, submit_fn, logging.getLogger("test"))
@@ -65,8 +64,7 @@ def test_true_comparison() -> None:
 
 
 def test_false_direct_comparison() -> None:
-    """Test that a comparison that is false returns the false pipeline"""
-
+    """Test that a comparison that is false returns the false pipeline."""
     job_config = {
         "type": "submitter_job",
         "parameters": {
@@ -106,7 +104,7 @@ def test_false_direct_comparison() -> None:
 
     q = queue.Queue()
 
-    def submit_fn(job_config):
+    def submit_fn(job_config) -> None:
         q.put(job_config)
 
     status = run_pipeline(pipeline_config, {}, submit_fn, logging.getLogger("test"))
@@ -118,8 +116,7 @@ def test_false_direct_comparison() -> None:
 
 
 def test_comparison_with_variables_true() -> None:
-    """Test that a comparison that is true returns the true pipeline"""
-
+    """Test that a comparison that is true returns the true pipeline."""
     job_config = {
         "type": "submitter_job",
         "parameters": {
@@ -159,7 +156,7 @@ def test_comparison_with_variables_true() -> None:
 
     q = queue.Queue()
 
-    def submit_fn(job_config):
+    def submit_fn(job_config) -> None:
         q.put(job_config)
 
     status = run_pipeline(
@@ -173,8 +170,7 @@ def test_comparison_with_variables_true() -> None:
 
 
 def test_comparison_with_variables_false() -> None:
-    """Test that a comparison that is false and involves variables returns the false pipeline"""
-
+    """Test that a comparison that is false and involves variables returns the false pipeline."""
     job_config = {
         "type": "submitter_job",
         "parameters": {
@@ -214,7 +210,7 @@ def test_comparison_with_variables_false() -> None:
 
     q = queue.Queue()
 
-    def submit_fn(job_config):
+    def submit_fn(job_config) -> None:
         q.put(job_config)
 
     status = run_pipeline(

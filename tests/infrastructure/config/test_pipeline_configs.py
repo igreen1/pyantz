@@ -1,4 +1,4 @@
-"""Test the creation of a pipeline configuration"""
+"""Test the creation of a pipeline configuration."""
 
 import pytest
 from pydantic import ValidationError
@@ -8,15 +8,14 @@ from pyantz.infrastructure.core.status import Status
 
 
 def fake_job_task(parameters, *args) -> Status:
-    """Return success only if arg1 is passed as 1"""
+    """Return success only if arg1 is passed as 1."""
     if parameters["arg1"] == 1:
         return Status.SUCCESS
     return Status.ERROR
 
 
 def test_create_pipeline_config() -> None:
-    """Create a simple pipeline configuration"""
-
+    """Create a simple pipeline configuration."""
     pipeline_config = {"type": "pipeline", "name": "my pipeline", "stages": []}
     p1 = PipelineConfig.model_validate(pipeline_config)
 
@@ -28,7 +27,7 @@ def test_create_pipeline_config() -> None:
 
 
 def test_pipeline_with_job_config() -> None:
-    """Test a pipeline with a job inside it"""
+    """Test a pipeline with a job inside it."""
     pipeline_config = {
         "type": "pipeline",
         "name": "my pipeline",
@@ -48,8 +47,7 @@ def test_pipeline_with_job_config() -> None:
 
 
 def test_disallow_nested_pipeline() -> None:
-    """Test a pipeline config with apipeline inside of it"""
-
+    """Test a pipeline config with apipeline inside of it."""
     pipeline_config = {
         "type": "pipeline",
         "name": "my pipeline",

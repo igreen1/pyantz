@@ -1,4 +1,5 @@
 import logging
+from typing import Never
 
 import pytest
 from pydantic import ValidationError
@@ -12,28 +13,27 @@ logger.setLevel(100000)
 
 
 def successful_function(*args):
-    """Returns success"""
+    """Returns success."""
     return Status.SUCCESS
 
 
 def failed_function(*args):
-    """Returns a failure"""
+    """Returns a failure."""
     return Status.ERROR
 
 
-def error_function(*args):
-    """Raises an uncaught exception"""
-    raise Exception("Some error")
+def error_function(*args) -> Never:
+    """Raises an uncaught exception."""
+    msg = "Some error"
+    raise Exception(msg)
 
 
 def fake_submission(c: Config) -> None:
-    """Does nothing"""
-    pass
+    """Does nothing."""
 
 
 def test_getting_functions() -> None:
-    """Test that jobs correctly import and link to the function described"""
-
+    """Test that jobs correctly import and link to the function described."""
     job_config: dict = {
         "type": "job",
         "function": "tests.infrastructure.core.test_job.successful_function",
@@ -55,7 +55,7 @@ def test_getting_functions() -> None:
 
 
 def test_running_job_success() -> None:
-    """Test that running the success function returns success through the job"""
+    """Test that running the success function returns success through the job."""
     job_config: dict = {
         "type": "job",
         "function": "tests.infrastructure.core.test_job.successful_function",
@@ -67,7 +67,7 @@ def test_running_job_success() -> None:
 
 
 def test_running_job_failure() -> None:
-    """Test that running the failure function returns failure through the job"""
+    """Test that running the failure function returns failure through the job."""
     job_config: dict = {
         "type": "job",
         "function": "tests.infrastructure.core.test_job.failed_function",
@@ -79,7 +79,7 @@ def test_running_job_failure() -> None:
 
 
 def test_running_job_exception() -> None:
-    """Test that running the exception function returns failure through the job"""
+    """Test that running the exception function returns failure through the job."""
     job_config: dict = {
         "type": "job",
         "function": "tests.infrastructure.core.test_job.error_function",
@@ -91,7 +91,7 @@ def test_running_job_exception() -> None:
 
 
 def test_no_function_error() -> None:
-    """Test that non existent functions cause a validation error"""
+    """Test that non existent functions cause a validation error."""
     job_config: dict = {
         "type": "job",
         "function": "tests.infrastructure.core.test_job.NOSUCHFUNCTION",
@@ -103,7 +103,7 @@ def test_no_function_error() -> None:
 
 
 def test_not_a_callable() -> None:
-    """Test that non callable functions cause a validation error"""
+    """Test that non callable functions cause a validation error."""
     job_config: dict = {
         "type": "job",
         "function": "tests.infrastructure.core.test_job",
@@ -115,7 +115,7 @@ def test_not_a_callable() -> None:
 
 
 def test_not_a_module() -> None:
-    """Test that modules not existing for the provided function cause a validation error"""
+    """Test that modules not existing for the provided function cause a validation error."""
     job_config: dict = {
         "type": "job",
         "function": "pyantz.no.such.module",

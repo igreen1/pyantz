@@ -1,7 +1,8 @@
-"""Functions to dynamically import and tag functions from a configuration"""
+"""Functions to dynamically import and tag functions from a configuration."""
 
 import importlib
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -12,28 +13,31 @@ _PYANTZ_PARAMS_MODEL_FIELD: str = "__pyantz_param_model__"
 def set_params_model(
     fn: Callable[..., Any], params_model: type[BaseModel] | None
 ) -> Callable[..., Any]:
-    """Sets the parameters model field"""
+    """Set the parameters model field."""
     setattr(fn, _PYANTZ_PARAMS_MODEL_FIELD, params_model)
     return fn
 
 
 def set_job_type(fn: Callable[..., Any], job_type: str) -> Callable[..., Any]:
-    """Set the job type field"""
+    """Set the job type field."""
     setattr(fn, _PYANTZ_JOB_TYPE_FIELD, job_type)
     return fn
 
 
 def get_params_model(fn: Callable[..., Any]) -> type[BaseModel] | None:
-    """For the provided callable, if it has a params model field,
-    return that field for type checking on instatiation of the job
-    """
+    """Return params model field if a job was annotated with one."""
     if hasattr(fn, _PYANTZ_PARAMS_MODEL_FIELD):
-        return getattr(fn, _PYANTZ_PARAMS_MODEL_FIELD)
+        params_model = getattr(fn, _PYANTZ_PARAMS_MODEL_FIELD)
+        if not issubclass(params_model, BaseModel):
+            return None
+        # if statement above handles this type check
+        # but mypy doesn't properly "see" that
+        return params_model  # type: ignore[no-any-return]
     return None
 
 
 def get_job_type(fn: Callable[..., Any] | None) -> str | None:
-    """For a provided callable, return what type of job it is
+    """Return type of job for a provided callable, if it is properly marked.
 
     This API is guaranteed to be stable; our implementation of how
         to mark functions is not. SO **USE THIS** to check
@@ -42,18 +46,22 @@ def get_job_type(fn: Callable[..., Any] | None) -> str | None:
     :type fn: Callable[..., Any]
     :return: if the function is marked, return the mark type; else None
     :rtype: str | None
+
     """
     if fn is None:
         return fn
     if hasattr(fn, _PYANTZ_JOB_TYPE_FIELD):
-        return getattr(fn, _PYANTZ_JOB_TYPE_FIELD)
+        job_type: Any = getattr(fn, _PYANTZ_JOB_TYPE_FIELD)
+        if not isinstance(job_type, str):
+            return None
+        return job_type
     return None
 
 
 def get_function_by_name_strongly_typed(
-    func_type_name: str | tuple[str, ...], strict: bool | None = None
+    func_type_name: str | tuple[str, ...], *, strict: bool | None = None
 ) -> Callable[[Any], Callable[..., Any] | None]:
-    """Returns a function Calls get_function_by_name and checks that the function type is correct
+    """Return a function by callong `get_function_by_name` and checking types.
 
     Uses strict rules for internal functions; otherwise uses non-strict
         can be overriden with the strict argument
@@ -65,6 +73,10 @@ def get_function_by_name_strongly_typed(
     Args:
         func_type_name: the name of the wrapper in job_decorators
         strict: overrides the default behavior if provided, see notes above
+
+    Returns (Callable[[Any], Callable[..., Any] | None]):
+        Callabel for a provided function of the correct type
+
     """
     # strict for PyAntz jobs because we should at least be consistent!
     if strict is None:
@@ -73,8 +85,10 @@ def get_function_by_name_strongly_typed(
         else:
             strict = all(name.startswith("pyantz") for name in func_type_name)
 
+    # allow "any" function because prior to pydantic validation we can't guarantee anything
+    # so this function really should allow anything and handle the edge cases
     def typed_get_function_by_name(
-        func_name_or_any: Any,
+        func_name_or_any: Any,  # noqa: ANN401
     ) -> Callable[..., Any] | None:
         func_handle = get_function_by_name(func_name_or_any)
         job_type = get_job_type(func_handle)
@@ -93,11 +107,11 @@ def get_function_by_name_strongly_typed(
     return typed_get_function_by_name
 
 
-def get_function_by_name(func_name_or_any: Any) -> Callable[..., Any] | None:
-    """Links to the function described by config
+def get_function_by_name(func_name_or_any: Any) -> Callable[..., Any] | None:  # noqa: ANN401
+    """Link to the function described by config.
 
     Args:
-        config (JobConfig): configuration of the job to link
+        func_name_or_any (Any): name of the function or
 
     Returns:
         Callable[[ParametersType, Callable[[PipelineConfig], None]], Status] } None:
@@ -106,7 +120,6 @@ def get_function_by_name(func_name_or_any: Any) -> Callable[..., Any] | None:
             Returns None if it is unable to find the correct function
 
     """
-
     if not isinstance(func_name_or_any, str):
         return None
 
@@ -129,4 +142,5 @@ def get_function_by_name(func_name_or_any: Any) -> Callable[..., Any] | None:
     if not callable(func):
         return None
 
-    return func
+    # ignore type, mypy not properly accounting for "if not callable" above
+    return func  # type: ignore[no-any-return]

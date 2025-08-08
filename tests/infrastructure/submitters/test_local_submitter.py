@@ -1,4 +1,4 @@
-"""Test that the local submitter runner works"""
+"""Test that the local submitter runner works."""
 
 import os
 
@@ -38,6 +38,6 @@ def test_local_submitter(tmpdir) -> None:
     pyantz.run.run(test_config)
 
     assert os.path.exists(dst_file)
-    with open(dst_file, "r", encoding="utf-8") as fh:
+    with open(dst_file, encoding="utf-8") as fh:
         ret = fh.read()
     assert ret == test_text

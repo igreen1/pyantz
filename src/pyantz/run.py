@@ -1,10 +1,11 @@
-"""The base entry level of the module
+"""The base entry level of the module.
 
 This file takes the initial config and sets up everything
 """
 
 import argparse
 import json
+import pathlib
 import warnings
 from collections.abc import Mapping
 from typing import Any
@@ -15,11 +16,10 @@ from pyantz.infrastructure.submitters.slurm.basic_slurm import run_slurm_local
 
 
 def run(config: Mapping[str, Any]) -> None:
-    """Run the provided configuration
+    """Run the provided configuration.
 
     Calls the correct initial submitter and submits the first configuration
     """
-
     validated_config = InitialConfig.model_validate(config)
 
     if validated_config.submitter_config.type == "local":
@@ -28,10 +28,8 @@ def run(config: Mapping[str, Any]) -> None:
     elif validated_config.submitter_config.type == "slurm_basic":
         run_slurm_local(validated_config)
     else:
-        print(validated_config.submitter_config.type)
-        raise RuntimeError(
-            f"Unknown submitter type: {validated_config.submitter_config.type}"
-        )
+        msg = f"Unknown submitter type: {validated_config.submitter_config.type}"
+        raise RuntimeError(msg)
 
 
 if __name__ == "__main__":
@@ -46,14 +44,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        with open(args.config, "r", encoding="utf-8") as fh:
+        with pathlib.Path(args.config).open(mode="r", encoding="utf-8") as fh:
             _loaded_config = json.load(fh)
     except FileNotFoundError:
-        warnings.warn("No such file for configuration")
-    except IOError:
-        warnings.warn("Unable to open file for unknown IO error")
-    except ValueError as exc:
-        warnings.warn("JSON invalid, unable to decode. See error for details")
-        raise exc
+        warnings.warn("No such file for configuration", stacklevel=2)
+    except OSError:
+        warnings.warn("Unable to open file for unknown IO error", stacklevel=2)
+    except ValueError:
+        warnings.warn("JSON invalid, unable to decode. See error for details", stacklevel=2)
+        raise
     else:
         run(_loaded_config)

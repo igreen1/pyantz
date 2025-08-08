@@ -1,4 +1,4 @@
-"""Test that the validate calls work"""
+"""Test that the validate calls work."""
 
 import logging
 
@@ -10,8 +10,7 @@ from pyantz.jobs.nop import nop
 
 
 def test_validation_with_nop() -> None:
-    """Test that bad parameters raise an error"""
-
+    """Test that bad parameters raise an error."""
     with pytest.raises(ValidationError):
         nop(
             [],
@@ -34,8 +33,7 @@ def test_validation_with_nop() -> None:
 
 
 def test_validation_with_explode_pipeline() -> None:
-    """Test that validation works on a submitter job (explode pipeline)"""
-
+    """Test that validation works on a submitter job (explode pipeline)."""
     test_pipeline_config = {
         "type": "pipeline",
         "name": "test_pipeline",

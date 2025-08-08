@@ -1,10 +1,7 @@
-"""Tests deleting things with delete.py"""
+"""Tests deleting things with delete.py."""
 
 import logging
 import os
-
-import pytest
-from pydantic import ValidationError
 
 from pyantz.infrastructure.config.base import JobConfig, Status
 from pyantz.infrastructure.core.job import run_job
@@ -15,7 +12,7 @@ logger.setLevel(0)
 
 
 def test_delete_directory(tmpdir: str | os.PathLike[str]) -> None:
-    """Test deleting a newly made directory"""
+    """Test deleting a newly made directory."""
     dir_name: str = "some_directory is cool"
     dir_path = os.path.join(tmpdir, dir_name)
 
@@ -29,8 +26,7 @@ def test_delete_directory(tmpdir: str | os.PathLike[str]) -> None:
 
 
 def test_delete_file(tmpdir: str | os.PathLike[str]) -> None:
-    """Test deleting a file"""
-
+    """Test deleting a file."""
     file_name: str = "some_directory is cool"
     file_path = os.path.join(tmpdir, file_name)
 
@@ -43,8 +39,7 @@ def test_delete_file(tmpdir: str | os.PathLike[str]) -> None:
 
 
 def test_delete_file_in_job(tmpdir: str | os.PathLike[str]) -> None:
-    """First level integration with the job"""
-
+    """First level integration with the job."""
     file_name: str = "some_directory is cool"
     file_path = os.path.join(tmpdir, file_name)
 
@@ -72,8 +67,7 @@ def test_delete_file_in_job(tmpdir: str | os.PathLike[str]) -> None:
 
 
 def test_delete_file_in_job_non_existing(tmpdir: str | os.PathLike[str]) -> None:
-    """First level integration with the job"""
-
+    """First level integration with the job."""
     file_name: str = "some_directory is cool"
 
     job_config = JobConfig.model_validate(
@@ -95,8 +89,7 @@ def test_delete_file_in_job_non_existing(tmpdir: str | os.PathLike[str]) -> None
 
 
 def test_delete_dir_in_job(tmpdir: str | os.PathLike[str]) -> None:
-    """First level integration with the job"""
-
+    """First level integration with the job."""
     dir_name: str = "some_directory is cool"
     dir_path = os.path.join(tmpdir, dir_name)
 
@@ -123,8 +116,7 @@ def test_delete_dir_in_job(tmpdir: str | os.PathLike[str]) -> None:
 
 
 def test_delete_dir_in_job_non_existing(tmpdir: str | os.PathLike[str]) -> None:
-    """First level integration with the job"""
-
+    """First level integration with the job."""
     file_name: str = "some_directory is cool"
 
     job_config = JobConfig.model_validate(

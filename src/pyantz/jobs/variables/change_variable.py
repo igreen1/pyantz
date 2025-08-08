@@ -1,5 +1,4 @@
-"""Change variable will change the value of one variable and submit the next pipeline
-in its config.
+"""Change variable will change the value of one variable and submit the next pipeline.
 
 **NOTE: variables cannot be changed in a parent context; so this submits a NEW pipeline**
 
@@ -15,6 +14,7 @@ For example, a user could set up two models where the first takes arg 'a' and
 
 import logging
 from collections.abc import Mapping
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -23,7 +23,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """See change variable docs"""
+    """See change variable docs."""
 
     left_hand_side: str
     right_hand_side: config_base.PrimitiveType
@@ -34,10 +34,10 @@ def change_variable(
     parameters: config_base.ParametersType,
     variables: Mapping[str, config_base.PrimitiveType],
     logger: logging.Logger,
-    *_,
-    **__,
+    *_: Any,  # noqa: ANN401
+    **__: Any,  # noqa: ANN401
 ) -> tuple[Status, Mapping[str, config_base.PrimitiveType]]:
-    """Change a variable to a new value
+    """Change a variable to a new value.
 
     Parameters {
         left_hand_side (str): name of the variable to change (left of equal sign)
@@ -53,8 +53,8 @@ def change_variable(
 
     Returns:
         Status: SUCCESS if jobs successfully submitted; ERROR otherwise
-    """
 
+    """
     params_parsed = Parameters.model_validate(parameters)
 
     logger.debug(

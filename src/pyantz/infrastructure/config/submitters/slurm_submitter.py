@@ -1,4 +1,4 @@
-"""Configuration of the slurm submitter"""
+"""Configuration of the slurm submitter."""
 
 import enum
 from typing import Literal
@@ -7,7 +7,7 @@ from pydantic import BaseModel, DirectoryPath, Field
 
 
 class RetryPolicy(enum.StrEnum):
-    """Retry policies are how a slurm submitter should try to resubmit jobs that failed
+    """Retry policies are how a slurm submitter should try to resubmit jobs that failed.
 
     naive: just resubmit with no changes
     exclude: exclude the node that failed previously
@@ -21,8 +21,12 @@ class RetryPolicy(enum.StrEnum):
     CURRENT = "current"
 
 
+def _list_factory() -> list[str]:
+    return []
+
+
 class SlurmBasicSubmitter(BaseModel, frozen=True):
-    """Configuration of the basic slurm submitter (basic_slurm)
+    """Configuration of the basic slurm submitter (basic_slurm).
 
     Fields:
     - type (str): always set to slurm basic
@@ -47,4 +51,4 @@ class SlurmBasicSubmitter(BaseModel, frozen=True):
     submit_wait_time: int = 3
     slurm_command: Literal["sbatch"] = "sbatch"
     working_directory: DirectoryPath
-    grid_cmd_args: list[str] = Field(..., default_factory=lambda: [])  # type: ignore
+    grid_cmd_args: list[str] = Field(default_factory=_list_factory)

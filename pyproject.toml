@@ -28,6 +28,16 @@ profile = "black"
 [tool.pylint.main]
 disable = "W0401,W0614"
 
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D203", "D213", "COM812"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+strict = true
+
 [dependency-groups]
 dev = [
     "bandit>=1.8.3",
@@ -39,4 +49,5 @@ dev = [
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
     "ruff>=0.9.9",
+    "ty>=0.0.1a17",
 ]

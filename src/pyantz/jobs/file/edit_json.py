@@ -1,29 +1,39 @@
-"""Edit a json file by changing a field to a value"""
+"""Edit a json file by changing a field to a value."""
 
 import json
 import logging
-import os
+import pathlib
 from collections.abc import Mapping
 from typing import Any
 
-from pydantic import BaseModel, BeforeValidator
-from typing_extensions import Annotated
+from pydantic import BaseModel, FilePath
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
-class SimpleParameters(BaseModel, frozen=True):
-    """The parameters required for the simple job edit json command"""
+class Parameters(BaseModel, frozen=True):
+    """The parameters required for the simple job edit json command."""
 
-    path: Annotated[str, BeforeValidator(lambda x: x if os.path.exists(x) else None)]
+    path: str
     field: str
     value: config_base.PrimitiveType | list[config_base.PrimitiveType]
 
 
-@config_base.simple_job(SimpleParameters)
+class _RuntimeParameters(BaseModel, frozen=True):
+    """Parameters which must be true at runtime.
+
+    Seperation allows for files to not exist until this function is called.
+    """
+
+    path: FilePath
+    field: str
+    value: config_base.PrimitiveType | list[config_base.PrimitiveType]
+
+
+@config_base.simple_job(Parameters)
 def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
-    """Edit a json file to set a field with a new value
+    """Edit a json file to set a field with a new value.
 
     To handle nested objects, make a path of keys with `.` between each field
     For example, to edit the below value
@@ -48,15 +58,19 @@ def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) ->
 
     Returns:
         Status: SUCCESS if completed successfully, otherwise false
+
     """
+    params_parsed = _RuntimeParameters.model_validate(parameters)
 
-    params_parsed = SimpleParameters.model_validate(parameters)
-
+    json_path: pathlib.Path = pathlib.Path(params_parsed.path)
     try:
-        with open(params_parsed.path, "r", encoding="utf-8") as fh:
+        with json_path.open(mode="r", encoding="utf-8") as fh:
             original_json = json.load(fh)
-    except IOError as exc:
-        logger.debug("Unable to open json", exc_info=exc)
+    except FileNotFoundError as exc:
+        logger.exception("Unable to find path: %s", json_path, exc_info=exc)
+        return Status.ERROR
+    except OSError as exc:
+        logger.exception("Unable to open json at path: %s", json_path, exc_info=exc)
         return Status.ERROR
 
     new_json = nested_edit(
@@ -64,11 +78,11 @@ def edit_json(parameters: config_base.ParametersType, logger: logging.Logger) ->
     )
 
     try:
-        with open(params_parsed.path, "w", encoding="utf-8") as fh:
+        with json_path.open(mode="w", encoding="utf-8") as fh:
             json.dump(new_json, fh)
-    except IOError as exc:
-        logger.debug("Unable to save json", exc_info=exc)
-        logger.error("JSON edit failed and may have affected the original file")
+    except OSError as exc:
+        logger.exception("Unable to save json", exc_info=exc)
+        logger.critical("JSON edit failed and likely corrupted the original file")
         return Status.ERROR
 
     return Status.SUCCESS
@@ -79,7 +93,7 @@ def nested_edit(
     key: str,
     value: config_base.PrimitiveType | list[config_base.PrimitiveType],
 ) -> Mapping[str, Any]:
-    """Edit a dictionary by setting the value of field
+    """Edit a dictionary by setting the value of field.
 
     To access nested objects, fields are marked with "."
     However, if a key exists in the dictionary that matches the key (even with .), it will
@@ -98,8 +112,8 @@ def nested_edit(
     Returns:
         Mapping[str, config_base.PrimitiveType | list[config_base.PrimitiveType]]: the original json
             with the field edited
-    """
 
+    """
     if not isinstance(original_json, dict):
         return nested_edit({}, key, value)
 
@@ -112,7 +126,5 @@ def nested_edit(
 
     return {
         **original_json,
-        outer_field: nested_edit(
-            original_json.get(outer_field, {}), inner_field, value
-        ),
+        outer_field: nested_edit(original_json.get(outer_field, {}), inner_field, value),
     }

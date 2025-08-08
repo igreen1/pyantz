@@ -1,4 +1,4 @@
-"""Given a matrix of variable, create pipelines for each row of this matrix
+"""Given a matrix of variable, create pipelines for each row of this matrix.
 
 For example, consider someone trying to copy 3 files and uniquely rename them
 
@@ -17,8 +17,9 @@ This will create three pipelines and set the **variables** for each
 
 import logging
 import os
-from collections.abc import Mapping
-from typing import Any, Callable, Generator
+import pathlib
+from collections.abc import Callable, Generator, Mapping
+from typing import Any
 
 import polars as pl
 from pydantic import BaseModel
@@ -28,7 +29,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """The parameters required for the copy command"""
+    """The parameters required for the copy command."""
 
     matrix_path: str | os.PathLike[str]
     pipeline_config_template: config_base.PipelineConfig
@@ -42,7 +43,7 @@ def create_pipelines_from_matrix(
     _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
 ) -> Status:
-    """Copy file or directory from parameters.soruce to parameters.destination
+    """Copy file or directory from parameters.soruce to parameters.destination.
 
     ParametersType {
         source: path/to/copy/from
@@ -50,10 +51,14 @@ def create_pipelines_from_matrix(
     }
 
     Args:
-        parameters (ParametersType): ParametersType for the copy function
+        parameters (ParametersType): matrix to epxlode the pipeline
+        submit_fn (SubmitFunctionType): function to submit the pipeline to for execution
+        variables (Mapping[str, PrimitiveType]): variables from the outer context
+        logger (logging.Logger): logger to assist with debugging
 
     Returns:
         Status: result of the job
+
     """
     if parameters is None:
         return Status.ERROR
@@ -69,11 +74,12 @@ def create_pipelines_from_matrix(
 def generate_configs(
     params: Parameters, variables: Mapping[str, config_base.PrimitiveType]
 ) -> Generator[config_base.Config, None, None]:
-    """Create a generator for row of the matrix
+    """Create a generator for row of the matrix.
 
     Args:
         params (Parameters): ParametersType describing where to get variables
             and the pipeline template
+        variables (Mapping[str, PrimitiveType]): variables to be passed to children configs
 
     Yields:
         Generator[Config, None, None]: A generator where each iteration yields a
@@ -81,17 +87,19 @@ def generate_configs(
 
     Throws:
         RuntimeError: if the file type is not .parquet, .csv, or .xlsx
-    """
 
+    """
     case_matrix: pl.DataFrame
-    if os.path.splitext(params.matrix_path)[1] == ".csv":
+    matrix_path = pathlib.Path(params.matrix_path)
+    if matrix_path.suffix == ".csv":
         case_matrix = pl.read_csv(os.fspath(params.matrix_path))
-    elif os.path.splitext(params.matrix_path)[1] == ".xlsx":
+    elif matrix_path.suffix == ".xlsx":
         case_matrix = pl.read_excel(os.fspath(params.matrix_path))
-    elif os.path.splitext(params.matrix_path)[1] in (".parquet", ".parq"):
+    elif matrix_path.suffix in (".parquet", ".parq"):
         case_matrix = pl.read_parquet(os.fspath(params.matrix_path))
     else:
-        raise RuntimeError("Unknown file type for the case matrix provided")
+        msg = "Unknown file type for the case matrix provided"
+        raise RuntimeError(msg)
 
     pipeline_base: dict[str, Any] = params.pipeline_config_template.model_dump()
 
@@ -104,7 +112,7 @@ def generate_configs(
                 "config": pipeline_base,
                 "variables": {
                     **variables,  # keep outer scope
-                    **dict(zip(case_matrix_names, row)),
+                    **dict(zip(case_matrix_names, row, strict=False)),
                 },
             }
         )

@@ -1,4 +1,4 @@
-"""Delete a file or directory
+"""Delete a file or directory.
 
 params = {
     "path" (str): the path to delete
@@ -6,47 +6,59 @@ params = {
 """
 
 import logging
-import os
+import pathlib
 import shutil
 
-from pydantic import BaseModel
+from pydantic import BaseModel, FilePath
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """The parameters required for the copy command"""
+    """The parameters required for the copy command."""
 
     path: str
 
 
+class _RuntimeParameters(BaseModel, frozen=True):
+    """Parameters at runtime will check for existence.
+
+    Files may be created during the pipeline, so must check at actual runtime.
+    """
+
+    path: FilePath
+
+
 @config_base.simple_job(Parameters)
 def delete(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
-    """Deletes parameters.path
+    """Delete parameters.path.
 
     Args:
         parameters (ParametersType): params of form
             {
                 path (str): path/to/delete
             }
+        logger: logger for debugging
 
     Returns:
         Status: Resulting status of the job after execution
-    """
 
-    del_params = Parameters.model_validate(parameters)
-    if os.path.isdir(del_params.path):
+    """
+    del_params = _RuntimeParameters.model_validate(parameters)
+    path_to_delete = pathlib.Path(del_params.path)
+    if path_to_delete.is_dir():
         try:
+            # use rmtree to allow for directories with files
             shutil.rmtree(del_params.path)
-        except (PermissionError, FileNotFoundError, IOError) as exc:
-            logger.error("Unable to delete dir", exc_info=exc)
+        except (OSError, PermissionError, FileNotFoundError) as exc:
+            logger.exception("Unable to delete dir", exc_info=exc)
             return Status.ERROR
-    elif os.path.isfile(del_params.path):
+    elif path_to_delete.is_file():
         try:
-            os.remove(del_params.path)
-        except (PermissionError, FileNotFoundError, IOError) as exc:
-            logger.error("Unable to delete file", exc_info=exc)
+            path_to_delete.unlink()
+        except (OSError, PermissionError, FileNotFoundError) as exc:
+            logger.exception("Unable to delete file", exc_info=exc)
             return Status.ERROR
     else:
         return Status.ERROR

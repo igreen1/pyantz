@@ -1,4 +1,4 @@
-"""Tests editing json files"""
+"""Tests editing json files."""
 
 import json
 import logging
@@ -51,8 +51,7 @@ def nested_dictionaries():
     _json_value_strategy,
 )
 def test_edit_simple_json(data: dict[str, Any], key, value) -> None:
-    """Test editing a simple single-level json file"""
-
+    """Test editing a simple single-level json file."""
     assume("." not in key)
     expected = deepcopy(data)
     expected[key] = value
@@ -76,7 +75,7 @@ def test_nested_dictionary_2_level(
         expected[key1] = {}
     expected[key1][key2] = value
 
-    assert edit_json_mod.nested_edit(data, ".".join([key1, key2]), value) == expected
+    assert edit_json_mod.nested_edit(data, f"{key1}.{key2}", value) == expected
 
 
 @given(
@@ -87,8 +86,7 @@ def test_nested_dictionary_2_level(
 def test_nested_dictionary_n_level(
     data: dict[str, Any], keys: list[str], value: Any
 ) -> None:
-    """Test a dictionary with an arbitrary number of dictionaries nested"""
-
+    """Test a dictionary with an arbitrary number of dictionaries nested."""
     assume(all("." not in key for key in keys))
 
     result = edit_json_mod.nested_edit(data, ".".join(keys), value)
@@ -107,8 +105,7 @@ def test_nested_dictionary_n_level(
 
 
 def test_edit_json_job(tmpdir: Path) -> None:
-    """Test running the job in a pipeline"""
-
+    """Test running the job in a pipeline."""
     json_path = os.path.join(tmpdir, "json_file.json")
 
     given_json = {
@@ -146,23 +143,24 @@ def test_edit_json_job(tmpdir: Path) -> None:
     )
 
     def submit_fn(config) -> None:
-        raise RuntimeError("Submit fn shouldn't be called")
+        msg = "Submit fn shouldn't be called"
+        raise RuntimeError(msg)
 
-    assert Status.SUCCESS == run_pipeline(
+    assert run_pipeline(
         pipeline_config,
         {"my_path": os.fspath(json_path)},
         submit_fn,
         logging.getLogger("test"),
-    )
+    ) == Status.SUCCESS
 
-    with open(json_path, "r") as fh:
+    with open(json_path) as fh:
         returned_val = json.load(fh)
 
     assert expected_json == returned_val
 
 
 def test_nonexistent_json_errors_with_variable_path() -> None:
-    """Test that files which don't exist raise errors"""
+    """Test that files which don't exist raise errors."""
     json_path = "some/random/path/doesnt/exist"
 
     job_config = JobConfig.model_validate(
@@ -181,20 +179,21 @@ def test_nonexistent_json_errors_with_variable_path() -> None:
     )
 
     def submit_fn(config) -> None:
-        raise RuntimeError("Submit fn shouldn't be called")
+        msg = "Submit fn shouldn't be called"
+        raise RuntimeError(msg)
 
-    assert Status.ERROR == run_pipeline(
+    assert run_pipeline(
         pipeline_config,
         {"my_path": os.fspath(json_path)},
         submit_fn,
         logging.getLogger("test"),
-    )
+    ) == Status.ERROR
 
     assert not os.path.exists(json_path)
 
 
 def test_nonexistent_json_errors_with_static_path() -> None:
-    """Test that files which don't exist raise errors"""
+    """Test that files which don't exist raise errors."""
     json_path = "some/random/path/doesnt/exist"
 
     with pytest.raises(ValidationError):

@@ -1,4 +1,4 @@
-"""Assign an environment variable"""
+"""Assign an environment variable."""
 
 import logging
 import os
@@ -10,7 +10,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """See change variable docs"""
+    """See change variable docs."""
 
     environmental_variables: dict[str, str]
 
@@ -18,9 +18,9 @@ class Parameters(BaseModel, frozen=True):
 @config_base.simple_job(Parameters)
 def assign_environment_variable(
     parameters: config_base.ParametersType,
-    logger: logging.Logger,  # pylint: disable=unused-argument
+    logger: logging.Logger,
 ) -> Status:
-    """Change a variable to a new value based on a function return
+    """Change a variable to a new value based on a function return.
 
     ChangeVariableParameters {
         environmental_variables: {
@@ -35,10 +35,11 @@ def assign_environment_variable(
 
     Returns:
         Status: SUCCESS if jobs successfully submitted; ERROR otherwise
-    """
 
+    """
     params_parsed = Parameters.model_validate(parameters)
 
-    for var_name, var_values in params_parsed.environmental_variables.items():
-        os.environ[var_name] = var_values
+    for var_name, var_value in params_parsed.environmental_variables.items():
+        logger.debug("Setting environment variable: %s to %s", var_name, var_value)
+        os.environ[var_name] = var_value
     return Status.SUCCESS

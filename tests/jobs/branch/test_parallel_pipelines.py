@@ -1,4 +1,4 @@
-"""Test the ability to split and create abitrary parallel pipelines"""
+"""Test the ability to split and create abitrary parallel pipelines."""
 
 import logging
 import queue
@@ -9,8 +9,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 def test_parallel_pipelines_in_pipeline() -> None:
-    """Test splitting and creating two pipelines"""
-
+    """Test splitting and creating two pipelines."""
     p1 = PipelineConfig.model_validate(
         {
             "type": "pipeline",

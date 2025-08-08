@@ -1,12 +1,15 @@
-"""Primary API for a distributed queue"""
+"""Primary API for a distributed queue."""
 
+import contextlib
 import json
 import os
 import queue
 import sqlite3
-from typing import Generator
+from collections.abc import Generator
 
 import sqlalchemy as sa
+import sqlalchemy.exc
+from pydantic import JsonValue
 from sqlalchemy.orm import Session
 
 from pyantz.infrastructure.core.status import Status
@@ -22,27 +25,24 @@ from .queue_orm import (
 
 
 class SqliteQueue:
-    """The wrapper for the queue in sqlite"""
+    """The wrapper for the queue in sqlite."""
 
     def __init__(self, path: str | os.PathLike[str]) -> None:
-        """Create a queue based on a sqlite backend"""
-
+        """Create a queue based on a sqlite backend."""
         self._path = path
         self._engine = sa.create_engine(f"""sqlite:///{self._path}""")
-        try:
+        with contextlib.suppress(sqlite3.OperationalError, sqlalchemy.exc.OperationalError):
             Base.metadata.create_all(self._engine)
-        except (sqlite3.OperationalError, sa.exc.OperationalError):
-            pass  # tried to create at the same time as another process
 
     def put(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
-        json_like: str | dict,
+        json_like: str | JsonValue,
         job_id: str,
         priority: int = -1,
         depends_on: list[str] | None = None,
         max_attempts: int = 10,
     ) -> bool:
-        """Put the item provided into the queue
+        """Put the item provided into the queue.
 
         Args:
             json_like (str): configuration (jsonlike object) to place on the queue
@@ -51,31 +51,30 @@ class SqliteQueue:
                 Defaults to -1.
             depends_on (list[str] | None, optional):
                 if provided, won't execute until these jobs are complete. Defaults to None.
+            max_attempts (int): max times to try to put this value into the queue
+
         Raises:
             ValueError: if the item provided is not a valid json-like string
 
         """
-
         for _ in range(max_attempts):
-            try:
+            with contextlib.suppress(sqlite3.OperationalError, sqlalchemy.exc.OperationalError):
                 return self._put(
                     json_like=json_like,
                     job_id=job_id,
                     priority=priority,
                     depends_on=depends_on,
                 )
-            except (sqlite3.OperationalError, sa.exc.OperationalError):
-                pass  # keep trying, may be a deadlock issue
         return False
 
     def _put(
         self,
-        json_like: str | dict,
+        json_like: str | JsonValue,
         job_id: str,
         priority: int = -1,
         depends_on: list[str] | None = None,
     ) -> bool:
-        """Put the item provided into the queue
+        """Put the item provided into the queue.
 
         Args:
             json_like (str): configuration (jsonlike object) to place on the queue
@@ -84,20 +83,20 @@ class SqliteQueue:
                 Defaults to -1.
             depends_on (list[str] | None, optional):
                 if provided, won't execute until these jobs are complete. Defaults to None.
+
         Raises:
             ValueError: if the item provided is not a valid json-like string
 
         """
-        if isinstance(json_like, dict):
+        if not isinstance(json_like, str):
             json_like = json.dumps(json_like)
 
         # assert that json_like is a valid json object
         try:
             json.loads(json_like)
         except ValueError as exc:
-            raise ValueError(
-                f"Queue only accepts json-like strings, got: {json_like}"
-            ) from exc
+            msg = f"Queue only accepts json-like strings, got: {json_like}"
+            raise ValueError(msg) from exc
 
         def chunks() -> Generator[str, None, None]:
             for i in range(0, len(json_like), CHUNKSIZE):
@@ -127,7 +126,7 @@ class SqliteQueue:
         return True
 
     def set_status(self, job_id: str, status: int) -> bool:
-        """Set the status of the job_id to the provided status"""
+        """Set the status of the job_id to the provided status."""
         with Session(self._engine) as sesh:
             stmt = sa.select(StatusTable).where(StatusTable.job_id == job_id)
             job_orm = sesh.scalars(stmt).one()
@@ -136,29 +135,27 @@ class SqliteQueue:
         return True
 
     def qsize(self) -> int:
-        """Return the current size of the queue
+        """Return the current size of the queue.
 
         Returns:
             int: size of the queue
-        """
 
+        """
         # looking at the size of the queue triggers the removal job
         self.remove_dead_jobs()
 
         with self._engine.connect() as conn:
-            result = [
+            return next(  # type: ignore[no-any-return]
                 row[0]
                 for row in conn.execute(
                     sa.select(
                         sa.func.count(JobQueue.job_id)  # pylint: disable=not-callable
                     )
                 )
-            ][0]
-        return result
+            )
 
     def remove_dead_jobs(self) -> None:
-        """Dead jobs are jobs that depend on a failed job. They must be pruned from the list"""
-
+        """Dead jobs are jobs that depend on a failed job. They must be pruned from the list."""
         with Session(self._engine) as sesh:
             failed_jobs = sa.select(StatusTable.job_id).where(
                 StatusTable.job_status == Status.ERROR
@@ -186,8 +183,7 @@ class SqliteQueue:
             sesh.commit()
 
     def get(self) -> str:
-        """If any jobs available, returns them. Else throw queue.Empty exception"""
-
+        """If any jobs available, returns them. Else throw queue.Empty exception."""
         # first, prune the job queue
         # doing this often ensures our state is always good to go
         self.remove_dead_jobs()
@@ -202,9 +198,7 @@ class SqliteQueue:
                 )
                 .where(
                     sa.not_(
-                        StatusTable.job_status.in_(
-                            {Status.FINAL, Status.SUCCESS, Status.ERROR}
-                        )
+                        StatusTable.job_status.in_({Status.FINAL, Status.SUCCESS, Status.ERROR})
                     )
                 )
             )
@@ -232,7 +226,7 @@ class SqliteQueue:
             result = sesh.execute(stmt).fetchone()
             sesh.flush()
             if result is None:
-                raise queue.Empty()
+                raise queue.Empty
             job_id = result[0].job_id
 
             # get the corresponding contents of that job
@@ -242,13 +236,11 @@ class SqliteQueue:
                 .order_by(JobConfigTable.job_subindex)
             )
             contents_query_result = sesh.execute(contents_query)
-            if contents_query_result is None:
-                raise queue.Empty()
-            content_chunks = [
-                row[0] for row in contents_query_result if row is not None
-            ]
+            if contents_query_result is None:  # pyright: ignore[reportUnnecessaryComparison]
+                raise queue.Empty
+            content_chunks = [row[0] for row in contents_query_result if row is not None]  # pyright: ignore[reportUnnecessaryComparison]
             if len(content_chunks) == 0:
-                raise queue.Empty()
+                raise queue.Empty
             contents = "".join(content_chunks)
 
             # not really required but for housekeeping, commit our transaction

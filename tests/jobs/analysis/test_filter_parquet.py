@@ -1,4 +1,4 @@
-"""Test filtering a parquet file"""
+"""Test filtering a parquet file."""
 
 import logging
 import os
@@ -12,13 +12,12 @@ from pyantz.infrastructure.core.status import Status
 
 
 def test_filter_parquet_job(tmpdir: Path) -> None:
-    """Test a simple filter"""
-
+    """Test a simple filter."""
     input_file = os.path.join(tmpdir, "input_file.parq")
     output_file = os.path.join(tmpdir, "output_file.parquet")
     original = pl.DataFrame(
         {
-            "a": [i for i in range(100)],
+            "a": list(range(100)),
             "b": [i + 0.01 for i in range(100)],
             "c": ["a" for _ in range(100)],
         }
@@ -29,7 +28,7 @@ def test_filter_parquet_job(tmpdir: Path) -> None:
         "type": "job",
         "function": "pyantz.jobs.analysis.filter_parquet.filter_parquet",
         "parameters": {
-            "filters": [[['a', '>', 50]]],
+            "filters": [[["a", ">", 50]]],
             "input_file": input_file,
             "output_file": output_file,
         },

@@ -1,4 +1,4 @@
-"""Parallel pipelines turns one pipeline into N pipelines
+"""Parallel pipelines turns one pipeline into N pipelines.
 
 Users will specify the pipelines they'd like to occur as individual
     parameters, where the name of the pipeline is the key of the
@@ -15,6 +15,7 @@ This function will run any number of entirely user defined pipelines
 
 import logging
 from collections.abc import Mapping
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -23,7 +24,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 class ParallelPipelinesParameters(BaseModel, frozen=True):
-    """See parallel pipelines docstring"""
+    """See parallel pipelines docstring."""
 
     pipelines: list[config_base.PipelineConfig]
 
@@ -35,9 +36,9 @@ def parallel_pipelines(
     variables: Mapping[str, config_base.PrimitiveType],
     _pipeline_config: config_base.PipelineConfig,
     logger: logging.Logger,
-    **__,
+    **__: Any,  # noqa: ANN401
 ) -> Status:
-    """Create a series of parallel pipelines based on user input
+    """Create a series of parallel pipelines based on user input.
 
     Args:
         parameters (ParametersType): mapping of string names of pipelines to pipeline configurations
@@ -47,8 +48,8 @@ def parallel_pipelines(
 
     Returns:
         Status: SUCCESS if jobs successfully submitted; ERROR otherwise
-    """
 
+    """
     if parameters is None:
         logger.error("Parallel pipeline requires parameters")
         return Status.ERROR
@@ -59,9 +60,7 @@ def parallel_pipelines(
 
     for new_pipeline in params_validated.pipelines:
         submit_fn(
-            config_base.Config.model_validate(
-                {"variables": variables, "config": new_pipeline}
-            )
+            config_base.Config.model_validate({"variables": variables, "config": new_pipeline})
         )
 
     return Status.FINAL

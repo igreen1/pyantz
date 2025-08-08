@@ -1,10 +1,7 @@
-"""
-Parameters may contain variables which need resolving. This module
-    will handle resolving the variables
-"""
+"""Resolve variables in parameters to their correct values."""
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from operator import add, mul, sub, truediv
 from typing import TYPE_CHECKING, Any, Union, overload
 
@@ -25,7 +22,7 @@ VARIABLE_PATTERN = re.compile(r"%{([^}]+)}")
 def resolve_variables(
     parameters: "ParametersType", variables: Mapping[str, "PrimitiveType"] | None
 ) -> "ParametersType":
-    """Provided paramters, return the parameters with any variables interpolated
+    """Return parameters with the variables replaced by their values from the provided scope.
 
     Args:
         parameters (ParametersType): ParametersType to a job
@@ -33,6 +30,7 @@ def resolve_variables(
 
     Returns:
         ParametersType: the job with variables interpolated
+
     """
     if parameters is None:
         return None
@@ -63,11 +61,10 @@ def _recursive_resolve_variables(
     parameters: Union["AntzConfig", list["AntzConfig"], JsonValue],
     variables: Mapping[str, "PrimitiveType"],
 ) -> Union["AntzConfig", list["AntzConfig"], JsonValue]:
-    """Adjust variables in the values within a parameter dictionary"""
-
+    """Adjust variables in the values within a parameter dictionary."""
     if isinstance(parameters, list):
-        # mypy doesn't understand that list[JsonValue] is just JsonValue ...
-        return [_recursive_resolve_variables(val, variables) for val in parameters]  # type: ignore
+        # mypy doesn't understand that list[JsonValue] is just a JsonValue, so ignore return check
+        return [_recursive_resolve_variables(val, variables) for val in parameters]  # type: ignore[return-value]
     if isinstance(parameters, str):
         return _resolve_value(parameters, variables=variables)
     if isinstance(parameters, (int, float, bool)) or parameters is None:
@@ -84,7 +81,7 @@ def _recursive_resolve_variables(
 
 
 def is_config(parameters: Union[Mapping[str, Any], "AntzConfig"]) -> bool:
-    """Checks if parameters is a config pydantic model"""
+    """Check if parameters is a config pydantic model."""
     if isinstance(parameters, BaseModel):
         return True
     for model_name in [
@@ -96,17 +93,20 @@ def is_config(parameters: Union[Mapping[str, Any], "AntzConfig"]) -> bool:
     ]:
         try:
             getattr(config_base, model_name).model_validate(parameters)
-            return True
         except ValidationError:
             continue
+        else:
+            return True
     return False
 
 
-def is_variable(token: "PrimitiveType | list[PrimitiveType]") -> bool:
-    """Returns true if the provided token is a variable expression"""
+def is_variable(token: Any) -> bool:  # noqa: ANN401
+    """Return true if the provided token is a variable expression."""
     if isinstance(token, list):
-        return any(is_variable(val) for val in token)
-    return VARIABLE_PATTERN.match(str(token)) is not None
+        return any(is_variable(val) for val in token)  # pyright: ignore[reportUnknownVariableType]
+    if isinstance(token, str):
+        return VARIABLE_PATTERN.match(token) is not None
+    return False
 
 
 @overload
@@ -124,9 +124,7 @@ def _resolve_value(
 
 
 @overload
-def _resolve_value(
-    val: "AntzConfig", variables: Mapping[str, "PrimitiveType"]
-) -> "AntzConfig":
+def _resolve_value(val: "AntzConfig", variables: Mapping[str, "PrimitiveType"]) -> "AntzConfig":
     pass
 
 
@@ -138,12 +136,10 @@ def _resolve_value(
 
 
 def _resolve_value(
-    val: Union[
-        "PrimitiveType", list["PrimitiveType"], "AntzConfig", list["AntzConfig"]
-    ],
+    val: Union["PrimitiveType", list["PrimitiveType"], "AntzConfig", list["AntzConfig"]],
     variables: Mapping[str, "PrimitiveType"],
 ) -> Union["PrimitiveType", list["PrimitiveType"], "AntzConfig", list["AntzConfig"]]:
-    """Given a value return the value with any variables resolved/removed
+    """Return the value with variables resolved into their assigned value.
 
     Args:
         val (PrimitiveType): value of the parameters from the configuration
@@ -152,6 +148,7 @@ def _resolve_value(
     Returns:
         PrimitiveType: provided value with any variables tokens
             replaced with value of the variable
+
     """
     if isinstance(val, BaseModel):
         return val
@@ -162,9 +159,8 @@ def _resolve_value(
         result: list[PrimitiveType] = []
         for elem in val:
             if not isinstance(elem, (int, float, bool, str)):
-                raise ValueError(
-                    "Mixed types in list. Please pass only primitives or pydantic models in a list"
-                )
+                err_msg: str = "Mixed types in list. Please pass only primitives or pydantic models"
+                raise TypeError(err_msg)
             result.append(_resolve_value(elem, variables=variables))
         return result
 
@@ -175,19 +171,14 @@ def _resolve_value(
     if len(split_vars) == 1:
         return val  # only unmatched will return a list of one
     for i in range(1, len(split_vars), 2):
-        split_vars[i] = str(
-            _resolve_variable_expression(split_vars[i], variables=variables)
-        )
+        split_vars[i] = str(_resolve_variable_expression(split_vars[i], variables=variables))
 
     val = "".join(split_vars)
-
-    val = _infer_type(val)
-
-    return val
+    return _infer_type(val)
 
 
 def _infer_type(val: str) -> "PrimitiveType":
-    """Change type to best fitting primitive type
+    """Change type to best fitting primitive type.
 
     Examples:
         _infer_type('1') -> 1 # int
@@ -203,8 +194,8 @@ def _infer_type(val: str) -> "PrimitiveType":
         val (str): the value with its variables resolved
     Returns:
         the value cast to the best fittign primitive type
-    """
 
+    """
     try:
         return int(val)
     except ValueError:
@@ -226,7 +217,7 @@ def _infer_type(val: str) -> "PrimitiveType":
 def _resolve_variable_expression(
     variable_expression: str, variables: Mapping[str, "PrimitiveType"]
 ) -> "PrimitiveType":
-    """Turn expressions of variables into one literal
+    """Turn expressions of variables into one literal.
 
     Variables can be expressions, combining literals and variables with simple math
         this function will resolve those expressions
@@ -248,6 +239,7 @@ def _resolve_variable_expression(
 
     Returns:
         PrimitiveType: the variable expression as simplified as possible
+
     """
     return _resolve_variable_expression_recursive(
         variable_expression=variable_expression.strip(), variables=variables
@@ -257,7 +249,7 @@ def _resolve_variable_expression(
 def _resolve_variable_expression_recursive(
     variable_expression: str, variables: Mapping[str, "PrimitiveType"]
 ) -> "PrimitiveType":
-    """Turn expressions of variables into one literal
+    """Turn expressions of variables into one literal.
 
     Variables can be expressions, combining literals and variables with simple math
         this function will resolve those expressions
@@ -279,70 +271,57 @@ def _resolve_variable_expression_recursive(
 
     Returns:
         PrimitiveType: the variable expression as simplified as possible
-    """
 
+    """
     # shortcut allows variables with +,-,/,*
-    if variables is not None and variable_expression in variables:
+    if variables is not None and variable_expression in variables:  # pyright: ignore[reportUnnecessaryComparison]
         return variables[variable_expression]
 
-    operations = [
+    operations: list[tuple[str, Callable[[Any, Any], bool]]] = [
         ("-", sub),
         ("+", add),
         ("/", truediv),
         ("*", mul),
     ]
 
+    err_msg: str
     for op_char, op_fn in operations:
         if op_char in variable_expression:
             i = variable_expression.find(op_char)
-            lval: "PrimitiveType" = variable_expression[:i].rstrip()
-            rval: "PrimitiveType" = variable_expression[i + 1 :].lstrip()
+            # ruff improperly asking to remove quotes around types
+            # to avoid circular imports, these are TYPE_CHECKING guarded
+            lval: "PrimitiveType" = variable_expression[:i].rstrip()  # noqa: UP037
+            rval: "PrimitiveType" = variable_expression[i + 1 :].lstrip()  # noqa: UP037
 
-            lval = _resolve_variable_expression_recursive(
-                str(lval), variables=variables
-            )
-            rval = _resolve_variable_expression_recursive(
-                str(rval), variables=variables
-            )
+            lval = _resolve_variable_expression_recursive(str(lval), variables=variables)
+            rval = _resolve_variable_expression_recursive(str(rval), variables=variables)
 
+            err_msg = (
+                f'Unable to resolve perform operation ({{op_char}}) with "{lval}" and "{rval}"'
+            )
             if not isinstance(lval, (int, float)):
                 # try to convert to a numeric
                 if lval is None:
-                    raise RuntimeError(
-                        f"Unable to resolve perform operation ({op_char})"
-                        ' with "{lval}" and "{rval}"'
-                    )
+                    raise TypeError(err_msg)
                 lval = _infer_type(lval)
                 if not isinstance(lval, (int, float)):
-                    raise RuntimeError(
-                        f"Unable to resolve perform operation ({op_char})"
-                        ' with "{lval}" and "{rval}"'
-                    )
+                    raise TypeError(err_msg)
 
             if not isinstance(rval, (int, float)):
                 # try to convert to a numeric
                 if rval is None:
-                    raise RuntimeError(
-                        f"Unable to resolve perform operation ({op_char})"
-                        ' with "{lval}" and "{rval}"'
-                    )
+                    raise TypeError(err_msg)
                 rval = _infer_type(rval)
                 if not isinstance(rval, (int, float)):
-                    raise RuntimeError(
-                        f'Unable to resolve perform operation ({op_char}) with "{rval}"'
-                    )
+                    raise TypeError(err_msg)
 
             return op_fn(lval, rval)
 
-    ret = _resolve_token(variable_expression, variables=variables)
-
-    return ret
+    return _resolve_token(variable_expression, variables=variables)
 
 
-def _resolve_token(
-    var_token: str, variables: Mapping[str, "PrimitiveType"]
-) -> "PrimitiveType":
-    """For the provided token, if its a variable name return the variable
+def _resolve_token(var_token: str, variables: Mapping[str, "PrimitiveType"]) -> "PrimitiveType":
+    """Return variable given token (possible variable name).
 
     Args:
         var_token (str): name of a variable
@@ -350,9 +329,9 @@ def _resolve_token(
 
     Returns:
         str: if it exists, the value of the variable of the token provided
-    """
 
+    """
     token: str = var_token.strip()
-    if variables is None:
+    if variables is None:  # pyright: ignore[reportUnnecessaryComparison]
         return token
     return str(variables.get(token, token))

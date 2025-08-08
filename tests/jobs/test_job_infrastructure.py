@@ -1,4 +1,4 @@
-""" "Test infrastructre calls, leading to 100% test completion"""
+""" "Test infrastructre calls, leading to 100% test completion."""
 
 import pytest
 from pydantic import ValidationError
@@ -16,12 +16,12 @@ from pyantz.infrastructure.core.status import Status
 
 
 def nop_job() -> None:
-    """A job that does nothing"""
+    """A job that does nothing."""
     return Status.SUCCESS
 
 
 def nop_job_with_bad_parameters() -> None:
-    """A job that does nothing"""
+    """A job that does nothing."""
     return Status.SUCCESS
 
 
@@ -29,8 +29,7 @@ nop_job_with_bad_parameters.__pyantz_param_model__ = {}
 
 
 def test_no_job_type() -> None:
-    """Test that a job import with no type raises a validation error"""
-
+    """Test that a job import with no type raises a validation error."""
     func_name = "tests.jobs.test_job_infrastructure.nop_job"
 
     assert get_job_type(func_name) is None
@@ -46,8 +45,7 @@ def test_no_job_function_name() -> None:
 
 
 def test_serialize_simple_job_config() -> None:
-    """Test serialize job config"""
-
+    """Test serialize job config."""
     job_config = {
         "type": "job",
         "function": "tests.jobs.test_job_infrastructure.nop_job",
@@ -62,8 +60,7 @@ def test_serialize_simple_job_config() -> None:
 
 
 def test_serialize_mutable_job_config() -> None:
-    """Test serialize job config"""
-
+    """Test serialize job config."""
     job_config = {
         "type": "mutable_job",
         "function": "tests.jobs.test_job_infrastructure.nop_job",
@@ -78,8 +75,7 @@ def test_serialize_mutable_job_config() -> None:
 
 
 def test_serialize_submitter_job_config() -> None:
-    """Test serialize job config"""
-
+    """Test serialize job config."""
     job_config = {
         "type": "submitter_job",
         "function": "tests.jobs.test_job_infrastructure.nop_job",
@@ -94,7 +90,7 @@ def test_serialize_submitter_job_config() -> None:
 
 
 def test_job_config_rejects_wrong_type() -> None:
-    """Tests that the job config rejects a wrong type"""
+    """Tests that the job config rejects a wrong type."""
     job_config = {
         "type": "mutable_job",
         "function": "tests.jobs.test_job_infrastructure.nop_job",

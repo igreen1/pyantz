@@ -1,19 +1,27 @@
-"""Runs local configs"""
+"""Runs local configs."""
 
+from __future__ import annotations
+
+import contextlib
+import logging
 import logging.handlers
 import multiprocessing as mp
 import os
 import queue
 import threading
 import time
+from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config.base import Config, InitialConfig, LoggingConfig
 from pyantz.infrastructure.core.manager import run_manager
 from pyantz.infrastructure.log.multiproc_logging import ANTZ_LOG_ROOT_NAME, get_listener
 
+if TYPE_CHECKING:
+    from multiprocessing.sharedctypes import Synchronized
+
 
 def run_local_submitter(config: InitialConfig) -> threading.Thread:
-    """Start the local submitter to accept jobs
+    """Start the local submitter to accept jobs.
 
     Args:
         config (InitialConfig): user configuration of all jobs
@@ -21,18 +29,16 @@ def run_local_submitter(config: InitialConfig) -> threading.Thread:
     Returns:
         Callable[[PipelineConfig], None]: callable that accepts a pipeline config
             and places it on the queue
+
     """
     if config.submitter_config.type != "local":
-        raise ValueError(
-            f"Cannot run local submitter with type: {config.submitter_config.type}"
-        )
-    try:
+        msg = f"Cannot run local submitter with type: {config.submitter_config.type}"
+        raise ValueError(msg)
+    with contextlib.suppress(RuntimeError):
         # we have significant threading, so complete isolation is required
         mp.set_start_method("spawn", force=True)
-    except RuntimeError:
-        pass
 
-    unified_task_queue: mp.Queue = mp.Queue()
+    unified_task_queue: "mp.Queue[dict[str, Any]]" = mp.Queue()  # noqa: UP037
 
     proc_ = LocalProcManager(
         task_queue=unified_task_queue,
@@ -41,7 +47,7 @@ def run_local_submitter(config: InitialConfig) -> threading.Thread:
     )
 
     def submit_pipeline(config: Config) -> None:
-        """Closure for the unified task queue"""
+        """Closure for the unified task queue."""
         return unified_task_queue.put(config.model_dump())
 
     submit_pipeline(config.analysis_config)
@@ -51,17 +57,21 @@ def run_local_submitter(config: InitialConfig) -> threading.Thread:
 
 
 class LocalProcManager(threading.Thread):
-    """Holds the various local runners and issues them a kill command when done"""
+    """Holds the various local runners and issues them a kill command when done."""
 
     def __init__(
-        self, task_queue: mp.Queue, number_procs: int, logging_config: LoggingConfig
+        self,
+        task_queue: "mp.Queue[dict[str, Any]]",  # noqa: UP037
+        number_procs: int,
+        logging_config: LoggingConfig,
     ) -> None:
-        """Creates the local proc manager
+        """Create the local proc manager.
 
         Args:
             task_queue (mp.Queue[PipelineConfig]): universal queue for job submission
             number_procs (int): number of parallel processes to start up
             logging_config (LoggingConfig): configuration of instance loggers
+
         """
         super().__init__()
         self.task_queue = task_queue
@@ -69,8 +79,7 @@ class LocalProcManager(threading.Thread):
         self.logger_queue, self.logger_proc = get_listener(logging_config)
 
     def run(self) -> None:
-        """Run and issue kill command when nothing else to do and the jobs are complete"""
-
+        """Run and issue kill command when nothing else to do and the jobs are complete."""
         children = [LocalProc(self.task_queue, logger_queue=self.logger_queue)]
 
         for child in children:
@@ -81,7 +90,7 @@ class LocalProcManager(threading.Thread):
                 not child.get_is_executing() for child in children
             ):
                 for child in children:
-                    child.set_dead(True)
+                    child.set_dead(new_val=True)
                 break
             time.sleep(1)  # only check every second
 
@@ -90,15 +99,18 @@ class LocalProcManager(threading.Thread):
 
 
 class LocalProc(mp.Process):
-    """Local proc is the node that actually runs the code"""
+    """Local proc is the node that actually runs the code."""
 
-    def __init__(self, task_queue: mp.Queue, logger_queue: mp.Queue) -> None:
-        """Initialize the process with the universal job queue"""
-
+    def __init__(
+        self,
+        task_queue: mp.Queue[dict[str, Any]],
+        logger_queue: "mp.Queue[logging.LogRecord]",  # noqa: UP037
+    ) -> None:
+        """Initialize the process with the universal job queue."""
         super().__init__()
 
         self._queue = task_queue
-        self._is_executing = mp.Value("b")
+        self._is_executing: "Synchronized[int]" = mp.Value("b")  # noqa: UP037
         with self._is_executing.get_lock():
             self._is_executing.value = 0
 
@@ -111,22 +123,21 @@ class LocalProc(mp.Process):
         self.logger.addHandler(qh)
 
     def get_is_executing(self) -> bool:
-        """Return if the current process is executing a pipeline"""
+        """Return if the current process is executing a pipeline."""
         with self._is_executing.get_lock():
-            ret = self._is_executing.value
-        return ret
+            return self._is_executing.value != 0
 
-    def set_dead(self, new_val) -> None:
-        """Tell this process to kill itself"""
+    def set_dead(self, *, new_val: bool) -> None:
+        """Tell this process to kill itself."""
         with self._is_dead.get_lock():
             self._is_dead.value = new_val
         self.logger.info("Killing local process runner")
 
-    def run(self):
-        """Infinitely loop waiting for a new job on the queue until the set_dead(True)"""
+    def run(self) -> None:
+        """Infinitely loop waiting for a new job on the queue until the set_dead(True)."""
 
         def submit_fn(config: Config) -> None:
-            """Submit a pipeline to this submitter"""
+            """Submit a pipeline to this submitter."""
             self._queue.put(config.model_dump())
 
         while not self._is_dead.value:
@@ -138,9 +149,7 @@ class LocalProc(mp.Process):
                 try:
                     run_manager(next_config, submit_fn=submit_fn, logger=self.logger)
                 except Exception as exc:  # pylint: disable=broad-exception-caught
-                    self.logger.error(
-                        "Unknown error when running manager", exc_info=exc
-                    )
+                    self.logger.exception("Unknown error when running manager", exc_info=exc)
 
                 with self._is_executing.get_lock():
                     self._is_executing.value = False
@@ -148,4 +157,4 @@ class LocalProc(mp.Process):
                 pass  # just waiting for another job
             time.sleep(0.5)  # only check every 1/2 second to reduce resource usage
         with self._is_executing.get_lock():
-            self._is_executing = False
+            self._is_executing.value = 0

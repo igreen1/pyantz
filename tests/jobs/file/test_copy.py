@@ -1,4 +1,4 @@
-"""Test the copy job"""
+"""Test the copy job."""
 
 import glob
 import logging
@@ -11,7 +11,7 @@ from pyantz.jobs.file.copy import copy
 
 FILE_LENGTH_MAX: int = 8000
 
-logger = logging.Logger("test")
+logger = logging.getLogger("test")
 logger.setLevel(0)
 
 
@@ -40,9 +40,9 @@ def test_copy_file(tmpdir: str | os.PathLike[str]) -> None:
 
     assert os.path.exists(dst_file)
 
-    with open(dst_file, "r") as fh:
+    with open(dst_file) as fh:
         dst_contents = fh.read()
-    with open(src_file, "r") as fh:
+    with open(src_file) as fh:
         src_contents = fh.read()
 
     assert src_contents == dst_contents

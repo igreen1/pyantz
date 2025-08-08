@@ -1,4 +1,4 @@
-"""Change variables in a pipeline"""
+"""Change variables in a pipeline."""
 
 import logging
 import os
@@ -13,8 +13,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 def test_changing_variables(tmpdir) -> None:
-    """Test that subsequent jobs can access mutated variables"""
-
+    """Test that subsequent jobs can access mutated variables."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [
@@ -56,8 +55,7 @@ def test_changing_variables(tmpdir) -> None:
 
 
 def test_changing_variables_integrated(tmpdir) -> None:
-    """Test that subsequent jobs can access mutated variables"""
-
+    """Test that subsequent jobs can access mutated variables."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [
@@ -99,8 +97,7 @@ def test_changing_variables_integrated(tmpdir) -> None:
 
 
 def test_changing_variables_bad_variable(tmpdir) -> None:
-    """Test that subsequent jobs can access mutated variables"""
-
+    """Test that subsequent jobs can access mutated variables."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [

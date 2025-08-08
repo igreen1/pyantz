@@ -1,7 +1,6 @@
-"""Given a template pipeline, create N new pipelines from that template
-with a new variables PIPELINE_ID set to a counter
+"""Given a template pipeline, create N new pipelines from that template.
 
-
+with a new variable PIPELINE_ID set to a counter.
 """
 
 import logging
@@ -14,7 +13,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """See explode pipeline docs"""
+    """See explode pipeline docs."""
 
     num_pipelines: PositiveInt
     pipeline_config_template: config_base.PipelineConfig
@@ -25,10 +24,10 @@ def explode_pipeline(
     parameters: config_base.ParametersType,
     submit_fn: config_base.SubmitFunctionType,
     variables: Mapping[str, config_base.PrimitiveType],
-    _pipeline_config: config_base.PipelineConfig,
+    _pipeline_config: config_base.PipelineConfig,  # doesn't need the parent to submit
     logger: logging.Logger,
 ) -> Status:
-    """Create a series of parallel pipelines based on user input
+    """Create a series of parallel pipelines based on user input.
 
     Args:
         parameters (ParametersType): mapping of string names of pipelines to pipeline configurations
@@ -38,8 +37,8 @@ def explode_pipeline(
 
     Returns:
         Status: SUCCESS if jobs successfully submitted; ERROR otherwise
-    """
 
+    """
     params_parsed = Parameters.model_validate(parameters)
 
     logger.debug("Exploding pipelines into %d pipelines", params_parsed.num_pipelines)

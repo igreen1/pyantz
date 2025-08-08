@@ -1,4 +1,4 @@
-"""Test the create pipelines from matrix job"""
+"""Test the create pipelines from matrix job."""
 
 import logging
 import os
@@ -18,7 +18,7 @@ logger.setLevel(0)
 
 
 def test_creating_multiple_pipelines_from_job(tmpdir) -> None:
-    """Test creating two pipelines from a job"""
+    """Test creating two pipelines from a job."""
     q: queue.Queue = queue.Queue()
 
     def submit_callable(config: Config) -> None:

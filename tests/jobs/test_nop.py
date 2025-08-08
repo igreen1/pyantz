@@ -1,4 +1,4 @@
-"""Test the nop job. It does nothing so really just testing it doesn't crash"""
+"""Test the nop job. It does nothing so really just testing it doesn't crash."""
 
 import logging
 
@@ -10,14 +10,12 @@ from pyantz.jobs.nop import nop
 
 
 def test_nop_direct_call() -> None:
-    """Test that the nop job does not crash"""
-
+    """Test that the nop job does not crash."""
     assert nop({}, logging.getLogger("test")) == Status.SUCCESS
 
 
 def test_nop_in_pipeline() -> None:
-    """Test that the nop job does not crash when in a pipeline"""
-
+    """Test that the nop job does not crash when in a pipeline."""
     pipeline_config = PipelineConfig.model_validate(
         {
             "type": "pipeline",
@@ -37,7 +35,7 @@ def test_nop_in_pipeline() -> None:
 
 
 def test_submit_to_local() -> None:
-    """Test that it doesn't crash when in a submitter job"""
+    """Test that it doesn't crash when in a submitter job."""
     test_config = InitialConfig.model_validate(
         {
             "submitter_config": {"type": "local"},

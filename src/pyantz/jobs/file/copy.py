@@ -1,26 +1,38 @@
-"""Copy job will copy a file or directory to another location"""
+"""Copy job will copy a file or directory to another location."""
 
 import logging
-import os
+import pathlib
 import shutil
+from shutil import SameFileError, SpecialFileError
 
-from pydantic import BaseModel
+from pydantic import BaseModel, FilePath
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """The parameters required for the copy command"""
+    """The parameters required for the copy command."""
 
     source: str
     destination: str
     infer_name: bool = False
 
 
+class _RuntimeParameters(BaseModel, frozen=True):
+    """Parameters used at runtime to check for file existence.
+
+    Source must exist for copy to work.
+    """
+
+    source: FilePath
+    destination: str
+    infer_name: bool = False
+
+
 @config_base.simple_job(Parameters)
 def copy(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
-    """Copy file or directory from parameters.soruce to parameters.destination
+    """Copy file or directory from parameters.soruce to parameters.destination.
 
     ParametersType {
         source: path/to/copy/from
@@ -29,74 +41,84 @@ def copy(parameters: config_base.ParametersType, logger: logging.Logger) -> Stat
 
     Args:
         parameters (ParametersType): ParametersType for the copy function
+        logger (logging.Logger): logging instance
 
     Returns:
         Status: result of the job
+
     """
-    if parameters is None:
+    copy_parameters = _RuntimeParameters.model_validate(parameters)
+
+    source = pathlib.Path(copy_parameters.source)
+    if not source.exists():
         return Status.ERROR
-    copy_parameters = Parameters.model_validate(parameters)
 
-    source = copy_parameters.source
-
-    if not os.path.exists(source):
-        return Status.ERROR
-    source_is_file = os.path.isfile(source)
-
-    if source_is_file:
+    if source.is_file():
         logger.debug("Copying file")
-        return _copy_file(copy_parameters)
+        return _copy_file(copy_parameters, logger)
 
     logger.debug("Copying directory")
-    return _copy_dir(copy_parameters)
+    return _copy_dir(copy_parameters, logger)
 
 
-def _copy_file(copy_parameters: Parameters) -> Status:
-    """Copy a file from source to destination
+def _copy_file(copy_parameters: _RuntimeParameters, logger: logging.Logger) -> Status:
+    """Copy a file from source to destination.
 
     Args:
         copy_parameters (Parameters): ParametersType of the copy job
+        logger (logging.Logger): logging instance
 
     Returns:
         Status: resulitng status after running the job
+
     """
-    src = copy_parameters.source
-    dst = copy_parameters.destination
+    src = pathlib.Path(copy_parameters.source)
+    dst = pathlib.Path(copy_parameters.destination)
 
-    if os.path.exists(dst) and os.path.isdir(dst):
-        if copy_parameters.infer_name:
-            dst = os.path.join(dst, os.path.basename(src))
+    if dst.exists() and dst.is_dir() and copy_parameters.infer_name:
+        dst = dst / src.name
 
-    if os.path.exists(dst) and os.path.isdir(dst):
+    if dst.exists() and dst.is_dir():
         return Status.ERROR
 
-    dst_dir = os.path.dirname(dst)
-    os.makedirs(dst_dir, exist_ok=True)
+    dst_dir = dst.parent
+    dst_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         shutil.copyfile(src, dst)
-        return Status.SUCCESS
-    except Exception as _exc:  # pylint: disable=broad-exception-caught
+    except (SameFileError, SpecialFileError, IsADirectoryError, FileNotFoundError) as exc:
+        logger.exception("Unexpected error! Cannot copy %s to %s", src, dst, exc_info=exc)
         return Status.ERROR
+    else:
+        return Status.SUCCESS
 
 
-def _copy_dir(copy_parameters: Parameters) -> Status:
-    """Copy a directory from a source to destination
+def _copy_dir(
+    copy_parameters: _RuntimeParameters,
+    logger: logging.Logger,
+) -> Status:
+    """Copy a directory from a source to destination.
+
     Args:
-        copy_parameters (CopyParameters): ParametersType of the copy job
+        copy_parameters (CopyParameters): ParametersType of the copy job.
+        logger (logging.Logger): logger instance
 
     Returns:
         Status: resulitng status after running the job
+
     """
+    src = pathlib.Path(copy_parameters.source)
+    dst = pathlib.Path(copy_parameters.destination)
 
-    src = copy_parameters.source
-    dst = copy_parameters.destination
-
-    if os.path.exists(dst) and os.path.isfile(dst):
+    if dst.exists() and dst.is_file():
+        logger.error("Cannot copy %s to existing file %s", src, dst)
         return Status.ERROR
 
     try:
         shutil.copytree(src, dst)
-        return Status.SUCCESS
-    except Exception as _exc:  # pylint: disable=broad-exception-caught
+    # oserror,
+    except OSError as exc:
+        logger.exception("Unable to copy %s to dir %s", src, dst, exc_info=exc)
         return Status.ERROR
+    else:
+        return Status.SUCCESS

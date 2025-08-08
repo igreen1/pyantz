@@ -1,4 +1,4 @@
-"""Asserts that a variable is of a certain value"""
+"""Asserts that a variable is of a certain value."""
 
 import logging
 
@@ -9,17 +9,15 @@ from pyantz.infrastructure.core.status import Status
 
 
 class Parameters(BaseModel, frozen=True):
-    """See assert_variable docstring"""
+    """See assert_variable docstring."""
 
     given_val: config_base.PrimitiveType
     expected_value: config_base.PrimitiveType
 
 
 @config_base.simple_job(Parameters)
-def assert_value(
-    parameters: config_base.ParametersType, logger: logging.Logger
-) -> Status:
-    """Return ERROR if the variable doesn't match expectations
+def assert_value(parameters: config_base.ParametersType, logger: logging.Logger) -> Status:
+    """Return ERROR if the variable doesn't match expectations.
 
     Parameters {
         var_to_check (str): name of the variable to check
@@ -34,8 +32,8 @@ def assert_value(
 
     Returns:
         Status: SUCCESS if the variable matches expected value; ERROR otherwise
-    """
 
+    """
     params_parsed = Parameters.model_validate(parameters)
 
     if params_parsed.given_val == params_parsed.expected_value:

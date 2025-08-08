@@ -1,4 +1,4 @@
-"""Test that the sqlite queue works"""
+"""Test that the sqlite queue works."""
 
 import concurrent.futures
 import json
@@ -12,17 +12,15 @@ import pyantz.infrastructure.distributed_queue.relational.sqlite_queue as sq
 from pyantz.infrastructure.core.status import Status
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def sqlite_queue(tmpdir) -> sq.SqliteQueue:
-    """Convience code to make the sqlite queue"""
-
+    """Convience code to make the sqlite queue."""
     file_db = os.path.join(tmpdir, "queue.db")
-    q = sq.SqliteQueue(file_db)
-    return q
+    return sq.SqliteQueue(file_db)
 
 
 def test_sqlite_queue_simple(sqlite_queue) -> None:
-    """Test simple put / get with the sqlite"""
+    """Test simple put / get with the sqlite."""
     sqlite_queue.put('{"hello":"there"}', "1")
     assert sqlite_queue.get() == '{"hello":"there"}'
 
@@ -31,8 +29,7 @@ def test_sqlite_queue_simple(sqlite_queue) -> None:
 
 
 def test_sqlite_queue_dependency(sqlite_queue) -> None:
-    """Test making jobs that depends on each other"""
-
+    """Test making jobs that depends on each other."""
     job_ids = list("abcdefg")
 
     dependency_graph = {"f": ["d", "e"], "d": ["a", "b"]}
@@ -67,8 +64,7 @@ def test_sqlite_queue_dependency(sqlite_queue) -> None:
 
 
 def test_sqlite_depends_on_error(sqlite_queue) -> None:
-    """Test that errors propagate and disallow future jobs to error out"""
-
+    """Test that errors propagate and disallow future jobs to error out."""
     job_ids = list("abcdefg")
 
     dependency_graph = {"f": ["d", "e"], "d": ["a", "b"]}
@@ -115,8 +111,7 @@ def test_sqlite_depends_on_error(sqlite_queue) -> None:
 
 
 def test_sqlite_queue_qsize(sqlite_queue) -> None:
-    """Test that qsize works"""
-
+    """Test that qsize works."""
     some_content = """{"some_field": ["some_valud"]}"""
 
     for i in range(100):
@@ -125,17 +120,15 @@ def test_sqlite_queue_qsize(sqlite_queue) -> None:
 
 
 def test_large_chunks(sqlite_queue) -> None:
-    """Test that very large jsons are allowed"""
-
-    large_json = json.dumps({k: "a" * 100 for k in range(4000)})
+    """Test that very large jsons are allowed."""
+    large_json = json.dumps(dict.fromkeys(range(4000), "a" * 100))
 
     sqlite_queue.put(large_json, "1")
     assert sqlite_queue.get() == large_json
 
 
 def test_multiproducer_multi_consumer(tmpdir) -> None:
-    """Test multiprocess access to the queue"""
-
+    """Test multiprocess access to the queue."""
     file_db = os.fspath(os.path.join(tmpdir, "queue.db"))
     some_content = """{"some_field": ["some_valud"]}"""
 
@@ -151,15 +144,14 @@ def test_multiproducer_multi_consumer(tmpdir) -> None:
 
 
 def _submit_to_q(i, file_db) -> bool:
-    """Submit to the queue"""
+    """Submit to the queue."""
     some_content = """{"some_field": ["some_valud"]}"""
     try:
         q = sq.SqliteQueue(file_db)
         q.put(some_content, str(i))
         return True
-    except Exception as exc:
+    except Exception:
         traceback.print_exc()
-        print(exc)
         return False
 
 

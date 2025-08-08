@@ -1,4 +1,4 @@
-"""Test running a script"""
+"""Test running a script."""
 
 import logging
 import os
@@ -11,8 +11,7 @@ logger.setLevel(0)
 
 
 def test_run_script_fn(tmpdir) -> None:
-    """Test running a script with the run_script fn"""
-
+    """Test running a script with the run_script fn."""
     script_content = """#!/bin/bash
     echo "hello"
     echo $1
@@ -38,6 +37,6 @@ def test_run_script_fn(tmpdir) -> None:
     )
 
     assert os.path.exists(stdout_file)
-    with open(stdout_file, "r", encoding="utf-8") as fh:
+    with open(stdout_file, encoding="utf-8") as fh:
         results: str = fh.read()
     assert results == "hello\nwhat?\n"

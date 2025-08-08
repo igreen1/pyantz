@@ -1,4 +1,4 @@
-"""Test the if then branching job"""
+"""Test the if then branching job."""
 
 import logging
 import queue
@@ -9,13 +9,12 @@ from pyantz.infrastructure.core.status import Status
 
 
 def return_given(b: bool) -> bool:
-    """Return the value provided as an arg"""
+    """Return the value provided as an arg."""
     return b
 
 
 def test_if_then_true_in_pipeline_true() -> None:
-    """Test if then running in pipeline"""
-
+    """Test if then running in pipeline."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [
@@ -74,8 +73,7 @@ def test_if_then_true_in_pipeline_true() -> None:
 
 
 def test_if_then_true_in_pipeline_false() -> None:
-    """Test if then running in pipeline"""
-
+    """Test if then running in pipeline."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [

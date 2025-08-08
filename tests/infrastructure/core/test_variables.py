@@ -1,4 +1,4 @@
-"""Test variable resolution module"""
+"""Test variable resolution module."""
 
 from collections.abc import Mapping
 
@@ -13,8 +13,7 @@ from pyantz.infrastructure.core.variables import (
 
 
 def test_regex_pattern() -> None:
-    """Test the regex patter gets the correct group(s)"""
-
+    """Test the regex patter gets the correct group(s)."""
     expected_variables_names = {
         "%{a}": ["a"],
         "%{hello there!}": ["hello there!"],
@@ -62,19 +61,18 @@ _expected = {
 
 
 @pytest.mark.parametrize(
-    "given,expected,variables", [(k, v, _variables) for k, v in _expected.items()]
+    ("given", "expected", "variables"), [(k, v, _variables) for k, v in _expected.items()]
 )
 def test_simple_variable_replacement(given, expected, variables) -> None:
-    """Test a simploe replacement of a variable string"""
-
+    """Test a simploe replacement of a variable string."""
     assert _resolve_value(given, variables=variables) == expected
 
 
 def test_parameters_simple_replacement() -> None:
-    """test a simple interpolation of the variables into parameters"""
+    """Test a simple interpolation of the variables into parameters."""
     variables = _variables
 
-    expected_values = [(k, v) for k, v in _expected.items()]
+    expected_values = list(_expected.items())
 
     input_parameters = {
         str(i): in_val for i, (in_val, _expected_out) in enumerate(expected_values)
@@ -88,8 +86,7 @@ def test_parameters_simple_replacement() -> None:
 
 
 def test_parameter_variable_expressions() -> None:
-    """Test that expressions are allowed in variables (basic math)"""
-
+    """Test that expressions are allowed in variables (basic math)."""
     variables = _variables
 
     expected_values = {
@@ -113,8 +110,7 @@ def test_parameter_variable_expressions() -> None:
 
 
 def test_nested_variable_resolution() -> None:
-    """Test that nested dictionaries and lists are resolved but not if they're a job"""
-
+    """Test that nested dictionaries and lists are resolved but not if they're a job."""
     variables = _variables
     input_dict = {
         "val": "%{a}",

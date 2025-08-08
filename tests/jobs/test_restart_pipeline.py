@@ -1,4 +1,4 @@
-"""Test restart pipeline job"""
+"""Test restart pipeline job."""
 
 import logging
 import queue
@@ -9,8 +9,7 @@ from pyantz.infrastructure.core.status import Status
 
 
 def test_restarting_a_pipeline() -> None:
-    """Test that the job can restart a pipeline"""
-
+    """Test that the job can restart a pipeline."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [
@@ -40,8 +39,7 @@ def test_restarting_a_pipeline() -> None:
 
 
 def test_restarting_a_pipeline_conditional_true() -> None:
-    """Test that the job can restart a pipeline"""
-
+    """Test that the job can restart a pipeline."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [
@@ -71,8 +69,7 @@ def test_restarting_a_pipeline_conditional_true() -> None:
 
 
 def test_restarting_a_pipeline_conditional_false() -> None:
-    """Test that the job can restart a pipeline"""
-
+    """Test that the job can restart a pipeline."""
     pipeline_config = {
         "type": "pipeline",
         "stages": [
