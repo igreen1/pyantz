@@ -78,21 +78,18 @@ def get_function_by_name_strongly_typed(
         Callabel for a provided function of the correct type
 
     """
-    # strict for PyAntz jobs because we should at least be consistent!
-    if strict is None:
-        if isinstance(func_type_name, str):
-            strict = func_type_name.startswith("pyantz")
-        else:
-            strict = all(name.startswith("pyantz") for name in func_type_name)
-
     # allow "any" function because prior to pydantic validation we can't guarantee anything
     # so this function really should allow anything and handle the edge cases
     def typed_get_function_by_name(
         func_name_or_any: Any,  # noqa: ANN401
     ) -> Callable[..., Any] | None:
+        is_strict = strict
+        # always force strict with pyantz library
+        if not is_strict and isinstance(func_name_or_any, str):
+            is_strict = func_name_or_any.startswith("pyantz")
         func_handle = get_function_by_name(func_name_or_any)
         job_type = get_job_type(func_handle)
-        if job_type is None and strict:
+        if job_type is None and is_strict:
             return None
         if job_type is None:
             return func_handle

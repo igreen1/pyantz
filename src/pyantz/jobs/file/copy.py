@@ -5,7 +5,7 @@ import pathlib
 import shutil
 from shutil import SameFileError, SpecialFileError
 
-from pydantic import BaseModel, FilePath
+from pydantic import BaseModel, DirectoryPath, FilePath
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -25,7 +25,7 @@ class _RuntimeParameters(BaseModel, frozen=True):
     Source must exist for copy to work.
     """
 
-    source: FilePath
+    source: FilePath | DirectoryPath
     destination: str
     infer_name: bool = False
 

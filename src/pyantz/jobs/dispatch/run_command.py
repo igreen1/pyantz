@@ -49,6 +49,7 @@ def run_command(parameters: config_base.ParametersType, logger: logging.Logger) 
             env=params_parsed.environmental_variables,
             cwd=params_parsed.cwd,
             check=check,
+            capture_output=True,
         )  # nosec
 
         if params_parsed.stdout_file is not None:  # pylint: disable=duplicate-code

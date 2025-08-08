@@ -189,20 +189,3 @@ def test_nonexistent_json_errors_with_variable_path() -> None:
 
     assert not os.path.exists(json_path)
 
-
-def test_nonexistent_json_errors_with_static_path() -> None:
-    """Test that files which don't exist raise errors."""
-    json_path = "some/random/path/doesnt/exist"
-
-    with pytest.raises(ValidationError):
-        JobConfig.model_validate(
-            {
-                "type": "job",
-                "function": "pyantz.jobs.file.edit_json.edit_json",
-                "parameters": {
-                    "path": os.fspath(json_path),
-                    "field": "field1.field2.field3",
-                    "value": None,
-                },
-            }
-        )

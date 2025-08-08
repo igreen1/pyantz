@@ -1,7 +1,7 @@
 """ "Test infrastructre calls, leading to 100% test completion."""
 
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from pyantz.infrastructure.config.base import (
     JobConfig,
@@ -25,7 +25,7 @@ def nop_job_with_bad_parameters() -> None:
     return Status.SUCCESS
 
 
-nop_job_with_bad_parameters.__pyantz_param_model__ = {}
+nop_job_with_bad_parameters.__pyantz_param_model__ = "AGH"
 
 
 def test_no_job_type() -> None:
@@ -110,5 +110,5 @@ def test_bad_parameters_type_is_rejected() -> None:
         "parameters": {},
     }
 
-    with pytest.raises(ValidationError):
-        JobConfig.model_validate(job_config)
+    # allowed because this is not in the `pyantz` library
+    JobConfig.model_validate(job_config)

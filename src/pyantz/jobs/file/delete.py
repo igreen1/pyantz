@@ -9,7 +9,7 @@ import logging
 import pathlib
 import shutil
 
-from pydantic import BaseModel, FilePath
+from pydantic import BaseModel, DirectoryPath, FilePath
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -27,7 +27,7 @@ class _RuntimeParameters(BaseModel, frozen=True):
     Files may be created during the pipeline, so must check at actual runtime.
     """
 
-    path: FilePath
+    path: FilePath | DirectoryPath
 
 
 @config_base.simple_job(Parameters)
