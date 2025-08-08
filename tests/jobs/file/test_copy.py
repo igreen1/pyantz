@@ -29,8 +29,7 @@ def test_copy_file(tmpdir: str | os.PathLike[str]) -> None:
     with open(src_file, "w") as fh:
         fh.write(
             "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(src_length)
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(src_length)
             )
         )
 
@@ -60,8 +59,7 @@ def test_copy_dir(tmpdir: str | os.PathLike[str]) -> None:
     with open(src_file, "w") as fh:
         fh.write(
             "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(src_length)
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(src_length)
             )
         )
     src_file = os.path.join(src_dir, "qwerty")
@@ -69,8 +67,7 @@ def test_copy_dir(tmpdir: str | os.PathLike[str]) -> None:
     with open(src_file, "w") as fh:
         fh.write(
             "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(src_length)
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(src_length)
             )
         )
 
@@ -99,8 +96,7 @@ def test_copy_dir_to_existing_file(tmpdir: str | os.PathLike[str]) -> None:
     with open(src_file, "w") as fh:
         fh.write(
             "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(src_length)
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(src_length)
             )
         )
     src_file = os.path.join(src_dir, "qwerty")
@@ -108,8 +104,7 @@ def test_copy_dir_to_existing_file(tmpdir: str | os.PathLike[str]) -> None:
     with open(src_file, "w") as fh:
         fh.write(
             "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(src_length)
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(src_length)
             )
         )
 
@@ -135,8 +130,7 @@ def test_copy_file_to_existing_dir(tmpdir: str | os.PathLike[str]) -> None:
     with open(src_file, "w") as fh:
         fh.write(
             "".join(
-                random.choice(string.ascii_uppercase + string.digits)
-                for _ in range(src_length)
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(src_length)
             )
         )
 

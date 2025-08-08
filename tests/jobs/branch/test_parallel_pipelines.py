@@ -14,18 +14,14 @@ def test_parallel_pipelines_in_pipeline() -> None:
         {
             "type": "pipeline",
             "name": "pipeline_uno",
-            "stages": [
-                {"type": "job", "function": "pyantz.jobs.nop.nop", "parameters": None}
-            ],
+            "stages": [{"type": "job", "function": "pyantz.jobs.nop.nop", "parameters": None}],
         }
     )
     p2 = PipelineConfig.model_validate(
         {
             "type": "pipeline",
             "name": "pipeline_dos",
-            "stages": [
-                {"type": "job", "function": "pyantz.jobs.nop.nop", "parameters": None}
-            ],
+            "stages": [{"type": "job", "function": "pyantz.jobs.nop.nop", "parameters": None}],
         }
     )
     j2 = SubmitterJobConfig.model_validate(
@@ -44,9 +40,7 @@ def test_parallel_pipelines_in_pipeline() -> None:
 
     p_config = PipelineConfig.model_validate(config)
 
-    assert (
-        run_pipeline(p_config, {}, submit_fn, logging.getLogger("test")) == Status.FINAL
-    )
+    assert run_pipeline(p_config, {}, submit_fn, logging.getLogger("test")) == Status.FINAL
 
     assert q.qsize() == 2
     ret1 = Config.model_validate(q.get())

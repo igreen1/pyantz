@@ -6,7 +6,6 @@ format:
 	uv run ruff check src --fix
 	uv run ruff format src
 	uv run isort tests
-	uv run ruff check tests --fix
 	uv run ruff format tests
 
 lint:

@@ -65,9 +65,7 @@ def test_edit_simple_json(data: dict[str, Any], key, value) -> None:
     _json_key_strategy,
     _json_value_strategy,
 )
-def test_nested_dictionary_2_level(
-    data: dict[str, dict[str, Any]], key1, key2, value
-) -> None:
+def test_nested_dictionary_2_level(data: dict[str, dict[str, Any]], key1, key2, value) -> None:
     assume("." not in key1 and "." not in key2)
 
     expected = deepcopy(data)
@@ -83,9 +81,7 @@ def test_nested_dictionary_2_level(
     st.lists(_json_key_strategy, min_size=1),
     _json_value_strategy,
 )
-def test_nested_dictionary_n_level(
-    data: dict[str, Any], keys: list[str], value: Any
-) -> None:
+def test_nested_dictionary_n_level(data: dict[str, Any], keys: list[str], value: Any) -> None:
     """Test a dictionary with an arbitrary number of dictionaries nested."""
     assume(all("." not in key for key in keys))
 
@@ -138,20 +134,21 @@ def test_edit_json_job(tmpdir: Path) -> None:
             },
         }
     )
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
 
     def submit_fn(config) -> None:
         msg = "Submit fn shouldn't be called"
         raise RuntimeError(msg)
 
-    assert run_pipeline(
-        pipeline_config,
-        {"my_path": os.fspath(json_path)},
-        submit_fn,
-        logging.getLogger("test"),
-    ) == Status.SUCCESS
+    assert (
+        run_pipeline(
+            pipeline_config,
+            {"my_path": os.fspath(json_path)},
+            submit_fn,
+            logging.getLogger("test"),
+        )
+        == Status.SUCCESS
+    )
 
     with open(json_path) as fh:
         returned_val = json.load(fh)
@@ -174,20 +171,21 @@ def test_nonexistent_json_errors_with_variable_path() -> None:
             },
         }
     )
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
 
     def submit_fn(config) -> None:
         msg = "Submit fn shouldn't be called"
         raise RuntimeError(msg)
 
-    assert run_pipeline(
-        pipeline_config,
-        {"my_path": os.fspath(json_path)},
-        submit_fn,
-        logging.getLogger("test"),
-    ) == Status.ERROR
+    assert (
+        run_pipeline(
+            pipeline_config,
+            {"my_path": os.fspath(json_path)},
+            submit_fn,
+            logging.getLogger("test"),
+        )
+        == Status.ERROR
+    )
 
     assert not os.path.exists(json_path)
 

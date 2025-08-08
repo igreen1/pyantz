@@ -46,9 +46,7 @@ def test_true_comparison() -> None:
         },
         "function": "pyantz.jobs.branch.compare.compare",
     }
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
 
     q = queue.Queue()
 
@@ -98,9 +96,7 @@ def test_false_direct_comparison() -> None:
         },
         "function": "pyantz.jobs.branch.compare.compare",
     }
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
 
     q = queue.Queue()
 
@@ -150,18 +146,14 @@ def test_comparison_with_variables_true() -> None:
         },
         "function": "pyantz.jobs.branch.compare.compare",
     }
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
 
     q = queue.Queue()
 
     def submit_fn(job_config) -> None:
         q.put(job_config)
 
-    status = run_pipeline(
-        pipeline_config, {"my_var1": 0}, submit_fn, logging.getLogger("test")
-    )
+    status = run_pipeline(pipeline_config, {"my_var1": 0}, submit_fn, logging.getLogger("test"))
 
     assert status == Status.FINAL
     assert q.qsize() == 1
@@ -204,18 +196,14 @@ def test_comparison_with_variables_false() -> None:
         },
         "function": "pyantz.jobs.branch.compare.compare",
     }
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
 
     q = queue.Queue()
 
     def submit_fn(job_config) -> None:
         q.put(job_config)
 
-    status = run_pipeline(
-        pipeline_config, {"my_var1": 0}, submit_fn, logging.getLogger("test")
-    )
+    status = run_pipeline(pipeline_config, {"my_var1": 0}, submit_fn, logging.getLogger("test"))
 
     assert status == Status.FINAL
     assert q.qsize() == 1

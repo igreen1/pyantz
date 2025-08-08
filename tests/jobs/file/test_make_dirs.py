@@ -53,25 +53,17 @@ def test_success_in_pipeline(tmpdir) -> None:
         "function": "pyantz.jobs.file.make_dirs.make_dirs",
     }
 
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
 
-    status = run_pipeline(
-        pipeline_config, {}, lambda *args: None, logging.getLogger("test")
-    )
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger("test"))
     assert status == Status.SUCCESS
     assert os.path.exists(path)
 
-    status = run_pipeline(
-        pipeline_config, {}, lambda *args: None, logging.getLogger("test")
-    )
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger("test"))
     assert status == Status.SUCCESS
     assert os.path.exists(path)
 
-    status = run_pipeline(
-        pipeline_config, {}, lambda *args: None, logging.getLogger("test")
-    )
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger("test"))
     assert status == Status.SUCCESS
     assert os.path.exists(path)
 
@@ -86,24 +78,16 @@ def test_error_in_pipeline(tmpdir) -> None:
         "function": "pyantz.jobs.file.make_dirs.make_dirs",
     }
 
-    pipeline_config = PipelineConfig.model_validate(
-        {"type": "pipeline", "stages": [job_config]}
-    )
-    status = run_pipeline(
-        pipeline_config, {}, lambda *args: None, logging.getLogger("test")
-    )
+    pipeline_config = PipelineConfig.model_validate({"type": "pipeline", "stages": [job_config]})
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger("test"))
     assert status == Status.SUCCESS
     assert os.path.exists(path)
 
-    status = run_pipeline(
-        pipeline_config, {}, lambda *args: None, logging.getLogger("test")
-    )
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger("test"))
     assert status == Status.ERROR
     assert os.path.exists(path)
 
-    status = run_pipeline(
-        pipeline_config, {}, lambda *args: None, logging.getLogger("test")
-    )
+    status = run_pipeline(pipeline_config, {}, lambda *args: None, logging.getLogger("test"))
     assert status == Status.ERROR
     assert os.path.exists(path)
 

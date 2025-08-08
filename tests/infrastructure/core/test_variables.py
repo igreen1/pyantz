@@ -74,12 +74,9 @@ def test_parameters_simple_replacement() -> None:
 
     expected_values = list(_expected.items())
 
-    input_parameters = {
-        str(i): in_val for i, (in_val, _expected_out) in enumerate(expected_values)
-    }
+    input_parameters = {str(i): in_val for i, (in_val, _expected_out) in enumerate(expected_values)}
     output_parameters = {
-        str(i): expected_out
-        for i, (_in_val, expected_out) in enumerate(expected_values)
+        str(i): expected_out for i, (_in_val, expected_out) in enumerate(expected_values)
     }
 
     assert output_parameters == resolve_variables(input_parameters, variables=variables)
@@ -98,12 +95,9 @@ def test_parameter_variable_expressions() -> None:
         ("%{bb / b * b}", 3),
     }
 
-    input_parameters = {
-        str(i): in_val for i, (in_val, _expected_out) in enumerate(expected_values)
-    }
+    input_parameters = {str(i): in_val for i, (in_val, _expected_out) in enumerate(expected_values)}
     output_parameters = {
-        str(i): expected_out
-        for i, (_in_val, expected_out) in enumerate(expected_values)
+        str(i): expected_out for i, (_in_val, expected_out) in enumerate(expected_values)
     }
 
     assert output_parameters == resolve_variables(input_parameters, variables=variables)
