@@ -78,6 +78,7 @@ def get_function_by_name_strongly_typed(
         Callabel for a provided function of the correct type
 
     """
+
     # allow "any" function because prior to pydantic validation we can't guarantee anything
     # so this function really should allow anything and handle the edge cases
     def typed_get_function_by_name(

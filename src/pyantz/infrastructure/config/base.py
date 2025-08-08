@@ -28,8 +28,8 @@ from pyantz.infrastructure.config.get_functions import (
 from pyantz.infrastructure.core.status import Status
 from pyantz.infrastructure.core.variables import is_variable
 
-from .submitters.local_submitter import LocalSubmitterConfig  #noqa: TC001
-from .submitters.slurm_submitter import SlurmBasicSubmitter  #noqa: TC001
+from .submitters.local_submitter import LocalSubmitterConfig  # noqa: TC001
+from .submitters.slurm_submitter import SlurmBasicSubmitter  # noqa: TC001
 
 type PrimitiveType = str | int | float | bool | None
 type AntzConfig = "Config | PipelineConfig | JobConfig | SubmitterJobConfig | MutableJobConfig"
@@ -125,7 +125,7 @@ class _AbstractJobConfig(BaseModel, frozen=True):
         if params_model is None:
             return self
 
-        if not issubclass(params_model, BaseModel): #  pyright: ignore[reportUnnecessaryIsInstance] # pylint: disable=line-too-long
+        if not issubclass(params_model, BaseModel):  #  pyright: ignore[reportUnnecessaryIsInstance] # pylint: disable=line-too-long
             msg = f"Invalid parameters mode for function {self.function.__name__}"
             raise TypeError(msg)
 

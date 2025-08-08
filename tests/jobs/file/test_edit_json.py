@@ -188,4 +188,3 @@ def test_nonexistent_json_errors_with_variable_path() -> None:
     )
 
     assert not os.path.exists(json_path)
-
