@@ -103,7 +103,7 @@ class LocalProc(mp.Process):
 
     def __init__(
         self,
-        task_queue: mp.Queue[dict[str, Any]],
+        task_queue: "mp.Queue[dict[str, Any]]",  # noqa: UP037
         logger_queue: "mp.Queue[logging.LogRecord]",  # noqa: UP037
     ) -> None:
         """Initialize the process with the universal job queue."""

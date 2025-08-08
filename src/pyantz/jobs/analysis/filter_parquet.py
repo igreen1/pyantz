@@ -61,7 +61,7 @@ def filter_parquet(
     params = _RuntimeParameters.model_validate(parameters)
 
     input_file_path = pathlib.Path(params.input_file)
-    lazy_frame: pl.LazyFrame = pl.scan_parquet(input_file_path)  # pyright: ignore[reportUnknownMemberType]
+    lazy_frame: pl.LazyFrame = pl.scan_parquet(input_file_path)  # pyright: ignore[reportUnknownMemberType] # pylint: disable=line-too-long
     columns: list[str] = lazy_frame.collect_schema().names()
 
     def get_as_col_if_possible[T](col_name: T) -> T | pl.Expr:
@@ -85,7 +85,7 @@ def filter_parquet(
     )
 
     try:
-        lazy_frame.filter(filters).sink_parquet(params.output_file)  # pyright: ignore[reportUnknownMemberType]
+        lazy_frame.filter(filters).sink_parquet(params.output_file)  # pyright: ignore[reportUnknownMemberType] # pylint: disable=line-too-long
     except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.exception("Unable to filter: ", exc_info=exc)
         return Status.ERROR

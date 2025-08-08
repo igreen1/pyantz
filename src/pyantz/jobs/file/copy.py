@@ -89,8 +89,7 @@ def _copy_file(copy_parameters: _RuntimeParameters, logger: logging.Logger) -> S
     except (SameFileError, SpecialFileError, IsADirectoryError, FileNotFoundError) as exc:
         logger.exception("Unexpected error! Cannot copy %s to %s", src, dst, exc_info=exc)
         return Status.ERROR
-    else:
-        return Status.SUCCESS
+    return Status.SUCCESS
 
 
 def _copy_dir(
@@ -120,5 +119,4 @@ def _copy_dir(
     except OSError as exc:
         logger.exception("Unable to copy %s to dir %s", src, dst, exc_info=exc)
         return Status.ERROR
-    else:
-        return Status.SUCCESS
+    return Status.SUCCESS

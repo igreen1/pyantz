@@ -238,7 +238,7 @@ class SqliteQueue:
             contents_query_result = sesh.execute(contents_query)
             if contents_query_result is None:  # pyright: ignore[reportUnnecessaryComparison]
                 raise queue.Empty
-            content_chunks = [row[0] for row in contents_query_result if row is not None]  # pyright: ignore[reportUnnecessaryComparison]
+            content_chunks = [row[0] for row in contents_query_result if row is not None]  # pyright: ignore[reportUnnecessaryComparison] # pylint: disable=line-too-long
             if len(content_chunks) == 0:
                 raise queue.Empty
             contents = "".join(content_chunks)

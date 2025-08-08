@@ -3,12 +3,13 @@
 import logging
 import os
 import pathlib
-import subprocess  # nosec
 
-from pydantic import BaseModel, DirectoryPath, FilePath
+from pydantic import BaseModel, DirectoryPath, FilePath, JsonValue
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
+
+from .run_command import run_command
 
 
 class Parameters(BaseModel, frozen=True):
@@ -63,35 +64,19 @@ def run_script(parameters: config_base.ParametersType, logger: logging.Logger) -
     if run_parameters.script_args is not None:
         cmd.extend(run_parameters.script_args)
 
-    try:
-        ret = subprocess.run(  # noqa: S603
-            cmd,
-            capture_output=True,
-            cwd=run_parameters.current_working_dir,
-            shell=False,
-            check=True,
-        )  # nosec
-        if run_parameters.stdout_save_file is not None:
-            stdout_save_file = pathlib.Path(run_parameters.stdout_save_file)
-            if not stdout_save_file.parent.exists():
-                logger.exception(
-                    "Cannot save to stdout file - parent doesn't exist %s", stdout_save_file
-                )
-                return Status.ERROR
-            with stdout_save_file.open("wb") as fh:
-                fh.write(ret.stdout)
-        if run_parameters.stderr_save_file is not None:
-            stderr_save_file = pathlib.Path(run_parameters.stderr_save_file)
-            if not stderr_save_file.parent.exists():
-                logger.exception(
-                    "Cannot save to stdout file - parent doesn't exist %s", stderr_save_file
-                )
-                return Status.ERROR
-            with stderr_save_file.open("wb") as fh:
-                fh.write(ret.stderr)
-    except subprocess.CalledProcessError as exc:
-        logger.exception("Unknown error in run_script", exc_info=exc)
-        # catch all errors because we don't know what will happen
-        return Status.ERROR
+    cwd: str | None = (
+        os.fspath(run_parameters.current_working_dir)
+        if run_parameters.current_working_dir is not None
+        else run_parameters.current_working_dir
+    )
 
-    return Status.SUCCESS
+    cmd_type_check: JsonValue = cmd  # type: ignore[assignment] # pyright: ignore[reportAssignmentType] # pylint: disable=line-too-long
+    return run_command(
+        {
+            "cmd": cmd_type_check,
+            "stdout_file": run_parameters.stdout_save_file,
+            "stderr_file": run_parameters.stderr_save_file,
+            "cwd": cwd,
+        },
+        logger,
+    )

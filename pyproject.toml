@@ -26,7 +26,7 @@ build-backend = "hatchling.build"
 profile = "black"
 
 [tool.pylint.main]
-disable = "W0401,W0614"
+disable = "W0401,W0614,R0903,R0913,R0917"
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -49,5 +49,4 @@ dev = [
     "pytest-cov>=6.0.0",
     "pytest-xdist>=3.6.1",
     "ruff>=0.9.9",
-    "ty>=0.0.1a17",
 ]

@@ -51,7 +51,7 @@ def run_command(parameters: config_base.ParametersType, logger: logging.Logger) 
             check=check,
         )  # nosec
 
-        if params_parsed.stdout_file is not None:
+        if params_parsed.stdout_file is not None:  # pylint: disable=duplicate-code
             stdout_save_file = pathlib.Path(params_parsed.stdout_file)
             if not stdout_save_file.parent.exists():
                 logger.exception(
@@ -60,7 +60,7 @@ def run_command(parameters: config_base.ParametersType, logger: logging.Logger) 
                 return Status.ERROR
             with stdout_save_file.open("wb") as fh:
                 fh.write(result.stdout)
-        if params_parsed.stderr_file is not None:
+        if params_parsed.stderr_file is not None:  # pylint: disable=duplicate-code
             stderr_save_file = pathlib.Path(params_parsed.stderr_file)
             if not stderr_save_file.parent.exists():
                 logger.exception(

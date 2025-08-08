@@ -4,7 +4,7 @@ import logging
 import os
 
 from pyantz.infrastructure.core.status import Status
-from pyantz.jobs.run_script import run_script
+from pyantz.jobs.dispatch.run_script import run_script
 
 logger = logging.getLogger("test")
 logger.setLevel(0)

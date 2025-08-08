@@ -64,7 +64,7 @@ def _recursive_resolve_variables(
     """Adjust variables in the values within a parameter dictionary."""
     if isinstance(parameters, list):
         # mypy doesn't understand that list[JsonValue] is just a JsonValue, so ignore return check
-        return [_recursive_resolve_variables(val, variables) for val in parameters]  # type: ignore[return-value]
+        return [_recursive_resolve_variables(val, variables) for val in parameters]  # type: ignore[return-value] # pylint: disable=line-too-long
     if isinstance(parameters, str):
         return _resolve_value(parameters, variables=variables)
     if isinstance(parameters, (int, float, bool)) or parameters is None:
@@ -274,7 +274,7 @@ def _resolve_variable_expression_recursive(
 
     """
     # shortcut allows variables with +,-,/,*
-    if variables is not None and variable_expression in variables:  # pyright: ignore[reportUnnecessaryComparison]
+    if variables is not None and variable_expression in variables:  # pyright: ignore[reportUnnecessaryComparison] # pylint: disable=line-too-long
         return variables[variable_expression]
 
     operations: list[tuple[str, Callable[[Any, Any], bool]]] = [

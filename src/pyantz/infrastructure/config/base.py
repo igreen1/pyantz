@@ -65,7 +65,15 @@ class WrappedSubmitterJobFunctionType(Protocol):
     __module__: str
     __name__: str
     __wrapped__: SubmitterJobFunctionType
-    __call__: SubmitterJobFunctionType
+
+    def __call__(
+        self,
+        parameters: ParametersType,
+        submit_fn: SubmitFunctionType,
+        variables: Mapping[str, PrimitiveType],
+        pipeline_config: "PipelineConfig",  # noqa: UP037
+        logger: logging.Logger,
+    ) -> Status: ...
 
 
 class WrappedMutableJobFunctionType(Protocol):
@@ -74,7 +82,13 @@ class WrappedMutableJobFunctionType(Protocol):
     __module__: str
     __name__: str
     __wrapped__: MutableJobFunctionType
-    __call__: SubmitterJobFunctionType
+
+    def __call__(
+        self,
+        parameters: ParametersType,
+        variables: Mapping[str, PrimitiveType],
+        logger: logging.Logger,
+    ) -> tuple[Status, Mapping[str, PrimitiveType]]: ...
 
 
 class WrappedJobFunctionType(Protocol):
@@ -83,7 +97,8 @@ class WrappedJobFunctionType(Protocol):
     __module__: str
     __name__: str
     __wrapped__: JobFunctionType
-    __call__: SubmitterJobFunctionType
+
+    def __call__(self, parameters: ParametersType, logger: logging.Logger) -> Status: ...
 
 
 class _AbstractJobConfig(BaseModel, frozen=True):
