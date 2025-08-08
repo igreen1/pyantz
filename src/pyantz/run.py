@@ -15,7 +15,7 @@ from pyantz.infrastructure.submitters.local import run_local_submitter
 from pyantz.infrastructure.submitters.slurm.basic_slurm import run_slurm_local
 
 
-def run(config: Mapping[str, Any]) -> None:
+def run(config: Mapping[str, Any] | InitialConfig) -> None:
     """Run the provided configuration.
 
     Calls the correct initial submitter and submits the first configuration

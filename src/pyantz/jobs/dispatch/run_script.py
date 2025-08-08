@@ -4,7 +4,7 @@ import logging
 import os
 import pathlib
 
-from pydantic import BaseModel, DirectoryPath, FilePath, JsonValue
+from pydantic import BaseModel, ConfigDict, DirectoryPath, FilePath, JsonValue
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -29,6 +29,8 @@ class _RuntimeParameters(BaseModel, frozen=True):
     The files may not exist at 'compilation', but they must exist
     when we run the job. So, this class is used at rutnime
     """
+
+    model_config = ConfigDict(coerce_numbers_to_str=True)
 
     script_path: FilePath
     script_args: list[str] | None = None

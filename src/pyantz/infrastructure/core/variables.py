@@ -32,9 +32,33 @@ def resolve_variables(
         ParametersType: the job with variables interpolated
 
     """
-    if parameters is None:
-        return None
-    if variables is None or variables == {}:
+    if parameters is None or variables is None or variables == {}:
+        return parameters
+
+    # eliminate any self-referencing in the variables
+    # variables is a sub-type of parameters types
+    # and _resolve_variables will return of the same form
+    # but type annotating that is insanely tough because JsonValue != PrimitiveType
+    variables = _resolve_variables(variables, variables)  # type: ignore[assignment]
+
+    return _resolve_variables(parameters, variables)
+
+
+def _resolve_variables(
+    parameters: "ParametersType",
+    variables: Mapping[str, "PrimitiveType"] | None,
+) -> "ParametersType":
+    """Return parameters with the variables replaced by their values from the provided scope.
+
+    Args:
+        parameters (ParametersType): ParametersType to a job
+        variables (Mapping[str, PrimitiveType]): variables in scope for that job
+
+    Returns:
+        ParametersType: the job with variables interpolated
+
+    """
+    if parameters is None or variables is None or variables == {}:
         return parameters
 
     return {
@@ -275,6 +299,7 @@ def _resolve_variable_expression_recursive(
     """
     # shortcut allows variables with +,-,/,*
     if variables is not None and variable_expression in variables:  # pyright: ignore[reportUnnecessaryComparison] # pylint: disable=line-too-long
+        # must check if our variable itself references other variables!
         return variables[variable_expression]
 
     operations: list[tuple[str, Callable[[Any, Any], bool]]] = [

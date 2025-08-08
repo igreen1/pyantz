@@ -4,7 +4,7 @@ import logging
 import pathlib
 import subprocess  # nosec
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -12,6 +12,8 @@ from pyantz.infrastructure.core.status import Status
 
 class Parameters(BaseModel, frozen=True):
     """The parameters required for the copy command."""
+
+    model_config = ConfigDict(coerce_numbers_to_str=True)
 
     cmd: list[str]
     environmental_variables: dict[str, str] | None = None

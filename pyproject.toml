@@ -32,6 +32,9 @@ disable = "W0401,W0614,R0903,R0913,R0917"
 select = ["ALL"]
 ignore = ["D203", "D213", "COM812"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101"]
+
 [tool.ruff]
 line-length = 100
 

@@ -3,7 +3,7 @@
 import logging
 import os
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
@@ -11,6 +11,8 @@ from pyantz.infrastructure.core.status import Status
 
 class Parameters(BaseModel, frozen=True):
     """See change variable docs."""
+
+    model_config = ConfigDict(coerce_numbers_to_str=True)
 
     environmental_variables: dict[str, str]
 

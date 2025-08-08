@@ -144,3 +144,11 @@ def test_nested_variable_resolution() -> None:
 
     output_dict = resolve_variables(input_dict, variables=variables)
     assert output_dict == expected_dict
+
+
+def test_variables_of_variables() -> None:
+    variables = {"a": 1, "b": "~%{a}.0"}
+
+    my_input = {"file_path": "%{b}"}
+
+    assert resolve_variables(my_input, variables) == {"file_path": "~1.0"}
