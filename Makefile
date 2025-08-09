@@ -20,3 +20,9 @@ build:
 
 sync:
 	uv sync --all-extras
+
+dev_server:
+	uv run pyantz-server --reload true
+
+prod_server:
+	uv run pyantz-server

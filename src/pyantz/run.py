@@ -14,6 +14,13 @@ from pyantz.infrastructure.config.base import InitialConfig
 from pyantz.infrastructure.submitters.local import run_local_submitter
 from pyantz.infrastructure.submitters.slurm.basic_slurm import run_slurm_local
 
+parser = argparse.ArgumentParser(prog="antz")
+parser.add_argument(
+    "--config",
+    "-c",
+    help="Path to the configuration of the entire analysis pipeline",
+    required=True,
+)
 
 def run(config: Mapping[str, Any] | InitialConfig) -> None:
     """Run the provided configuration.
@@ -32,15 +39,8 @@ def run(config: Mapping[str, Any] | InitialConfig) -> None:
         raise RuntimeError(msg)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(prog="antz")
-    parser.add_argument(
-        "--config",
-        "-c",
-        help="Path to the configuration of the entire analysis pipeline",
-        required=True,
-    )
-
+def run_cli() -> None:
+    """Run the pyantz runner from command line arguments."""
     args = parser.parse_args()
 
     try:
@@ -55,3 +55,7 @@ if __name__ == "__main__":
         raise
     else:
         run(_loaded_config)
+
+
+if __name__ == "__main__":
+    run_cli()
