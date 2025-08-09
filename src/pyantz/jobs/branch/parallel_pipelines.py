@@ -23,13 +23,13 @@ import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
-class ParallelPipelinesParameters(BaseModel, frozen=True):
+class Parameters(BaseModel, frozen=True):
     """See parallel pipelines docstring."""
 
     pipelines: list[config_base.PipelineConfig]
 
 
-@config_base.submitter_job(ParallelPipelinesParameters)
+@config_base.submitter_job(Parameters)
 def parallel_pipelines(
     parameters: config_base.ParametersType,
     submit_fn: config_base.SubmitFunctionType,
@@ -54,7 +54,7 @@ def parallel_pipelines(
         logger.error("Parallel pipeline requires parameters")
         return Status.ERROR
 
-    params_validated = ParallelPipelinesParameters.model_validate(parameters)
+    params_validated = Parameters.model_validate(parameters)
 
     logger.debug("Submitting %d new pipelines", len(params_validated.pipelines))
 

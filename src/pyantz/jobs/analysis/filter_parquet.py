@@ -24,7 +24,7 @@ type FilterType = list[
 ]
 
 
-class FilterParquetParameters(BaseModel, frozen=True):
+class Parameters(BaseModel, frozen=True):
     """Parameters for filter_parquet."""
 
     input_file: str
@@ -52,7 +52,7 @@ _operator_mapping: dict[str, Callable[..., bool]] = {
 }
 
 
-@config_base.simple_job(FilterParquetParameters)
+@config_base.simple_job(Parameters)
 def filter_parquet(
     parameters: config_base.ParametersType,
     logger: logging.Logger,  # pylint: disable=unused-argument

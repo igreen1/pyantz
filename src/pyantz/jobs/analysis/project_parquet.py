@@ -11,7 +11,7 @@ import pyantz.infrastructure.config.base as config_base
 from pyantz.infrastructure.core.status import Status
 
 
-class ProjectParquetParameters(BaseModel, frozen=True):
+class Parameters(BaseModel, frozen=True):
     """Parameters for filter_parquet."""
 
     input_file: str
@@ -30,7 +30,7 @@ class _RuntimeParameters(BaseModel, frozen=True):
     columns: Sequence[str]
 
 
-@config_base.simple_job(ProjectParquetParameters)
+@config_base.simple_job(Parameters)
 def filter_parquet(
     parameters: config_base.ParametersType,
     logger: logging.Logger,  # pylint: disable=unused-argument
