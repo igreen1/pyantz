@@ -44,18 +44,10 @@ def _resolve_var_any[T](
     """
     if isinstance(some_val, str):
         return _resolve_var_str(some_val, variables)  # type: ignore[return-value]
-    if isinstance(some_val, Iterable):
-        iter_cls: type[T] = type(some_val)  # type: ignore[assignment] # pyright: ignore[reportUnknownVariableType]
-        result: list[tuple[Any, bool]] = [
-            _resolve_var_any(i, variables) for i in cast("Iterable[Any]", some_val)
-        ]
-        some_val_variables_resolved, unmade_edits = tuple(zip(*result, strict=True))
-        unresolved_variables = any(unmade_edits)
-        return iter_cls(some_val_variables_resolved), unresolved_variables  # type: ignore[return-value,call-arg]
     if isinstance(some_val, Mapping):
         resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
-            k: _resolve_var_any(v, variables)
-            for k, v in some_val.items()  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
+            k: _resolve_var_any(v, variables) # pyright: ignore[reportUnknownArgumentType]
+            for k, v in some_val.items()  # pyright: ignore[reportUnknownVariableType]
         }
         resolved_variables = {
             k: v[0] for k, v in resolved_variables_and_var_flag.items()
@@ -64,6 +56,14 @@ def _resolve_var_any[T](
             v[1] for v in resolved_variables_and_var_flag.values()
         )
         return resolved_variables, remaining_variable_flag  # type: ignore[return-value]
+    if isinstance(some_val, Iterable):
+        iter_cls: type[T] = type(some_val)  # type: ignore[assignment] # pyright: ignore[reportUnknownVariableType]
+        result: list[tuple[Any, bool]] = [
+            _resolve_var_any(i, variables) for i in cast("Iterable[Any]", some_val)
+        ]
+        some_val_variables_resolved, unmade_edits = tuple(zip(*result, strict=True))
+        unresolved_variables = any(unmade_edits)
+        return iter_cls(some_val_variables_resolved), unresolved_variables  # type: ignore[return-value,call-arg]
     return some_val, False
 
 
@@ -81,8 +81,8 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
         start = match.start()
         end = match.end()
         substr = s[start:end]
-        if substr in variables:
-            s.replace(substr, variables[substr[2:-1]])
+        if substr[2:-1] in variables:
+            s = s.replace(substr, variables[substr[2:-1]])
         else:
             unmade_change = True
 

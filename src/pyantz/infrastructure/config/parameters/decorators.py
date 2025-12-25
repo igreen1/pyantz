@@ -17,6 +17,19 @@ if TYPE_CHECKING:
     )
 
 
+def no_submit_fn[T: (BaseModel | ParametersType)](
+    fn: Callable[[T], bool],
+) -> Callable[[T, SubmissionFnType], bool]:
+    """Wrap a function that doesn't want submit function."""
+
+    @wraps(fn)
+    def _ignore_submitter(params: T, _submit_fn: SubmissionFnType) -> bool:
+        """Wrap the function to allow the caller to pass submit function."""
+        return fn(params)
+
+    return _ignore_submitter
+
+
 def add_parameters[T: BaseModel](
     param_cls: type[T],
     *,

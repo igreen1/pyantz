@@ -14,6 +14,8 @@ def start(config: _InitialConfig[_AnyRunner]) -> None:
 
     This is a blocking operation if running locally.
     """
+    if not isinstance(config, _InitialConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
+        config = _InitialConfig.model_validate(config)
     if config.submitter.type_ == "local_proc":
         # start local runner
         _start_local(config)
