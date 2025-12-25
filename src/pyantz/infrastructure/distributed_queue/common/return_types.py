@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from pyantz.infrastructure.config.job import JobConfig
+from pyantz.infrastructure.config.job import JobWithContext
 
 
 class JobStatus(IntEnum):
@@ -88,7 +88,7 @@ class JobReturn(BaseModel):
     # faster/easier than an isinstance check
     type_: Literal["job"] = "job"
 
-    job: JobConfig
+    job: JobWithContext
 
 
 class GetJobReturn(BaseModel):
@@ -107,4 +107,3 @@ class GetJobReturn(BaseModel):
     # probably could've used rootmodel to avoid this wrapper
     # but this is easier to understand in my opinion
     payload: JobReturn | CompleteReturn | PendingReturn = Field(discriminator="type_")
-

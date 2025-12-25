@@ -1,0 +1,26 @@
+"""A local runner runs within the machine in multiple processes."""
+
+from typing import Literal
+
+from pydantic import BaseModel, DirectoryPath
+
+
+class LocalRunnerConfig(BaseModel):
+    """Configuration for the local runner."""
+
+    # used to find out which config is being used for serialiation
+    type_: Literal["local_proc"] = "local_proc"
+
+    # location to save temporary files and the queue
+    working_directory: DirectoryPath
+
+    # how long to wait between each check of the qeue
+    # used while actively pending
+    poll_timeout: float = 1.0
+
+    # how many processes to start
+    number_processes: int = 2
+
+    # if set, will timeout the runner if jobs are 
+    # not received in a certain time
+    timeout: float | None = None

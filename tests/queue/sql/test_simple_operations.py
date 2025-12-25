@@ -4,9 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from pyantz.infrastructure.config.job import JobConfig
+from pyantz.infrastructure.config.job import JobWithContext
 from pyantz.infrastructure.distributed_queue.common.return_types import JobStatus
-from pyantz.infrastructure.distributed_queue.sql.sql_queue import SqliteQueue, CHUNKSIZE
+from pyantz.infrastructure.distributed_queue.sql.sql_queue import CHUNKSIZE, SqliteQueue
 
 
 @pytest.fixture
@@ -19,7 +19,7 @@ def sqlite_queue(tmp_path: Path) -> SqliteQueue:
 
 def test_put_get_single_item(sqlite_queue: SqliteQueue) -> None:
     """Test putting and getting a single item from a queue."""
-    config = JobConfig(
+    config = JobWithContext(
         job_id="my_job",
         function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
         parameters={},
@@ -42,7 +42,7 @@ def test_put_get_single_item(sqlite_queue: SqliteQueue) -> None:
 
 def test_put_get_large_item(sqlite_queue: SqliteQueue) -> None:
     """Test putting and getting an item greater than one chunk."""
-    very_large_config = JobConfig(
+    very_large_config = JobWithContext(
         job_id="my_job",
         function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
         parameters={"my_ver_large_paramter": "char" * (CHUNKSIZE * 3)},
@@ -65,23 +65,23 @@ def test_put_get_large_item(sqlite_queue: SqliteQueue) -> None:
 
 def test_put_get_multiple_items(sqlite_queue: SqliteQueue) -> None:
     """Test putting and getting multiple items with no dependencies."""
-    configs: list[JobConfig] = [
-        JobConfig(
+    configs: list[JobWithContext] = [
+        JobWithContext(
             job_id="job1",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={"my_ver_large_paramter": "char" * (CHUNKSIZE * 3)},
         ),
-        JobConfig(
+        JobWithContext(
             job_id="job2",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={},
         ),
-        JobConfig(
+        JobWithContext(
             job_id="job3",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={},
         ),
-        JobConfig(
+        JobWithContext(
             job_id="job4",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={},
@@ -104,25 +104,25 @@ def test_put_get_multiple_items(sqlite_queue: SqliteQueue) -> None:
 
 def test_dependency_ordering(sqlite_queue: SqliteQueue) -> None:
     """Test using the queue with a dependency graph.."""
-    configs: list[JobConfig] = [
-        JobConfig(
+    configs: list[JobWithContext] = [
+        JobWithContext(
             job_id="job1",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={"my_ver_large_paramter": "char" * (CHUNKSIZE * 3)},
         ),
-        JobConfig(
+        JobWithContext(
             job_id="job2",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={},
             depends_on={"job1"},
         ),
-        JobConfig(
+        JobWithContext(
             job_id="job3",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={},
             depends_on={"job2"},
         ),
-        JobConfig(
+        JobWithContext(
             job_id="job4",
             function="pyantz.jobs.common.nop.do_nothing",  # type: ignore[arg-type]
             parameters={},

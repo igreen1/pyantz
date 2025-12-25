@@ -1,16 +1,25 @@
 """Configuration of the analysis overall."""
 
-from pydantic import BaseModel
+from collections.abc import Mapping
+from typing import Any
 
-from .pipeline import PipelineConfig
+from pydantic import BaseModel, Field
 
-class InitialConfig(BaseModel):
+from .job import JobConfig
+from .runners import LocalRunnerConfig
+
+type AnyRunner = LocalRunnerConfig
+
+
+class InitialConfig[S: (LocalRunnerConfig)](BaseModel):
     """Configuration of the overall system.
 
     Passed by the user and used to setup the system. This is the
     primary user configuration.
     """
 
-    pipeline: PipelineConfig
+    jobs: tuple[JobConfig]
 
-    submitter: dict[str, None] # TODO
+    submitter: S = Field(discriminator="type_")
+
+    variables: Mapping[str, Any] = Field(default_factory=dict)

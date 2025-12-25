@@ -18,7 +18,7 @@ import uuid
 from abc import abstractmethod
 from typing import Protocol
 
-from pyantz.infrastructure.config.job import JobConfig
+from pyantz.infrastructure.config.job import JobWithContext
 
 from .return_types import GetJobReturn, JobsReport, JobStatus
 
@@ -57,13 +57,13 @@ class QueueInterface(Protocol):
     @abstractmethod
     def add_job(
         self,
-        job_config: JobConfig,
+        job_config: JobWithContext,
         parent_job_id: str | uuid.UUID | None,
     ) -> bool:
         """Add the provided job to the queue.
 
         Args:
-            job_config (JobConfig): job to enqueue
+            job_config (JobWithContext): job to enqueue
             parent_job_id (str | uuid.UUID | None): jobs added inherit their parent
                 dependency "responsbilities". So a job submitting new jobs should pass
                 its own id to the function.
@@ -78,7 +78,7 @@ class QueueInterface(Protocol):
         """
 
     @abstractmethod
-    def change_config_in_place(self, job_config: JobConfig) -> None:
+    def change_config_in_place(self, job_config: JobWithContext) -> None:
         """Change the config of a job.
 
         In practice, this is used to restart jobs during error recovery.
@@ -89,7 +89,7 @@ class QueueInterface(Protocol):
         the job to be re-run.
 
         Args:
-            job_config (JobConfig): configuration to run
+            job_config (JobWithContext): configuration to run
 
         """
 

@@ -12,7 +12,7 @@ import sqlalchemy as sa
 import sqlalchemy.exc
 from sqlalchemy.orm import Session
 
-from pyantz.infrastructure.config.job import JobConfig
+from pyantz.infrastructure.config.job import JobWithContext
 from pyantz.infrastructure.distributed_queue.common.interface import QueueInterface
 from pyantz.infrastructure.distributed_queue.common.return_types import (
     CompleteReturn,
@@ -135,7 +135,7 @@ class SqliteQueue(QueueInterface):
         contents = "".join(content_row)
         sesh.commit()
 
-        job_config = JobConfig.model_validate_json(contents)
+        job_config = JobWithContext.model_validate_json(contents)
         return JobReturn(job=job_config)
 
     @staticmethod
@@ -315,13 +315,13 @@ class SqliteQueue(QueueInterface):
 
     def add_job(
         self,
-        job_config: JobConfig,
+        job_config: JobWithContext,
         parent_job_id: str | uuid.UUID | None,
     ) -> bool:
         """Add the provided job to the queue.
 
         Args:
-            job_config (JobConfig): job to enqueue
+            job_config (JobWithContext): job to enqueue
             parent_job_id (str | uuid.UUID | None): jobs added inherit their parent
                 dependency "responsbilities". So a job submitting new jobs should pass
                 its own id to the function.
@@ -394,7 +394,7 @@ class SqliteQueue(QueueInterface):
         self._update_job_statuses()
         return True
 
-    def change_config_in_place(self, job_config: JobConfig) -> None:
+    def change_config_in_place(self, job_config: JobWithContext) -> None:
         """Change the config of a job.
 
         In practice, this is used to restart jobs during error recovery.
@@ -405,7 +405,7 @@ class SqliteQueue(QueueInterface):
         the job to be re-run.
 
         Args:
-            job_config (JobConfig): configuration to run
+            job_config (JobWithContext): configuration to run
 
         """
         with Session(self._engine) as sesh:
