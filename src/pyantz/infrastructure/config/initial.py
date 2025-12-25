@@ -18,7 +18,7 @@ class InitialConfig[S: (LocalRunnerConfig)](BaseModel):
     primary user configuration.
     """
 
-    jobs: tuple[JobConfig]
+    jobs: tuple[JobConfig, ...]
 
     submitter: S = Field(discriminator="type_")
 

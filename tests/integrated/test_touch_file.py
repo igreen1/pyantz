@@ -1,8 +1,6 @@
 """Test touching a file."""
 
-import json
 import os
-import subprocess
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Final
