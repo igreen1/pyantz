@@ -48,6 +48,7 @@ def str_uuid4() -> str:
     """Return uuid4 as a string."""
     return str(uuid.uuid4())
 
+
 class JobConfig(BaseModel):
     """A job to be run."""
 

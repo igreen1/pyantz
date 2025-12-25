@@ -5,5 +5,5 @@ from typing import Any
 
 def do_nothing(*_: Any, **__: Any) -> bool:  # noqa: ANN401
     """Do nothing and return success."""
-    print("did nothing :)")
+    print("did nothing :)")  # noqa: T201
     return True

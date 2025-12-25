@@ -39,7 +39,10 @@ def check_config(
 def _check_params(job_config: JobConfig, *, strict: bool = False) -> bool:
     """Check the parameters of the job configuration."""
     if hasattr(job_config.function, "PYANTZ_VALIDATION_MODEL"):
-        model: BaseModel = job_config.function.PYANTZ_VALIDATION_MODEL  # pyright: ignore[reportFunctionMemberAccess]
+        model: BaseModel = cast(
+            "BaseModel",
+            job_config.function.PYANTZ_VALIDATION_MODEL,  # pyright: ignore[reportFunctionMemberAccess]
+        )
     else:
         return False  # cannot check
 

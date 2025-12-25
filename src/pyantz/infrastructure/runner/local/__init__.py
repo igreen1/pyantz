@@ -2,6 +2,4 @@
 
 from .local_runner import start
 
-__all__ = [
-    "start"
-]
+__all__ = ["start"]

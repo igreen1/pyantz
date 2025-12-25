@@ -21,6 +21,6 @@ class LocalRunnerConfig(BaseModel):
     # how many processes to start
     number_processes: int = 2
 
-    # if set, will timeout the runner if jobs are 
+    # if set, will timeout the runner if jobs are
     # not received in a certain time
     timeout: float | None = None

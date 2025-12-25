@@ -54,7 +54,8 @@ def _resolve_var_any[T](
         return iter_cls(some_val_variables_resolved), unresolved_variables  # type: ignore[return-value,call-arg]
     if isinstance(some_val, Mapping):
         resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
-            k: _resolve_var_any(v, variables) for k, v in some_val.items() # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
+            k: _resolve_var_any(v, variables)
+            for k, v in some_val.items()  # pyright: ignore[reportUnknownVariableType,reportUnknownArgumentType]
         }
         resolved_variables = {
             k: v[0] for k, v in resolved_variables_and_var_flag.items()
@@ -62,7 +63,7 @@ def _resolve_var_any[T](
         remaining_variable_flag = any(
             v[1] for v in resolved_variables_and_var_flag.values()
         )
-        return resolved_variables, remaining_variable_flag # type: ignore[return-value]
+        return resolved_variables, remaining_variable_flag  # type: ignore[return-value]
     return some_val, False
 
 
