@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from pyantz import start
+from pyantz.infrastructure.config import InitialConfig, LocalRunnerConfig
 
 MINIMAL_CONFIG: Final[dict[str, Any]] = {
     "jobs": [
@@ -39,9 +40,20 @@ def test_doing_nothing_cli(tmp_path: Path) -> None:
 
     subprocess.run(["python", "-m", "pyantz", os.fspath(config_path)], check=True)
 
+
 def test_doing_nothing_direct_call(tmp_path: Path) -> None:
     """Test running through an imported function."""
     config = deepcopy(MINIMAL_CONFIG)
     config["submitter"]["working_directory"] = os.fspath(tmp_path)
 
-    start(config) # type: ignore[arg-type]
+    start(config)  # type: ignore[arg-type]
+
+
+def test_direct_call_with_validated_model(tmp_path: Path) -> None:
+    """Test running through an imported function."""
+    config = deepcopy(MINIMAL_CONFIG)
+    config["submitter"]["working_directory"] = os.fspath(tmp_path)
+
+    loaded_config = InitialConfig[LocalRunnerConfig].model_validate(config)
+
+    start(loaded_config)

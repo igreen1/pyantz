@@ -47,7 +47,7 @@ def _resolve_var_any[T](
     if isinstance(some_val, Mapping):
         resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
             k: _resolve_var_any(v, variables) # pyright: ignore[reportUnknownArgumentType]
-            for k, v in some_val.items()  # pyright: ignore[reportUnknownVariableType]
+            for k, v in cast("dict[str, Any]", some_val).items()  # pyright: ignore[reportUnknownVariableType]
         }
         resolved_variables = {
             k: v[0] for k, v in resolved_variables_and_var_flag.items()

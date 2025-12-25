@@ -17,11 +17,11 @@ def start(config: _InitialConfig[_AnyRunner] | Mapping[str, _Any]) -> None:
 
     This is a blocking operation if running locally.
     """
-    if not isinstance(config, _InitialConfig):  # pyright: ignore[reportUnnecessaryIsInstance]
-        config = _InitialConfig[_AnyRunner].model_validate(config)
-    if config.submitter.type_ == "local_proc":
+    # if not loaded, check it
+    loaded_config = _InitialConfig[_AnyRunner].model_validate(config)
+    if loaded_config.submitter.type_ == "local_proc":
         # start local runner
-        _start_local(config)
+        _start_local(loaded_config)
     else:
         raise ValueError
 
