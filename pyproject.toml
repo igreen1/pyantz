@@ -1,10 +1,10 @@
 [project]
 name = "pyantz"
 version = "0.1.0"
-description = "Add your description here"
+description = "Job runner for small projects"
 readme = "README.md"
 authors = [
-    { name = "igreen1", email = "iangreen2.00@gmail.com" }
+    { name = "igreen1", email = "pyantz@iangreen.dev" }
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -22,6 +22,9 @@ select = ["ALL"]
 ignore = ["D203", "D213", "COM812"]
 
 [dependency-groups]
+api = [
+    "fastapi[standard]>=0.127.0",
+]
 dev = [
     "mypy>=1.17.1",
     "pylint>=4.0.4",
