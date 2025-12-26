@@ -9,7 +9,7 @@ from pyantz import start
 MINIMAL_CONFIG: Final[dict[str, Any]] = {
     "jobs": [
         {
-            "function": "pyantz.jobs.common.touch_file.touch_file",
+            "function": "pyantz.jobs.testing.touch_file.touch_file",
             "parameters": {"path": "%{FILE_PATH}"},
         }
     ],
@@ -26,7 +26,7 @@ def test_pipeline_successful(tmp_path: Path) -> None:
         "jobs": [
             {
                 "job_id": "job1",
-                "function": "pyantz.jobs.common.touch_file.touch_file",
+                "function": "pyantz.jobs.testing.touch_file.touch_file",
                 "parameters": {
                     "path": "%{FILE_PATH}"
                 },
@@ -34,7 +34,7 @@ def test_pipeline_successful(tmp_path: Path) -> None:
             {
                 "job_id": "job2",
                 "depends_on": ["job1"],
-                "function": "pyantz.jobs.common.touch_file.touch_file",
+                "function": "pyantz.jobs.testing.touch_file.touch_file",
                 "parameters": {
                     "path": "%{TMP_DIR}/another_file.txt"
                 }
@@ -60,7 +60,7 @@ def test_pipeline_failure(tmp_path: Path) -> None:
         "jobs": [
             {
                 "job_id": "job1",
-                "function": "pyantz.jobs.common.touch_file.touch_file",
+                "function": "pyantz.jobs.testing.touch_file.touch_file",
                 "parameters": {
                     "path": "%{FILE_PATH}",
                     "exist_ok": False, # used to induce failure
@@ -69,7 +69,7 @@ def test_pipeline_failure(tmp_path: Path) -> None:
             {
                 "job_id": "job2",
                 "depends_on": ["job1"],
-                "function": "pyantz.jobs.common.touch_file.touch_file",
+                "function": "pyantz.jobs.testing.touch_file.touch_file",
                 "parameters": {
                     "path": "%{TMP_DIR}/another_file.txt"
                 }
@@ -98,7 +98,7 @@ def test_pipeline_failure_no_deps(tmp_path: Path) -> None:
         "jobs": [
             {
                 "job_id": "job1",
-                "function": "pyantz.jobs.common.touch_file.touch_file",
+                "function": "pyantz.jobs.testing.touch_file.touch_file",
                 "parameters": {
                     "path": "%{FILE_PATH}",
                     "exist_ok": False, # used to induce failure
@@ -106,7 +106,7 @@ def test_pipeline_failure_no_deps(tmp_path: Path) -> None:
             },
             {
                 "job_id": "job2",
-                "function": "pyantz.jobs.common.touch_file.touch_file",
+                "function": "pyantz.jobs.testing.touch_file.touch_file",
                 "parameters": {
                     "path": "%{TMP_DIR}/another_file.txt"
                 }

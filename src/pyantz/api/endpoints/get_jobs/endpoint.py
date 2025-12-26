@@ -1,0 +1,20 @@
+"""Get the jobs as a list for the user."""
+
+from fastapi import APIRouter
+
+# import jobs so that they are all imported/registered
+import pyantz.jobs  # pyright: ignore[reportUnusedImport] # noqa: F401
+from pyantz.infrastructure.config.job import serialize_function
+from pyantz.infrastructure.config.parameters.decorators import get_registered_functions
+
+from .models import GetJobReponse
+
+router = APIRouter(prefix="/jobs")
+
+
+@router.get("/get_all_jobs")
+def get_jobs() -> GetJobReponse:
+    """Get list of all the available jobs."""
+    all_fn = get_registered_functions()
+
+    return GetJobReponse(pyantz_jobs=[serialize_function(fn) for fn in all_fn])

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 import uuid
 from collections.abc import Callable, Mapping
 from typing import Annotated, Any, Self
@@ -15,6 +14,7 @@ from pydantic import (
     model_validator,
 )
 
+from .fn_utils import import_function_by_name, serialize_function
 from .parameters.compile_check import check_config
 
 """Jobs can use the passed function to create children jobs.
@@ -29,19 +29,6 @@ type ParametersType = Mapping[str, Any]
 They return True if they were successful; False otherwise.
 """
 type JobFunctionType = Callable[[ParametersType, SubmissionFnType], bool]
-
-
-def _import_function_by_name(fn_path: Any) -> JobFunctionType:  # noqa: ANN401
-    """Import a function by its name."""
-    if not isinstance(fn_path, str):
-        return fn_path
-
-    name_components = fn_path.split(".")
-    mod_name = ".".join(name_components[:-1])
-    fn_name = name_components[-1]
-
-    mod = importlib.import_module(mod_name)
-    return getattr(mod, fn_name)
 
 
 def str_uuid4() -> str:
@@ -63,7 +50,7 @@ class JobConfig(BaseModel):
     name: str | None = None
 
     # function to actually run for this job
-    function: Annotated[JobFunctionType, BeforeValidator(_import_function_by_name)]
+    function: Annotated[JobFunctionType, BeforeValidator(import_function_by_name)]
 
     # parameters to pass to the job while it's running
     parameters: Mapping[str, Any]
@@ -83,11 +70,9 @@ class JobConfig(BaseModel):
         return self
 
     @field_serializer("function")
-    def serialize_function(self, fn: JobFunctionType) -> str:
+    def serialize_job_function(self, fn: JobFunctionType) -> str:
         """Serialize the fucntion."""
-        mod_name: str = fn.__module__ if hasattr(fn, "__module__") else "anonymous"
-        fn_name: str = str(fn.__name__) if hasattr(fn, "__name__") else "some_fn"
-        return mod_name + "." + fn_name
+        return serialize_function(fn)
 
 
 class JobWithContext(JobConfig):

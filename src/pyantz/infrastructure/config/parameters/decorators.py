@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from pydantic import BaseModel
+
+from pyantz.infrastructure.config.fn_utils import serialize_function
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
         ParametersType,
         SubmissionFnType,
     )
+
+PYANTZ_REGISTERED_FUNCTION: Final[list[JobFunctionType]] = []
 
 
 def no_submit_fn[T: (BaseModel | ParametersType)](
@@ -30,12 +34,25 @@ def no_submit_fn[T: (BaseModel | ParametersType)](
     return _ignore_submitter
 
 
+def get_registered_functions(fn_name: str | None = None) -> list[JobFunctionType]:
+    """Get all the functions which have used the `add_parameters` decorator."""
+    if fn_name is None:
+        return PYANTZ_REGISTERED_FUNCTION
+    for fn in PYANTZ_REGISTERED_FUNCTION:
+        registered_name = fn.PYANTZ_NAME # type: ignore[attr-defined]
+        if registered_name.endswith(fn_name):
+            return [fn]
+    return []
+
+
 def add_parameters[T: BaseModel](
     param_cls: type[T],
     *,
     check_at_startup: bool = False,
 ) -> Callable[[Callable[[T, SubmissionFnType], bool]], JobFunctionType]:
     """Use the provided pydantic model to type check the parameters.
+
+    Also registers the functions in a global static function list for the API
 
     At runtime, it will cast the parameters to the provided parameter class and
     pass that pydantic model to the wrapped function. Useful to enforce
@@ -66,6 +83,9 @@ def add_parameters[T: BaseModel](
         _fn_with_checker.PYANTZ_CHECKED = True  # type: ignore[attr-defined]
         _fn_with_checker.PYANTZ_CHECK_AT_STARTUP = check_at_startup  # type: ignore[attr-defined]
         _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]
+        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker) # type: ignore[attr-defined]
+
+        PYANTZ_REGISTERED_FUNCTION.append(_fn_with_checker)
 
         return _fn_with_checker
 

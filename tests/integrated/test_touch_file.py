@@ -10,7 +10,7 @@ from pyantz import start
 MINIMAL_CONFIG: Final[dict[str, Any]] = {
     "jobs": [
         {
-            "function": "pyantz.jobs.common.touch_file.touch_file",
+            "function": "pyantz.jobs.testing.touch_file",
             "parameters": {"path": "%{FILE_PATH}"},
         }
     ],

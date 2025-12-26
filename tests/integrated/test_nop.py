@@ -16,7 +16,7 @@ from pyantz.infrastructure.config import InitialConfig, LocalRunnerConfig
 MINIMAL_CONFIG: Final[dict[str, Any]] = {
     "jobs": [
         {
-            "function": "pyantz.jobs.common.nop.do_nothing",
+            "function": "pyantz.jobs.testing.nop.do_nothing",
             "parameters": {
                 "hello": "there",
                 "general": "kenobi",
