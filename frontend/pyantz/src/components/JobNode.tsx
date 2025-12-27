@@ -1,3 +1,6 @@
+/**
+ * AI SLOP to create
+ */
 import { useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { useAppDispatch } from '../store/hooks';
