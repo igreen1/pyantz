@@ -17,4 +17,12 @@ def get_jobs() -> GetJobReponse:
     """Get list of all the available jobs."""
     all_fn = get_registered_functions()
 
-    return GetJobReponse(pyantz_jobs=[serialize_function(fn) for fn in all_fn])
+    fn_docstrings = [
+        fn.__doc__ if fn.__doc__ is not None else "No description available."
+        for fn in all_fn
+    ]
+
+    return GetJobReponse(
+        pyantz_jobs=[serialize_function(fn) for fn in all_fn],
+        pyantz_job_descriptions=fn_docstrings,
+    )
