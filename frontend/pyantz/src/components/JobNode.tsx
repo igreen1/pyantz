@@ -7,6 +7,7 @@ import { useAppDispatch } from '../store/hooks';
 import { updateJob } from '../store/jobs/currentPipeline';
 import { type Job } from '../store/jobs/currentPipeline';
 import './JobNode.css';
+import { FloatingJobParameterEditor } from './JobParameterEditor';
 
 interface JobNodeProps {
   data: {
@@ -50,6 +51,44 @@ export default function JobNode({ data }: JobNodeProps) {
     setEditingField(null);
     setEditValue('');
   };
+
+  const renderParameterField = (label: string, field: string, value: unknown) => {
+    const isEditing = editingField === field;
+    const displayValue = Array.isArray(value) ? value.join(', ') : 
+                         typeof value === 'object' ? JSON.stringify(value) : 
+                         String(value);
+
+    return (
+      <div key={field} className="job-field">
+        <span className="job-field-label">{label}:</span>
+        {isEditing ? (
+          <FloatingJobParameterEditor 
+            job_id={data.job.job_id ?? "unknown"}
+            toggleShowEditor={
+              () => {
+                setEditingField(null);
+              }
+            }
+            setValue={(newValue: object) => {
+              console.log("Form submission:", newValue);
+              handleFieldChange(field, newValue);
+              setEditingField(null);
+              setEditValue('');
+            }}
+          />
+        ) : (
+          <span
+            className="job-field-value"
+            onDoubleClick={() => startEditing(field, value)}
+            title={displayValue}
+          >
+            {displayValue}
+          </span>
+        )}
+      </div>
+    );
+  };
+
 
   const renderField = (label: string, field: string, value: unknown) => {
     const isEditing = editingField === field;
@@ -101,7 +140,7 @@ export default function JobNode({ data }: JobNodeProps) {
           {renderField('Name', 'name', data.job.name)}
           {renderField('Function', 'function_name', data.job.function_name)}
           {renderField('Depends On', 'depends_on', data.job.depends_on)}
-          {renderField('Parameters', 'parameters', data.job.parameters)}
+          {renderParameterField('Parameters', 'parameters', data.job.parameters)}
           {renderField('Attempted Runs', 'num_attempted_runs', data.job.num_attempted_runs)}
           {renderField('Strict', 'strict', data.job.strict)}
         </div>

@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
+    "@rjsf/core": "^6.1.2",
+    "@rjsf/utils": "^6.1.2",
+    "@rjsf/validator-ajv8": "^6.1.2",
     "@types/json-schema": "^7.0.15",
     "@xyflow/react": "^12.10.0",
     "axios": "^1.13.2",
