@@ -8,12 +8,14 @@ import api from '../../services/api'
 
 interface AvailableJobsState {
   items: string[]
+  descriptions: string[]
   status: 'idle' | 'loading' | 'succeeded' | 'failed'
   error: string | null
 }
 
 const initialState: AvailableJobsState = {
   items: [],
+  descriptions: [],
   status: 'idle',
   error: null,
 }
@@ -29,8 +31,9 @@ export const availableJobSlice = createSlice({
         state.status = 'loading'
         state.error = null
       })
-      .addCase(fetchAvailableJobs.fulfilled, (state, action: PayloadAction<string[]>) => {
-        state.items = action.payload
+      .addCase(fetchAvailableJobs.fulfilled, (state, action: PayloadAction<{items: string[], descriptions: string[]}>) => {
+        state.items = action.payload.items
+        state.descriptions = action.payload.descriptions
         state.status = 'succeeded'
         state.error = null
       })
@@ -48,7 +51,7 @@ export const fetchAvailableJobs = createAsyncThunk(
   'availableJobs/fetchAvailableJobs',
   async () => {
     const response = await api.get('/api/v1.0/jobs/get_all_jobs')
-    return response.data.pyantz_jobs as string[]
+    return {items: response.data.pyantz_jobs as string[], descriptions: response.data.pyantz_job_descriptions as string[]}
   }
 )
 
