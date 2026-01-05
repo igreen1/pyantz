@@ -7,7 +7,7 @@
 import { useAppSelector } from "../store/hooks";
 import Form from "@rjsf/core";
 import validator from "@rjsf/validator-ajv8";
-import { FaCross } from "react-icons/fa6";
+import "./JobParameterEditor.css";
 
 export interface IJobParameterEditorProps {
   job_id: string;
@@ -17,8 +17,16 @@ export interface IJobParameterEditorProps {
 
 export const FloatingJobParameterEditor = (props: IJobParameterEditorProps) => {
   return (
-    <div className="floating-editor">
-      <FaCross size={36} onClick={props.toggleShowEditor} />
+    <div
+      className="floating-editor"
+      style={{
+        // position: "absolute",
+        top: "20%",
+        left: "30%",
+        zIndex: 1000,
+        backgroundColor: "#283F3B",
+      }}
+    >
       <JobParameterEditorForm
         job_id={props.job_id}
         toggleShowEditor={props.toggleShowEditor}
@@ -31,10 +39,10 @@ export const FloatingJobParameterEditor = (props: IJobParameterEditorProps) => {
 export const JobParameterEditorForm = (props: IJobParameterEditorProps) => {
   // grab the job
 
-  // TODO: get current parameters to populate the form with existing values
-
+  // get current parameters to populate the form with existing values
   const currentPipeline = useAppSelector((state) => state.currentPipeline);
   const job = currentPipeline?.jobs.find((j) => j.job_id === props.job_id);
+  const initialParameters = job?.parameters || {};
 
   // grab the schema of the job if it is available
   const allSchemas = useAppSelector((state) => state.jobSchemas);
@@ -47,15 +55,16 @@ export const JobParameterEditorForm = (props: IJobParameterEditorProps) => {
   }
 
   return (
-    <div>
+    <div className="no-border-form">
       <Form
         schema={jobSchema || { type: "object", properties: {} }}
+        formData={initialParameters}
         validator={validator}
         onSubmit={(e) => {
-                props.setValue(e.formData);
-                props.toggleShowEditor();
-              }
-        }
+          props.setValue(e.formData);
+          props.toggleShowEditor();
+        }}
+        className="no-border-form"
       />
     </div>
   );

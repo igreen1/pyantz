@@ -1,15 +1,19 @@
 .job-node {
-  background: #6366f1;
-  border: 2px solid #4f46e5;
-  border-radius: 8px;
+  background: #556F44;
+  /* border: 2px solid #556F44;
+  border-radius: 8px; */
   padding: 0;
   min-width: 200px;
   font-size: 12px;
   color: white;
+  /* -webkit-text-stroke-width: 0.01px; Outline width */
+  -webkit-text-stroke-color: black; /* Outline color */
+  /* Fallback/alternative using text-shadow for better compatibility */
+  text-shadow: -0.1px -0.1px 0 #000, 0.1px -0.1px 0 #000, -0.1px 0.1px 0 #000, 0.1px 0.1px 0 #000;
 }
 
 .job-node.expanded {
-  background: #6366f1;
+  background: #556F44;
   min-width: 350px;
 }
 
@@ -49,7 +53,7 @@
   margin-bottom: 8px;
   padding: 6px;
   background: rgba(0, 0, 0, 0.1);
-  border-radius: 4px;
+  /* border-radius: 4px; */
 }
 
 .job-field-label {
@@ -64,7 +68,7 @@
   cursor: pointer;
   padding: 4px 6px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  /* border-radius: 3px; */
   word-break: break-word;
   font-size: 11px;
   transition: background 0.2s;
@@ -78,8 +82,8 @@
   padding: 4px 6px;
   background: white;
   color: black;
-  border: 1px solid #4f46e5;
-  border-radius: 3px;
+  /* border: 1px solid #659B5E;
+  border-radius: 3px; */
   font-size: 11px;
   font-family: inherit;
   font-weight: normal;
@@ -87,6 +91,6 @@
 
 .job-field-input:focus {
   outline: none;
-  border-color: #818cf8;
+  /* border-color: #659B5E; */
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
 }
