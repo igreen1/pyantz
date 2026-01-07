@@ -1,7 +1,7 @@
 /**
  * AI SLOP to create
  */
-import { useState, type JSX } from "react";
+import { useState } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { useAppDispatch } from "../store/hooks";
 import { updateJob } from "../store/jobs/currentPipeline";
@@ -168,19 +168,8 @@ export default function JobNode({ data }: JobNodeProps) {
       {isExpanded && (
         <div className="job-node-details">
 
-          <div key="function_name" className="job-field">
-            {
-              editingField  === "function_name"
-              ? ()
-              : (
-                <span></span>
-              )
-            }
-          </div>
-
           {renderField("Function", "function_name", data.job.function_name)}
           {renderField("Depends On", "depends_on", data.job.depends_on)}
-          {renderField("Strict", "strict", data.job.strict)}
           {renderParameterField(
             "Parameters",
 
