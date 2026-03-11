@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
     from pyantz.infrastructure.config.job import JobFunctionType
 
+
 def serialize_function(fn: Callable[..., Any]) -> str:
     """Serialize the function so that others can import it dynamically."""
     mod_name: str = fn.__module__ if hasattr(fn, "__module__") else "anonymous"

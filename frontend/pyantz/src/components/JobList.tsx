@@ -45,6 +45,19 @@ export const JobList = () => {
     return arr1.map((k, i) => [k, arr2[i]]);
   };
 
+  const defaultJob = "AnyJob";
+  const defaultJobDescription = "Point to your own job!";
+
+  const availableJobsWithDefault = [
+    defaultJob,
+    ...availableJobs
+  ]
+
+  const jobDescriptionsWithDefault = [
+    defaultJobDescription,
+    ...jobDescriptions
+  ]
+
   return (
     <div style={{ border: "2px solid black", height: "100%" }}>
       <h2>Available Jobs</h2>
@@ -58,7 +71,7 @@ export const JobList = () => {
             overflowY: "auto",
           }}
         >
-          {zip(availableJobs, jobDescriptions).map(
+          {zip(availableJobsWithDefault, jobDescriptionsWithDefault).map(
             ([jobName, jobDescription]) => (
               <li
                 key={jobName as string}

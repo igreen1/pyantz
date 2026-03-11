@@ -36,15 +36,19 @@ def check_config(
     return True
 
 
+def get_params(job: JobConfig) -> type[BaseModel] | None:
+    """Retrieve parameters attached to the job function, if any registered."""
+    if hasattr(job.function, "PYANTZ_VALIDATION_MODEL"):
+        return cast(
+            "type[BaseModel]",
+            job.function.PYANTZ_VALIDATION_MODEL,  # pyright: ignore[reportFunctionMemberAccess]
+        )
+    return None
+
 def _check_params(job_config: JobConfig, *, strict: bool = False) -> bool:
     """Check the parameters of the job configuration."""
-    if hasattr(job_config.function, "PYANTZ_VALIDATION_MODEL"):
-        model: BaseModel = cast(
-            "BaseModel",
-            job_config.function.PYANTZ_VALIDATION_MODEL,  # pyright: ignore[reportFunctionMemberAccess]
-        )
-    else:
-        return False  # cannot check
+    if (model := get_params(job_config)) is None:
+        return False
 
     parameters = job_config.parameters
     unresolved_variables = False

@@ -2,11 +2,13 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, DirectoryPath
+from pydantic import BaseModel, ConfigDict, DirectoryPath
 
 
 class LocalRunnerConfig(BaseModel):
     """Configuration for the local runner."""
+
+    model_config = ConfigDict(frozen=True)
 
     # used to find out which config is being used for serialiation
     type_: Literal["local_proc"] = "local_proc"

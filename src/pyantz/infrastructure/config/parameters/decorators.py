@@ -39,7 +39,7 @@ def get_registered_functions(fn_name: str | None = None) -> list[JobFunctionType
     if fn_name is None:
         return PYANTZ_REGISTERED_FUNCTION
     for fn in PYANTZ_REGISTERED_FUNCTION:
-        registered_name = fn.PYANTZ_NAME # type: ignore[attr-defined]
+        registered_name = fn.PYANTZ_NAME  # type: ignore[attr-defined]
         if registered_name.endswith(fn_name):
             return [fn]
     return []
@@ -83,7 +83,7 @@ def add_parameters[T: BaseModel](
         _fn_with_checker.PYANTZ_CHECKED = True  # type: ignore[attr-defined]
         _fn_with_checker.PYANTZ_CHECK_AT_STARTUP = check_at_startup  # type: ignore[attr-defined]
         _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]
-        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker) # type: ignore[attr-defined]
+        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker)  # type: ignore[attr-defined]
 
         PYANTZ_REGISTERED_FUNCTION.append(_fn_with_checker)
 

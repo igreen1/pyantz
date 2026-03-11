@@ -11,4 +11,3 @@ class GetJsonSchemaResponse(BaseModel):
 
     # json schema for that function
     json_schema: JsonValue
-

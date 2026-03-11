@@ -56,11 +56,9 @@ def run_job(
         to_submit_with_context = to_submit_with_context.model_copy(
             update={
                 "variables": {
-                    **(job_config.variables if job_config.variables else {}),
+                    **(job_config.variables or {}),
                     **(
-                        to_submit_with_context.variables
-                        if to_submit_with_context.variables
-                        else {}
+                        to_submit_with_context.variables or {}
                     ),
                 },
             },

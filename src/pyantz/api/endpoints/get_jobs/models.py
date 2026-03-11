@@ -17,7 +17,5 @@ class GetJobReponse(BaseModel):
         """Ensure that the lengths of the two lists are the same."""
         if len(self.pyantz_jobs) != len(self.pyantz_job_descriptions):
             msg = "The lengths of pyantz_jobs and pyantz_job_descriptions must be same."
-            raise ValueError(
-                msg
-            )
+            raise ValueError(msg)
         return self

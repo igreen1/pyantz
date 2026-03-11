@@ -6,12 +6,12 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from .job import JobConfig
-from .runners import LocalRunnerConfig
+from .runners import LocalRunnerConfig, SlurmRunnerConfig
 
 type AnyRunner = LocalRunnerConfig
 
 
-class InitialConfig[S: (LocalRunnerConfig)](BaseModel):
+class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
     """Configuration of the overall system.
 
     Passed by the user and used to setup the system. This is the

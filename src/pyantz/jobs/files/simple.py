@@ -47,7 +47,6 @@ def move(params: MoveParams) -> bool:
     return True
 
 
-
 class DeleteParams(BaseModel):
     """Parameters to define what to delete."""
 

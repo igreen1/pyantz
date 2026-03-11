@@ -44,7 +44,7 @@ class JobConfig(BaseModel):
     job_id: str = Field(default_factory=str_uuid4)
 
     # the jobs upon which this one depends before it can be run
-    depends_on: set[uuid.UUID | str] | None = None
+    depends_on: set[str] | None = None
 
     # human readable name for this job
     name: str | None = None
