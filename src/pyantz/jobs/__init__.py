@@ -1,8 +1,12 @@
 """Jobs useful in pyantz."""
 
-from . import files, testing
+from . import analysis, branching, files, subproc, testing, wrappers
 
 __all__ = [
+    "analysis",
+    "branching",
     "files",
+    "subproc",
     "testing",
+    "wrappers",
 ]

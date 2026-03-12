@@ -12,8 +12,7 @@ from pyantz.infrastructure.config import JobWithContext
 from pyantz.infrastructure.config.variables import resolve_parameters
 
 if TYPE_CHECKING:
-    from pyantz.infrastructure.config import JobConfig
-
+    from pyantz.infrastructure.config import JobConfig, SubmissionFnType
 
 type SubmissionFnWithParentType = Callable[
     [
@@ -33,16 +32,6 @@ def run_job(
     """Run the provided job and resolve variables in its parameters."""
     logger = logging.getLogger(__name__)
     logger.debug("Starting running %s", job_config)
-
-    # resolve parameters
-    if job_config.variables:
-        parameters, _unresolved_vars = resolve_parameters(
-            job_parameters=job_config.parameters,
-            variables=job_config.variables,
-        )
-    else:
-        parameters = job_config.parameters
-        logger.debug("No variables, parameters: %s", parameters)
 
     def _wrapped_submitter(to_submit: JobConfig) -> None:
         """Submit the job.
@@ -69,11 +58,35 @@ def run_job(
         # now, submit with parent id from caller job
         submitter_fn(to_submit_with_context, job_config.job_id)
 
+    return run_job_no_parent_wrapper(
+        job_config=job_config,
+        wrapped_submit_fn=_wrapped_submitter,
+    )
+
+
+def run_job_no_parent_wrapper(
+    job_config: JobWithContext,
+    wrapped_submit_fn: SubmissionFnType,
+) -> bool:
+    """Run the provided job and resolve variables in its parameters."""
+    logger = logging.getLogger(__name__)
+    logger.debug("Starting running %s", job_config)
+
+    # resolve parameters
+    if job_config.variables:
+        parameters, _unresolved_vars = resolve_parameters(
+            job_parameters=job_config.parameters,
+            variables=job_config.variables,
+        )
+    else:
+        parameters = job_config.parameters
+        logger.debug("No variables, parameters: %s", parameters)
+
     try:
         logger.info("Running job %s", job_config.job_id)
         # mypy hasn't updated properly to 3.14
         with JobVariables.set(job_config.variables):  # type: ignore[attr-defined]
-            result = job_config.function(parameters, _wrapped_submitter)
+            result = job_config.function(parameters, wrapped_submit_fn)
         logger.debug("Job (%s) returned result %s", result, job_config.job_id)
     except Exception as exc:
         logger.exception(

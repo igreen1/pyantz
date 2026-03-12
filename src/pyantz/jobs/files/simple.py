@@ -3,13 +3,15 @@
 import shutil
 from pathlib import Path
 
-from pydantic import BaseModel, DirectoryPath, FilePath
+from pydantic import BaseModel, ConfigDict, DirectoryPath, FilePath
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 
 
 class CopyParams(BaseModel):
     """Parameters to copy file."""
+
+    model_config = ConfigDict(frozen=True)
 
     # source file to copy over
     src: FilePath | DirectoryPath
@@ -32,6 +34,8 @@ def copy(params: CopyParams) -> bool:
 class MoveParams(BaseModel):
     """Parameters to copy file."""
 
+    model_config = ConfigDict(frozen=True)
+
     # source file to move over
     src: FilePath | DirectoryPath
 
@@ -49,6 +53,8 @@ def move(params: MoveParams) -> bool:
 
 class DeleteParams(BaseModel):
     """Parameters to define what to delete."""
+
+    model_config = ConfigDict(frozen=True)
 
     # location to delete
     path: FilePath | DirectoryPath
@@ -74,6 +80,8 @@ def delete(params: DeleteParams) -> bool:
 class CreateFileParams(BaseModel):
     """Required inputs to create a file."""
 
+    model_config = ConfigDict(frozen=True)
+
     # path to the file to create
     path: Path
 
@@ -95,5 +103,22 @@ def create(params: CreateFileParams) -> bool:
 
     if params.contents:
         params.path.write_text(params.contents, encoding="utf-8")
+
+    return True
+
+
+class Mkdirparams(BaseModel):
+    """Required input to create a directory."""
+
+    model_config = ConfigDict(frozen=True)
+
+    dir_path: Path
+
+
+@add_parameters(Mkdirparams)
+@no_submit_fn
+def mkdir(params: Mkdirparams) -> bool:
+    """Create the file as requested and write contents if provided."""
+    params.dir_path.mkdir(parents=True, exist_ok=True)
 
     return True
