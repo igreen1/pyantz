@@ -1,17 +1,14 @@
 """Call a separate python function to munge data and save the results."""
 
 import logging
-from collections.abc import Mapping
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from collections.abc import Callable, Mapping
+from typing import Annotated, Any, Literal
 
 import polars as pl
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, FilePath
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 from pyantz.infrastructure.config.fn_utils import import_function_by_name
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 
 class ExternalExtractParams(BaseModel):

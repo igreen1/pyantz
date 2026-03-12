@@ -6,9 +6,9 @@ import logging
 import os
 import subprocess
 import uuid
+from collections.abc import Callable
 from graphlib import TopologicalSorter
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import polars as pl
 
@@ -20,9 +20,6 @@ from pyantz.infrastructure.config import (
 )
 from pyantz.infrastructure.config.runners.slurm_runner import SlurmRunnerConfig
 from pyantz.infrastructure.runner.job_manager import run_job
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
 
 ENTRY_BASH_FILE_PATH = Path(__file__).parent / "run.sh"
 CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_DIR"

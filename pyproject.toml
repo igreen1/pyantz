@@ -6,10 +6,10 @@ readme = "README.md"
 authors = [
     { name = "igreen1", email = "pyantz@iangreen.dev" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "fastapi[standard]>=0.127.0",
-    "polars>=1.36.1",
+    "polars[all]>=1.36.1",
     "pydantic>=2.11.7",
     "sqlalchemy>=2.0.42",
 ]

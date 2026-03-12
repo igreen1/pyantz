@@ -2,15 +2,12 @@
 
 import logging
 import subprocess
-from typing import TYPE_CHECKING
+from collections.abc import Mapping
+from pathlib import Path
 
 from pydantic import BaseModel, DirectoryPath
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-    from pathlib import Path
 
 
 class DispatchParams(BaseModel):

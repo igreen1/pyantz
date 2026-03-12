@@ -1,15 +1,12 @@
 """Configuration of the analysis overall."""
 
-from typing import TYPE_CHECKING, Any
+from collections.abc import Mapping
+from typing import Any
 
 from pydantic import BaseModel, Field
 
+from .job import JobConfig
 from .runners import LocalRunnerConfig, SlurmRunnerConfig
-
-if TYPE_CHECKING:
-    from collections.abc import Mapping
-
-    from .job import JobConfig
 
 type AnyRunner = LocalRunnerConfig
 

@@ -3,16 +3,14 @@
 import json
 import logging
 import re
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from collections.abc import Callable, Mapping
+from pathlib import Path
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, JsonValue
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 from pyantz.infrastructure.config.fn_utils import import_function_by_name
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
-    from pathlib import Path
 
 # pattern to find backets with an integer in them
 BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
