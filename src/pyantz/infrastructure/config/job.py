@@ -100,3 +100,14 @@ class JobWithContext(JobConfig):
         return JobWithContext.model_validate(
             config_possibly_without_context.model_dump(),
         )
+
+    def inherit_context(self, parent_context: Mapping[str, Any]) -> JobWithContext:
+        """Create a JobWithContext inheriting parent variables."""
+        return self.model_copy(
+            update={
+                "variables": {
+                    **parent_context,
+                    **(self.variables or {}),
+                }
+            }
+        )

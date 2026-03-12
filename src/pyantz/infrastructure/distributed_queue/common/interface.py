@@ -14,13 +14,15 @@ the database file. But, after initialization this cannot be
 updated or changed without a new class instance.
 """
 
-import uuid
 from abc import abstractmethod
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-from pyantz.infrastructure.config.job import JobWithContext
+if TYPE_CHECKING:
+    import uuid
 
-from .return_types import GetJobReturn, JobsReport, JobStatus
+    from pyantz.infrastructure.config.job import JobWithContext
+
+    from .return_types import GetJobReturn, JobsReport, JobStatus
 
 
 class QueueInterface(Protocol):

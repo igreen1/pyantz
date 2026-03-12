@@ -3,9 +3,7 @@
 import contextlib
 import os
 import sqlite3
-import uuid
 from itertools import batched
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
@@ -33,7 +31,9 @@ from .orm import (
 )
 
 if TYPE_CHECKING:
+    import uuid
     from collections.abc import Generator
+    from pathlib import Path
 
 
 class SqliteQueue(QueueInterface):
@@ -342,7 +342,7 @@ class SqliteQueue(QueueInterface):
             jobs_json = job_config.model_dump_json()
             job_definition_chunks: Generator[str] = (
                 "".join(chunk_as_tuple)
-                for chunk_as_tuple in batched(jobs_json, CHUNKSIZE)
+                for chunk_as_tuple in batched(jobs_json, CHUNKSIZE, strict=False)
             )
 
             # then, add it to the job config defintion table
@@ -416,7 +416,7 @@ class SqliteQueue(QueueInterface):
             jobs_json = job_config.model_dump_json()
             job_definition_chunks: Generator[str] = (
                 "".join(chunk_as_tuple)
-                for chunk_as_tuple in batched(jobs_json, CHUNKSIZE)
+                for chunk_as_tuple in batched(jobs_json, CHUNKSIZE, strict=False)
             )
 
             # then, add it to the job config defintion table

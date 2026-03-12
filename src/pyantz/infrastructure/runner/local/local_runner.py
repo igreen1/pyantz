@@ -3,8 +3,7 @@
 import logging
 import multiprocessing as mp
 import time
-import uuid
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pyantz.infrastructure.config import (
     AnyRunner,
@@ -20,6 +19,10 @@ from pyantz.infrastructure.distributed_queue.common.return_types import (
 )
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
 from pyantz.infrastructure.runner.job_manager import run_job
+
+if TYPE_CHECKING:
+    import uuid
+    from pathlib import Path
 
 
 def start(config: InitialConfig[LocalRunnerConfig]) -> None:

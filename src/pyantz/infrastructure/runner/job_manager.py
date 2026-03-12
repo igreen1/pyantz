@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Callable
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Mapping
+from contextvars import ContextVar
+from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config import JobWithContext
 from pyantz.infrastructure.config.variables import resolve_parameters
@@ -21,6 +22,8 @@ type SubmissionFnWithParentType = Callable[
     ],
     None,
 ]
+
+JobVariables = ContextVar[None | Mapping[str, Any]]("JobVariables", default=None)
 
 
 def run_job(
@@ -57,9 +60,7 @@ def run_job(
             update={
                 "variables": {
                     **(job_config.variables or {}),
-                    **(
-                        to_submit_with_context.variables or {}
-                    ),
+                    **(to_submit_with_context.variables or {}),
                 },
             },
         )
@@ -70,7 +71,9 @@ def run_job(
 
     try:
         logger.info("Running job %s", job_config.job_id)
-        result = job_config.function(parameters, _wrapped_submitter)
+        # mypy hasn't updated properly to 3.14
+        with JobVariables.set(job_config.variables):  # type: ignore[attr-defined]
+            result = job_config.function(parameters, _wrapped_submitter)
         logger.debug("Job (%s) returned result %s", result, job_config.job_id)
     except Exception as exc:
         logger.exception(

@@ -45,6 +45,7 @@ def get_params(job: JobConfig) -> type[BaseModel] | None:
         )
     return None
 
+
 def _check_params(job_config: JobConfig, *, strict: bool = False) -> bool:
     """Check the parameters of the job configuration."""
     if (model := get_params(job_config)) is None:

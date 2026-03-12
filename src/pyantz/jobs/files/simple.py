@@ -1,11 +1,14 @@
 """Simle file (CRUD) operations."""
 
 import shutil
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, DirectoryPath, FilePath
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class CopyParams(BaseModel):

@@ -1,12 +1,14 @@
 """Objects shared between different types of queues."""
 
-import uuid
 from enum import IntEnum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
-from pyantz.infrastructure.config.job import JobWithContext
+if TYPE_CHECKING:
+    import uuid
+
+    from pyantz.infrastructure.config.job import JobWithContext
 
 
 class JobStatus(IntEnum):

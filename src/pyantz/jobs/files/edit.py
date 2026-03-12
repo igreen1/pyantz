@@ -3,13 +3,16 @@
 import json
 import logging
 import re
-from collections.abc import Mapping
-from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from pydantic import BaseModel, JsonValue
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, JsonValue
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
+from pyantz.infrastructure.config.fn_utils import import_function_by_name
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
+    from pathlib import Path
 
 # pattern to find backets with an integer in them
 BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
@@ -17,6 +20,8 @@ BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
 
 class EditJsonParams(BaseModel):
     """Parameters to edit json."""
+
+    model_config = ConfigDict(frozen=True)
 
     file: Path
 
@@ -42,7 +47,7 @@ class EditJsonParams(BaseModel):
 
 @add_parameters(EditJsonParams)
 @no_submit_fn
-def edit_json(params: EditJsonParams) -> bool:  # noqa: C901
+def edit_json(params: EditJsonParams) -> bool:
     """Edit a .json file in place."""
     logger = logging.getLogger(__name__)
 
@@ -50,6 +55,134 @@ def edit_json(params: EditJsonParams) -> bool:  # noqa: C901
     # while only currently used for `extra_field`
     # it is likely future users will want more options for editing the json
     # so placing in closures for future capabilities
+
+    if not params.file.exists():
+        logger.error("No such file %s", params.file)
+        return False
+    if not params.file.is_file():
+        logger.error("Path is not a file. %s", params.file)
+        return False
+
+    try:
+        with params.file.open("r", encoding="utf-8") as fh:
+            contents = json.load(fh)
+    except OSError as exc:
+        logger.exception("Unknown error", exc_info=exc)
+        return False
+
+    edit_jsonvalue = _json_editor_factory(extra_field=params.extra_field)
+
+    for field, value in params.updates.items():
+        contents = edit_jsonvalue(contents, field, value)
+
+    try:
+        with params.file.open("w", encoding="utf-8") as fh:
+            json.dump(contents, fh)
+    except OSError as exc:
+        logger.exception("Error while writing file", exc_info=exc)
+        return False
+    else:
+        return True
+
+
+class _FunctionDefinition[T](BaseModel):
+    """Quick definition of a function to be run."""
+
+    model_config = ConfigDict(frozen=True)
+
+    kwargs: dict[str, Any] = Field(default_factory=dict)
+
+    args: tuple[Any, ...] = Field(default_factory=tuple)
+
+    func: Annotated[
+        T,
+        BeforeValidator(import_function_by_name),
+    ]
+
+
+class EditExternalParams(BaseModel):
+    """Edit a file using an external function to extract and to save off."""
+
+    # will accept the args/kwargs provded
+    # MUST return a JsonValue to be edited
+    extract_function: _FunctionDefinition[Callable[..., JsonValue]]
+
+    # the FIRST argument back to this function will be the file being edited
+    # afterwards, it will spread the user provided kwargs/args
+    save_function: _FunctionDefinition[Callable[..., None]]
+
+    # updates to be made to the file
+    # to edit a subfield, use "." to join fields
+    # for example "a.b" will edit the b field in the object pointed to by "a"
+    # but, if the JSOn object contains a field "a.b", that will be edited instead
+    # to edit arrays, use [] notation, with an index
+    # so for example "a.[0]" will edit the 0th element of a
+    # but again, if the JSON object contains a field "a.[0]" that will be edited instead
+    updates: Mapping[str, Any]
+
+    # what to do when the field provided points to a loction that doesn't exist in json
+    # for example, consider field = "a.b.c.d" being set to "goodbye!"
+    # but the object looks like {"a": "hello world"}
+    # what do we do?
+    # ignore: return the original if a path doesn't match. Return = {"a": "hello world"}
+    # overwrite: follow as much as possible, then overwrite the leaf.
+    #       Return = {"a": "goodbye!"}  # noqa: ERA001
+    # force_object: add the path. Return = {"a": {"b": {"c": {"d": "goodbye!"}}}}
+    extra_field: Literal["ignore", "overwrite", "force_object"]
+
+
+@add_parameters(EditExternalParams)
+@no_submit_fn
+def edit_external_method(params: EditExternalParams) -> bool:
+    """Edit a file using user-provided functionality."""
+    logger = logging.getLogger(__name__)
+
+    try:
+        extract_meth = params.extract_function
+        extract_result = extract_meth.func(*extract_meth.args, **extract_meth.kwargs)
+    except Exception as exc:
+        logger.exception(
+            "Unknown error while running extraction, cannot continue",
+            exc_info=exc,
+        )
+        return False
+
+    update_fn = _json_editor_factory(extra_field=params.extra_field)
+
+    try:
+        contents = extract_result
+        for field, value in params.updates.items():
+            contents = update_fn(contents, field, value)
+    except Exception as exc:
+        logger.exception(
+            "Error while updateing JsonValue - check that is a properly formed json",
+            exc_info=exc,
+        )
+        return False
+
+    try:
+        save_meth = params.save_function
+        save_meth.func(contents, *save_meth.args, **save_meth.kwargs)
+    except Exception as exc:
+        logger.exception("Unknown error while saving results, not saved", exc_info=exc)
+        return False
+
+    return True
+
+
+def _json_editor_factory(  # noqa: C901
+    *,
+    extra_field: Literal["ignore", "overwrite", "force_object"],
+) -> Callable[[JsonValue, str, JsonValue], JsonValue]:
+    """Create a callable to edit a JsonValue recursively.
+
+    Args:
+        extra_field: user has defined a field (nested too deeply); how to handle
+            ignore: don't overwrite, ignore the user instructions
+            overwrite: return the value as is
+            force_objecct: turn the value into an object that is as nested as user input
+
+    """
 
     def _edit_any(val: JsonValue, field: str, new_value: JsonValue) -> JsonValue:
         if field == "":
@@ -63,9 +196,9 @@ def edit_json(params: EditJsonParams) -> bool:  # noqa: C901
         # but the object is a simple primitive... this is a weird mismatch
         # there are a few ways to handle this but none of them are great
         # so we expose the options to the user
-        if params.extra_field == "ignore":
+        if extra_field == "ignore":
             return val
-        if params.extra_field == "overwrite":
+        if extra_field == "overwrite":
             return new_value
 
         # "force_object" option selected
@@ -145,28 +278,4 @@ def edit_json(params: EditJsonParams) -> bool:  # noqa: C901
         # so we assume they want each element to be edited as the field/value specify
         return [_edit_any(item, field, new_value) for item in val]
 
-    if not params.file.exists():
-        logger.error("No such file %s", params.file)
-        return False
-    if not params.file.is_file():
-        logger.error("Path is not a file. %s", params.file)
-        return False
-
-    try:
-        with params.file.open("r", encoding="utf-8") as fh:
-            contents = json.load(fh)
-    except OSError as exc:
-        logger.exception("Unknown error", exc_info=exc)
-        return False
-
-    for field, value in params.updates.items():
-        contents = _edit_any(contents, field, value)
-
-    try:
-        with params.file.open("w", encoding="utf-8") as fh:
-            json.dump(contents, fh)
-    except OSError as exc:
-        logger.exception("Error while writing file", exc_info=exc)
-        return False
-    else:
-        return True
+    return _edit_any

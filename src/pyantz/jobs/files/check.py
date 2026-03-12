@@ -1,11 +1,14 @@
 """Check files and their contents.."""
 
 import mmap
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class ExistsParams(BaseModel):
