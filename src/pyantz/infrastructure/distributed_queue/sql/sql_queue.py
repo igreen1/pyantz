@@ -3,9 +3,7 @@
 import contextlib
 import os
 import sqlite3
-import uuid
 from itertools import batched
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
@@ -33,7 +31,9 @@ from .orm import (
 )
 
 if TYPE_CHECKING:
+    import uuid
     from collections.abc import Generator
+    from pathlib import Path
 
 
 class SqliteQueue(QueueInterface):
