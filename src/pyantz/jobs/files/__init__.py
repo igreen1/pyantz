@@ -1,15 +1,11 @@
 """Common file operations."""
 
-from .simple import (
-    copy,
-    create,
-    delete,
-    move,
-)
+from . import check, edit, moving, reformat, simple
 
 __all__ = [
-    "copy",
-    "create",
-    "delete",
-    "move",
+    "check",
+    "edit",
+    "moving",
+    "reformat",
+    "simple",
 ]

@@ -1,6 +1,7 @@
 """Simple operations."""
 
 import logging
+from pathlib import Path
 from typing import Literal
 
 import polars as pl
@@ -79,6 +80,46 @@ def columnar_operation(params: ColumnarOperationParameters) -> bool:
         lf.sink_parquet(params.result_parquet_file)
     except Exception as exc:
         logger.exception("Unable to perform operation", exc_info=exc)
+        return False
+
+    return True
+
+
+class JoinParquetParams(BaseModel):
+    """Parameters to join the dataframes from parquet files."""
+
+    left_parquet: Path
+
+    right_parquet: Path
+
+    how: Literal["inner", "left", "right", "full", "semi", "anti", "cross"] = "inner"
+
+    output_parquet: Path
+
+
+@add_parameters(JoinParquetParams)
+@no_submit_fn
+def join_parquets(params: JoinParquetParams) -> bool:
+    """Join two dataframes read from a parquet."""
+    logger = logging.getLogger(__name__)
+
+    logger.debug(
+        "Joining parquets: %s + %s",
+        params.left_parquet,
+        params.right_parquet,
+    )
+
+    try:
+        pl.scan_parquet(
+            params.left_parquet,
+        ).join(
+            pl.scan_parquet(
+                params.right_parquet,
+            ),
+            how=params.how,
+        ).sink_parquet(params.output_parquet)
+    except Exception as exc:
+        logger.exception("Unable to join parquets!", exc_info=exc)
         return False
 
     return True

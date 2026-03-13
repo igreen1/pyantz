@@ -1,6 +1,7 @@
 """Reformate between tabular datasets."""
 
 import logging
+from pathlib import Path
 
 import polars as pl
 from pydantic import BaseModel, ConfigDict, FilePath
@@ -15,7 +16,7 @@ class FromCsvToParquetParameters(BaseModel):
 
     csv_file: FilePath
 
-    parquet_file: FilePath
+    parquet_file: Path
 
 
 @add_parameters(FromCsvToParquetParameters)
@@ -36,6 +37,40 @@ def csv_to_parquet(params: FromCsvToParquetParameters) -> bool:
             low_memory=True,
         ).sink_parquet(
             params.parquet_file,
+        )
+    except Exception as exc:
+        logger.exception("Error in CSV->PARQUET", exc_info=exc)
+        return False
+    else:
+        return True
+
+
+class FromExcelToCsvParameters(BaseModel):
+    """Load a page from an excel and dump it into a csv."""
+
+    excel_file: FilePath
+
+    # name of the sheet in excel to execute
+    sheet_name: str
+
+    csv_file: Path
+
+
+@add_parameters(FromExcelToCsvParameters)
+@no_submit_fn
+def excel_to_csv(params: FromExcelToCsvParameters) -> bool:
+    """Use polars to load an excel and dump it into a csv."""
+    logger = logging.getLogger(__name__)
+
+    logger.debug("From %s -> %s", params.excel_file, params.csv_file)
+
+    if not params.excel_file.exists():
+        logger.error("Cannot load excel - doesn't exist: %s", params.excel_file)
+        return False
+
+    try:
+        pl.read_excel(params.excel_file, sheet_name=params.sheet_name).write_csv(
+            params.csv_file
         )
     except Exception as exc:
         logger.exception("Error in CSV->PARQUET", exc_info=exc)
