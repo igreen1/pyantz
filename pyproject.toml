@@ -14,6 +14,10 @@ dependencies = [
     "sqlalchemy>=2.0.42",
 ]
 
+[project.scripts]
+dev = "pyantz.api.dev_server:start_dev_server"
+prod = "pyantz.api.backend:start_prod_server"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
