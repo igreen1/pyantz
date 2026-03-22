@@ -1,8 +1,7 @@
 """Run pipelines from a case matrix."""
 
-from __future__ import annotations
-
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,7 +16,7 @@ from pyantz.infrastructure.config import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Mapping
     from typing import Any
 
 

@@ -5,10 +5,21 @@ from collections.abc import Callable, Mapping
 from typing import Annotated, Any, Literal
 
 import polars as pl
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, FilePath
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    FilePath,
+    WithJsonSchema,
+    field_serializer,
+)
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
-from pyantz.infrastructure.config.fn_utils import import_function_by_name
+from pyantz.infrastructure.config.fn_utils import (
+    import_function_by_name,
+    serialize_function,
+)
 
 
 class ExternalExtractParams(BaseModel):
@@ -16,16 +27,30 @@ class ExternalExtractParams(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    function_args: tuple[Any, ...] = Field(default_factory=tuple)
+    function_args: list[Any] = Field(default_factory=list)
 
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
 
     external_function: Annotated[
         Callable[..., pl.DataFrame | pl.LazyFrame],
         BeforeValidator(import_function_by_name),
+        WithJsonSchema(
+            {
+                "type": "string",
+                "format": "binary",
+            }
+        ),
     ]
 
     result_parquet_location: str
+
+    @field_serializer("external_function")
+    def serialize_job_function(
+        self,
+        fn: Callable[..., pl.DataFrame | pl.LazyFrame],
+    ) -> str:
+        """Serialize the fucntion."""
+        return serialize_function(fn)
 
 
 @add_parameters(ExternalExtractParams)
@@ -75,14 +100,28 @@ class ExternalAnalysisParams(BaseModel):
     # if a mapping, maps each variable name from `variable_names_to_files` to one
     lazy_or_eager: Literal["lazy", "eager"] | Mapping[str, Literal["lazy", "eager"]]
 
-    function_args: tuple[Any, ...] = Field(default_factory=tuple)
+    function_args: list[Any] = Field(default_factory=list)
 
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
 
     external_function: Annotated[
         Callable[..., Any],
         BeforeValidator(import_function_by_name),
+        WithJsonSchema(
+            {
+                "type": "string",
+                "format": "binary",
+            }
+        ),
     ]
+
+    @field_serializer("external_function")
+    def serialize_job_function(
+        self,
+        fn: Callable[..., Any],
+    ) -> str:
+        """Serialize the fucntion."""
+        return serialize_function(fn)
 
 
 @add_parameters(ExternalAnalysisParams)

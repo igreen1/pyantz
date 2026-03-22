@@ -7,10 +7,21 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, JsonValue
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    JsonValue,
+    WithJsonSchema,
+    field_serializer,
+)
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
-from pyantz.infrastructure.config.fn_utils import import_function_by_name
+from pyantz.infrastructure.config.fn_utils import (
+    import_function_by_name,
+    serialize_function,
+)
 
 # pattern to find backets with an integer in them
 BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
@@ -83,7 +94,7 @@ def edit_json(params: EditJsonParams) -> bool:
         return True
 
 
-class _FunctionDefinition[T](BaseModel):
+class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
     """Quick definition of a function to be run."""
 
     model_config = ConfigDict(frozen=True)
@@ -95,7 +106,21 @@ class _FunctionDefinition[T](BaseModel):
     func: Annotated[
         T,
         BeforeValidator(import_function_by_name),
+        WithJsonSchema(
+            {
+                "type": "string",
+                "format": "binary",
+            }
+        ),
     ]
+
+    @field_serializer("func")
+    def serialize_job_function(
+        self,
+        fn: T,
+    ) -> str:
+        """Serialize the fucntion."""
+        return serialize_function(fn)
 
 
 class EditExternalParams(BaseModel):

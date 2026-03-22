@@ -3,11 +3,7 @@
 from typing import Final
 
 from sqlalchemy import String
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    mapped_column,
-)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # our jobs are chunked when stored
 # number of characters to store per a row

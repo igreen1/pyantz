@@ -11,11 +11,7 @@ from typing import TYPE_CHECKING, Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, DirectoryPath, model_validator
 
-from pyantz.infrastructure.config import (
-    JobConfig,
-    JobWithContext,
-    add_parameters,
-)
+from pyantz.infrastructure.config import JobConfig, JobWithContext, add_parameters
 from pyantz.infrastructure.runner.job_manager import (
     JobVariables,
     run_job_no_parent_wrapper,
@@ -23,6 +19,56 @@ from pyantz.infrastructure.runner.job_manager import (
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import SubmissionFnType
+
+
+class SetVariables(BaseModel):
+    """Parmeters for running a job which sets variables."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # job which will edit the variable context
+    setter_job: JobConfig
+
+    # jobs to submit with the context of the setter job
+    jobs: list[JobConfig]
+
+
+@add_parameters(SetVariables)
+def set_variables(params: SetVariables, submit_fn: SubmissionFnType) -> bool:
+    """Set the variables for subsequent defined jobs.
+
+    The `setter_job` is a slightly abnormal job. One of the parameters it accepts
+    shall be `set_variable`, which is a closure that will set the enclosing variables.
+    """
+    new_variables: dict[str, Any] = {}
+
+    def set_var(key: str, value: Any) -> None:  # noqa: ANN401
+        nonlocal new_variables
+        new_variables[key] = value
+
+    curr_variables: Final[Mapping[str, Any]] = (
+        _vars if (_vars := JobVariables.get()) else {}
+    )
+    set_job = params.setter_job.model_copy(
+        update={
+            **params.setter_job.parameters,
+            "set_variable": set_var,
+        }
+    )
+    set_job_ctx = JobWithContext.from_config(set_job).inherit_context(curr_variables)
+
+    if not run_job_no_parent_wrapper(set_job_ctx, submit_fn):
+        return False
+
+    success = True
+    for job in params.jobs:
+        job_ctx = JobWithContext.from_config(job).inherit_context(
+            {**curr_variables, **new_variables}
+        )
+        success &= run_job_no_parent_wrapper(job_ctx, submit_fn)
+        if not success:
+            break
+    return success
 
 
 class VariableContextParams(BaseModel):

@@ -10,6 +10,7 @@ from pydantic import (
     BaseModel,
     BeforeValidator,
     Field,
+    WithJsonSchema,
     field_serializer,
     model_validator,
 )
@@ -44,13 +45,30 @@ class JobConfig(BaseModel):
     job_id: str = Field(default_factory=str_uuid4)
 
     # the jobs upon which this one depends before it can be run
-    depends_on: set[str] | None = None
+    depends_on: Annotated[
+        set[str] | None,
+        WithJsonSchema(
+            {
+                "type": "array",
+                "items": {"type": "string"},
+            },
+        ),
+    ] = None
 
     # human readable name for this job
     name: str | None = None
 
     # function to actually run for this job
-    function: Annotated[JobFunctionType, BeforeValidator(import_function_by_name)]
+    function: Annotated[
+        JobFunctionType,
+        BeforeValidator(import_function_by_name),
+        WithJsonSchema(
+            {
+                "type": "string",
+                "format": "binary",
+            }
+        ),
+    ]
 
     # parameters to pass to the job while it's running
     parameters: Mapping[str, Any]

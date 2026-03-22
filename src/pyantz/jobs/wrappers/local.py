@@ -31,7 +31,7 @@ class LocalPipelineParameters(BaseModel):
     # The job's first parameter will be a dictionary
     jobs: list[JobConfig]
 
-    inter_job_named_pipes: set[str]
+    inter_job_named_pipes: list[str]
 
 
 @add_parameters(LocalPipelineParameters)

@@ -5,5 +5,4 @@ from . import local, variables
 __all__ = [
     "local",
     "variables",
-
 ]

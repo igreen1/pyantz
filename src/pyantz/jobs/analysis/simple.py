@@ -15,16 +15,22 @@ class ColumnarOperationParameters(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    #: Parquet file to read dataframe from for these operations
     source_parquet_file: FilePath
 
+    #: Location to save the results after performing the operation
     result_parquet_file: str
 
+    #: Column on the left side of the expression
     left_col: str
 
+    #: Column on the right side of the expression
     right_col: str
 
+    #: Column to save the results
     result_col: str
 
+    #: Operation to be performed between the two columns
     operation: Literal[
         "+",
         "-",
@@ -44,7 +50,65 @@ OP_MAPPING = {
 @add_parameters(ColumnarOperationParameters)
 @no_submit_fn
 def columnar_operation(params: ColumnarOperationParameters) -> bool:
-    """Perform a simple operation between two columns."""
+    """Perform a simple operation between two columns.
+
+    :Example:
+
+    .. testsetup::
+
+        import os
+        import polars as pl
+        pl.DataFrame({
+            "a": [1, 2],
+            "b": [3, 4],
+        }).write_parquet("test_input.parquet")
+
+
+    .. testcode::
+
+        import os
+
+        import polars as pl
+
+        from pyantz.jobs.analysis.simple import columnar_operation
+
+
+        assert os.path.exists("test_input.parquet")
+        columnar_operation({
+            "source_parquet_file": "test_input.parquet",
+            "result_parquet_file": "test_output.parquet",
+            "left_col": "a",
+            "right_col": "b",
+            "result_col": "c",
+            "operation": "+",
+        }, lambda *_: None)
+
+        result = pl.read_parquet("test_output.parquet")
+        print(result)
+
+    Output:
+
+    .. testoutput::
+
+        shape: (2, 3)
+        ┌─────┬─────┬─────┐
+        │ a   ┆ b   ┆ c   │
+        │ --- ┆ --- ┆ --- │
+        │ i64 ┆ i64 ┆ i64 │
+        ╞═════╪═════╪═════╡
+        │ 1   ┆ 3   ┆ 4   │
+        │ 2   ┆ 4   ┆ 6   │
+        └─────┴─────┴─────┘
+
+    .. testcleanup::
+
+        import os
+        if os.path.exists("test_output.parquet"):
+            os.remove("test_output.parquet")
+        if os.path.exists("test_input.parquet"):
+            os.remove("test_input.parquet")
+
+    """
     logger = logging.getLogger(__name__)
 
     logger.debug("Starting columnar operation %s", params.operation)

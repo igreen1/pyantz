@@ -21,14 +21,7 @@ from pyantz.infrastructure.distributed_queue.common.return_types import (
     PendingReturn,
 )
 
-from .orm import (
-    CHUNKSIZE,
-    Base,
-    DependencyTable,
-    JobConfigTable,
-    JobQueue,
-    StatusTable,
-)
+from .orm import CHUNKSIZE, Base, DependencyTable, JobConfigTable, JobQueue, StatusTable
 
 if TYPE_CHECKING:
     import uuid
