@@ -27,10 +27,14 @@ class ExternalExtractParams(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
+    #: Arguments to pass directly to the job
     function_args: list[Any] = Field(default_factory=list)
 
+    #: Keyword arguments to pass directly to the job
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
 
+    #: Fully resolved name of the function, e.g. `package.module.function`
+    #: Function must return a polars dataframe
     external_function: Annotated[
         Callable[..., pl.DataFrame | pl.LazyFrame],
         BeforeValidator(import_function_by_name),
@@ -42,6 +46,7 @@ class ExternalExtractParams(BaseModel):
         ),
     ]
 
+    #: Location to save the result from the function
     result_parquet_location: str
 
     @field_serializer("external_function")
@@ -61,12 +66,14 @@ def save_from_external_extraction(params: ExternalExtractParams) -> bool:
     While the user could directly call their function, the utility of this
     function is saving it in the parquet file, allowing the user to ignore the file
     system fun.
+
     """
     logger = logging.getLogger(__name__)
 
     try:
         result = params.external_function(
-            *params.function_args, *params.function_kwargs
+            *params.function_args,
+            **params.function_kwargs,
         )
     except Exception as exc:
         logger.exception("Unknown error in user defined function", exc_info=exc)
@@ -87,23 +94,79 @@ def save_from_external_extraction(params: ExternalExtractParams) -> bool:
         return True
 
 
+class ExternalSimpleParams(BaseModel):
+    """Call an external function."""
+
+    model_config = ConfigDict(frozen=True)
+
+    #: Arguments to pass directly to the job
+    function_args: list[Any] = Field(default_factory=list)
+
+    #: Keyword arguments to pass directly to the job
+    function_kwargs: dict[str, Any] = Field(default_factory=dict)
+
+    #: Fully resolved name of the function, e.g. `package.module.function`
+    external_function: Annotated[
+        Callable[..., Any],
+        BeforeValidator(import_function_by_name),
+        WithJsonSchema(
+            {
+                "type": "string",
+                "format": "binary",
+            }
+        ),
+    ]
+
+    @field_serializer("external_function")
+    def serialize_job_function(
+        self,
+        fn: Callable[..., pl.DataFrame | pl.LazyFrame],
+    ) -> str:
+        """Serialize the fucntion."""
+        return serialize_function(fn)
+
+
+@add_parameters(ExternalSimpleParams)
+@no_submit_fn
+def external_simple(params: ExternalSimpleParams) -> bool:
+    """Call the external function."""
+    logger = logging.getLogger(__name__)
+
+    try:
+        result = params.external_function(
+            *params.function_args, **params.function_kwargs
+        )
+    except Exception as exc:
+        logger.exception("Unknown error in user defined function", exc_info=exc)
+        return False
+    else:
+        if isinstance(result, bool):
+            return result
+    return True
+
+
 class ExternalAnalysisParams(BaseModel):
     """Params to pass to an external function which will perform analysis on data."""
 
-    # map variable names to parquet files
-    # the parquet files will be read into polars lazy or dataframes
-    # and passed as kwargs to the analysis function
+    model_config = ConfigDict(frozen=True)
+
+    #: map variable names to parquet files
+    #: the parquet files will be read into polars lazy or dataframes
+    #: and passed as kwargs to the analysis function
     variable_names_to_parquets: Mapping[str, FilePath]
 
-    # if lazy, all dataframes are scanned into memory
-    # if eager, all dataframes are scanned into memory
-    # if a mapping, maps each variable name from `variable_names_to_files` to one
+    #: if lazy, all dataframes are scanned into memory
+    #: if eager, all dataframes are scanned into memory
+    #: if a mapping, maps each variable name from `variable_names_to_files` to one
     lazy_or_eager: Literal["lazy", "eager"] | Mapping[str, Literal["lazy", "eager"]]
 
+    #: Arguments to pass directly to the job
     function_args: list[Any] = Field(default_factory=list)
 
+    #: Keyword arguments to pass directly to the job
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
 
+    #: Fully resolved name of the function, e.g. `package.module.function`
     external_function: Annotated[
         Callable[..., Any],
         BeforeValidator(import_function_by_name),

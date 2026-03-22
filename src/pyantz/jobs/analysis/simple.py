@@ -2,10 +2,10 @@
 
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict, FilePath
+from pydantic import BaseModel, ConfigDict, FilePath, model_validator
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 
@@ -56,7 +56,6 @@ def columnar_operation(params: ColumnarOperationParameters) -> bool:
 
     .. testsetup::
 
-        import os
         import polars as pl
         pl.DataFrame({
             "a": [1, 2],
@@ -152,19 +151,108 @@ def columnar_operation(params: ColumnarOperationParameters) -> bool:
 class JoinParquetParams(BaseModel):
     """Parameters to join the dataframes from parquet files."""
 
+    model_config = ConfigDict(frozen=True)
+
+    #: Parquet with tabular data to join, on the left of the join operation
     left_parquet: Path
 
+    #: Parquet with tabular data to join, on the right of the join operation
     right_parquet: Path
 
+    #: Supported styles of joins (see polars docs for details)
     how: Literal["inner", "left", "right", "full", "semi", "anti", "cross"] = "inner"
 
+    #: Parquet file to save the results, cannot be the same as left/right
     output_parquet: Path
+
+    #: Column name to join on
+    on_: str
+
+    @model_validator(mode="after")
+    def check_file_paths(self) -> Self:
+        """Check that output is not the same as the input file."""
+        msg = "Input cannot be the same as output files."
+        if self.output_parquet.resolve() == self.left_parquet.resolve():
+            raise ValueError(msg)
+        if self.output_parquet.resolve() == self.right_parquet.resolve():
+            raise ValueError(msg)
+        return self
 
 
 @add_parameters(JoinParquetParams)
 @no_submit_fn
 def join_parquets(params: JoinParquetParams) -> bool:
-    """Join two dataframes read from a parquet."""
+    """Join two dataframes read from a parquet.
+
+    :Example:
+
+    .. testsetup::
+
+        import polars as pl
+        pl.DataFrame(
+            {
+                "idx": [1, 2, 3, 4, 5],
+                "a": [10, 11, 12, 13, 14],
+            }
+        ).write_parquet("left.parquet")
+        pl.DataFrame(
+            {
+                "idx": [1, 4],
+                "b": ["hello", "world"],
+            }
+        ).write_parquet("right.parquet")
+
+    .. testcode::
+
+        from pyantz import start
+        config = {
+            "jobs": [
+                {
+                    "function": "pyantz.jobs.analysis.simple.join_parquets",
+                    "parameters": {
+                        "left_parquet": "left.parquet",
+                        "right_parquet": "right.parquet",
+                        "how": "inner",
+                        "output_parquet": "output.parquet",
+                        "on_": "idx",
+                    },
+                }
+            ],
+            "submitter": {
+                "type_": "local_proc",
+                "working_directory": ".",
+            },
+        }
+        start(config)
+
+        result = pl.read_parquet("output.parquet")
+        print(result)
+
+    Output:
+
+    .. testoutput::
+
+        shape: (2, 3)
+        ┌─────┬─────┬───────┐
+        │ idx ┆ a   ┆ b     │
+        │ --- ┆ --- ┆ ---   │
+        │ i64 ┆ i64 ┆ str   │
+        ╞═════╪═════╪═══════╡
+        │ 1   ┆ 10  ┆ hello │
+        │ 4   ┆ 13  ┆ world │
+        └─────┴─────┴───────┘
+
+    .. testcleanup::
+
+        import os
+        files = {"left", "right", "output"}
+        files = {f"{name}.parquet" for name in files}
+        files.add("queue.db")
+        for f in files:
+            if os.path.exists(f):
+                os.remove(f)
+
+    """
     logger = logging.getLogger(__name__)
 
     logger.debug(
@@ -181,6 +269,7 @@ def join_parquets(params: JoinParquetParams) -> bool:
                 params.right_parquet,
             ),
             how=params.how,
+            on=params.on_,
         ).sink_parquet(params.output_parquet)
     except Exception as exc:
         logger.exception("Unable to join parquets!", exc_info=exc)

@@ -1,6 +1,7 @@
 /* Show the job options menu */
 
 .job-options-menu {
+    color: white;
     /* Enables flexbox layout */
     justify-content: center;
     /* Centers content horizontally */
@@ -24,7 +25,7 @@
 }
 
 .job-options-menu-close-button {
-    position:absolute;
+    position: absolute;
     top: 0;
     right: 0;
     font-size: 30px;
@@ -33,12 +34,12 @@
     margin: auto;
     padding: auto;
 }
+
 .job-options-menu-close-button:hover {
     background-color: rgba(115, 79, 150, 1); /* Dark lavender */
 }
 
 .job-options-menu-list {
-    color: white;
     margin: auto;
 }
 

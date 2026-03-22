@@ -22,7 +22,11 @@ def get_jobs() -> GetJobReponse:
         for fn in all_fn
     ]
 
+    fn_summary_only = [doc.split("\n")[0] for doc in fn_docstrings]
+
+    fn_summary_only = [doc.lstrip(".") for doc in fn_summary_only]
+
     return GetJobReponse(
         pyantz_jobs=[serialize_function(fn) for fn in all_fn],
-        pyantz_job_descriptions=fn_docstrings,
+        pyantz_job_descriptions=fn_summary_only,
     )

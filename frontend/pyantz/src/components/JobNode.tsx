@@ -1,12 +1,13 @@
 /**
  * AI SLOP to create
  */
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { useAppDispatch } from "../store/hooks";
 import { updateJob } from "../store/slices/currentPipeline";
 import { type Job } from "../store/slices/currentPipeline";
 // import "./JobNode.css";
 import { Handle, Position, NodeResizer } from '@xyflow/react';
+import {  addJobToContextMenu } from "../store/slices/uiSlice";
 // import { FloatingJobParameterEditor } from "./JobParameterEditor";
 
 interface JobNodeProps {
@@ -113,7 +114,7 @@ export default function JobNode({ data }: JobNodeProps) {
             className="job-field-value"
             onDoubleClick={() => startEditing(field, value)}
             title={displayValue}
-            style={{resize: "both"}}
+            style={{ resize: "both" }}
           >
             {displayValue}
           </span>
@@ -122,9 +123,19 @@ export default function JobNode({ data }: JobNodeProps) {
     );
   };
 
+  const handleContextMenu = (right_click: MouseEvent<HTMLDivElement>) => {
+    right_click.preventDefault();
+    const jobId = data.job.job_id;
+    dispatch(
+      addJobToContextMenu(jobId)
+    )
+  }
 
   return (
-    <div className={`job-node ${isExpanded ? "expanded" : "collapsed"}`}>
+    <div
+      className={`job-node ${isExpanded ? "expanded" : "collapsed"}`}
+      onContextMenu={handleContextMenu}
+    >
       <NodeResizer />
       <Handle type="target" position={Position.Top} />
 
