@@ -1,0 +1,14 @@
+
+.sphinxsidebarwrapper {
+    max-width: 400px;
+}
+
+.sphinxsidebarwrapper code {
+  white-space: pre-wrap !important; /* Preserves spaces and line breaks, and wraps text */
+  word-break: anywhere  !important;    /* Breaks words according to standard rules */
+  overflow-wrap: break-word  !important; /* Allows breaking long, unbreakable words */
+}
+
+.bodywrapper {
+    margin-left: 400px !important;
+}
