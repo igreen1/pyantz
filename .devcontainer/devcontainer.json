@@ -7,8 +7,8 @@
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/va-h/devcontainers-features/uv:1": {},
-		"ghcr.io/devcontainers-extra/features/npm-package:1": {},
-		"ghcr.io/devcontainers-extra/features/tmux-apt-get:1": {}
+		"ghcr.io/devcontainers-extra/features/tmux-apt-get:1": {},
+		"ghcr.io/devcontainers-extra/features/node-asdf:0": {}
 	},
 	"customizations": {
 		"vscode": {
@@ -18,10 +18,22 @@
 				"ms-python.python",
 				"ms-python.vscode-pylance",
 				"njpwerner.autodocstring",
-				"ms-python.debugpy"
+				"ms-python.debugpy",
+				"ms-vscode.live-server"
 			]
 		}
-	}
+	},
+	"mounts": [
+		{
+			"target": "/home/vscode/.cache/uv",
+			"type": "volume",
+			"source": "uv_cache"
+		}
+	],
+
+	"remoteEnv": {"UV_LINK_MODE": "copy"},
+
+	"postAttachCommand": "sudo chown -R vscode /home/vscode/.cache"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
@@ -30,7 +42,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
+	// "postCreateCommand": "uv sync --compile-bytecode"
 
 	// Configure tool-specific properties.
 	// "customizations": {},

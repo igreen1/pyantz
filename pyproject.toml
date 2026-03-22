@@ -9,14 +9,14 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "fastapi[standard]>=0.127.0",
-    "polars[all]>=1.36.1",
+    "polars>=1.36.1",
     "pydantic>=2.11.7",
     "sqlalchemy>=2.0.42",
 ]
 
 [project.scripts]
-dev = "pyantz.api.dev_server:start_dev_server"
-prod = "pyantz.api.backend:start_prod_server"
+pyantz-dev = "pyantz.api.dev_server:start_dev_server"
+pyantz-prod = "pyantz.api.backend:start_prod_server"
 
 [build-system]
 requires = ["hatchling"]
@@ -31,10 +31,15 @@ api = [
     "fastapi[standard]>=0.127.0",
 ]
 dev = [
+    "autodoc-pydantic>=2.2.0",
     "mypy>=1.17.1",
+    "polars[all]>=1.36.1",
     "pylint>=4.0.4",
     "pytest>=9.0.2",
     "ruff>=0.14.10",
+    "sphinx>=9.1.0",
+    "sphinx-autodoc-typehints>=3.9.9",
+    "sphinx-book-theme>=1.2.0",
     "ty>=0.0.4",
 ]
 

@@ -6,5 +6,9 @@ dist/
 wheels/
 *.egg-info
 
+# Sphinx autdoc
+docs/build
+docs/source/pyantz*.rst
+
 # Virtual environments
 .venv
