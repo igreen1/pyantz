@@ -135,6 +135,10 @@ export default function JobNode({ data }: JobNodeProps) {
     <div
       className={`job-node ${isExpanded ? "expanded" : "collapsed"}`}
       onContextMenu={handleContextMenu}
+      style={{
+        height: "100%",
+        width: "100%",
+      }}
     >
       <NodeResizer />
       <Handle type="target" position={Position.Top} />

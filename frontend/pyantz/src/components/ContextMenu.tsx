@@ -2,7 +2,9 @@
 
 import "./ContextMenu.css"
 
-import { useAppSelector } from "../store/hooks";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { hideContextMenu } from "../store/slices/uiSlice";
+import { removeJob } from "../store/slices/currentPipeline";
 
 export interface ContextMenuItem {
     name: string,
@@ -15,6 +17,7 @@ interface ContextMenuProps {
 
 // ContextMenu.component.jsx
 export default function ContextMenu({ items }: ContextMenuProps) {
+  const dispatch = useAppDispatch();
 
     const visible = useAppSelector((state) => state.uiOptions.contextMenu.showContextMenu);
     const x = useAppSelector((state) => state.uiOptions.contextMenu.contextMenuPosition.x);
@@ -27,7 +30,16 @@ export default function ContextMenu({ items }: ContextMenuProps) {
     if (editJobId !== null) {
         dynamicItems.push({
             name: `Edit Job (${editJobId})`,
-            onClick: () => {}
+            onClick: () => {
+                
+            }
+        });
+        dynamicItems.push({
+            name: `Delete Job (${editJobId})`,
+            onClick: () => {
+                dispatch(hideContextMenu());
+                dispatch(removeJob(editJobId))
+            }
         })
     }
 

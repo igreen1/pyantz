@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import "./App.css";
 import JobBoard from "./components/JobBoard";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
@@ -13,8 +13,6 @@ import JobOptionsMenu from "./components/JobOptionsMenu";
 function App() {
   const dispatch = useAppDispatch();
 
-  const [displayPopup, setDisplayPopup] = useState(false);
-
   const { items: availableJobs, status: get_job_status } = useAppSelector(
     (state) => state.availableJobs
   );
@@ -27,7 +25,6 @@ function App() {
     if (get_job_status === "idle") {
       dispatch(fetchAvailableJobs());
     }
-    console.log(get_job_status);
   }, [dispatch, get_job_status]);
 
   useEffect(() => {
@@ -43,13 +40,6 @@ function App() {
           <JobOptionsMenu />
           <JobBoard />
         </div>
-        {
-          displayPopup ? 
-          <div className="job-board-popup">
-            {/* <JobList /> */}
-          </div> 
-          : null
-        }
       </div>
     </>
   );

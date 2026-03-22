@@ -78,17 +78,7 @@ export interface InitialConfig {
 }
 
 const initialState: InitialConfig = {
-  jobs: [
-    {
-      "job_id": "-1",
-      "depends_on": [],
-      "name": "test",
-      "function_name": "func",
-      "num_attempted_runs": 0,
-      "parameters": {},
-      "strict": false,
-    }
-  ],
+  jobs: [],
   submitter: {
     type_: "local_proc",
     working_directory: "",
@@ -117,6 +107,7 @@ export const initialPipelineConfig = createSlice({
         (job) => job.job_id === action.payload.job_id
       );
       if (index !== -1) {
+        console.log("Job update redux called", action.payload)
         state.jobs[index] = action.payload;
       }
     },

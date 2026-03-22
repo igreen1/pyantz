@@ -16,4 +16,14 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    // Explicitly include ajv and the 2019-09 distribution
+    include: ['ajv', 'ajv/dist/2019.js'],
+  },
+  build: {
+    commonjsOptions: {
+      // Ensure CommonJS modules are transformed properly
+      include: [/node_modules/],
+    },
+  },
 })

@@ -5,12 +5,8 @@
 import { useState, useCallback, useEffect, type MouseEvent } from "react";
 import {
   ReactFlow,
-  applyNodeChanges,
-  applyEdgeChanges,
   MiniMap,
   Controls,
-  type Node,
-  type Edge,
   type Connection,
   type NodeChange,
   type EdgeChange,
@@ -20,11 +16,12 @@ import {
 import "@xyflow/react/dist/style.css";
 import "./jobBoard.css";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import JobNode from "./JobNode";
+// import JobNode from "./JobNode";
+import FancyJobNode from "./FancyJobNode";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
 import { addDependency } from "../store/slices/currentPipeline";
 import { showJobOptions, showContextMenu, hideContextMenu } from "../store/slices/uiSlice";
-
+import { setNodes, setEdges, updateNodes, updateEdges, } from "../store/slices/graphSlice";
 
 /**
  * React component to edit the jobs dynamically.
@@ -32,29 +29,27 @@ import { showJobOptions, showContextMenu, hideContextMenu } from "../store/slice
 export default function JobBoard() {
   const dispatch = useAppDispatch();
 
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
-
-  // Handle custom right clicking context men
-
+  const nodes = useAppSelector((state) => state.jobGraph.nodes);
+  const edges = useAppSelector((state) => state.jobGraph.edges);
 
   const currentPipeline = useAppSelector((state) => state.currentPipeline);
 
-
   const nodeTypes: NodeTypes = {
-    jobNode: JobNode,
+    jobNode: FancyJobNode,
   };
 
   // Callbacks used by the reactflow library
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) =>
-      setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
-    []
+    (changes: NodeChange[]) => {
+      dispatch(updateNodes(changes));
+    },
+    [dispatch]
   );
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) =>
-      setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
-    []
+    (changes: EdgeChange[]) => {
+      dispatch(updateEdges(changes))
+    },
+    [dispatch]
   );
   const onConnect = useCallback(
     (params: Connection) => {
@@ -69,18 +64,23 @@ export default function JobBoard() {
 
   useEffect(() => {
     // Update nodes based on currentPipeline jobs
-    const previousNodes = nodes.map((node) => node.id);
-    const newJobs = currentPipeline.jobs.filter((job) => !previousNodes.includes(job.job_id));
-    const newNodes = newJobs.map((job) => ({
-      id: job.job_id,
-      type: "jobNode",
-      position: { x: 0, y: 0 },
-      data: { label: job.name, job },
-
-    }))
-    const updatedNodes = [...nodes, ...newNodes];
-    console.log(updatedNodes);
-    setNodes(updatedNodes);
+    const updatedNodes = currentPipeline.jobs
+      .map((job) => {
+        const previousElem = nodes.find((val: any) => val?.data?.job?.job_id === job.job_id);
+        const x = previousElem ? previousElem.position.x : 0;
+        const y = previousElem ? previousElem.position.y : 0;
+        return {
+          id: job.job_id,
+          type: "jobNode",
+          position: { x, y },
+          data: {
+            label: job.name,
+            job
+          }
+        }
+      })
+    dispatch(setNodes(updatedNodes));
+    console.log("New node states", updatedNodes)
 
     // Update edges based on currentPipeline job dependencies
     const updatedEdges = currentPipeline.jobs
@@ -96,8 +96,8 @@ export default function JobBoard() {
           },
         }))
       );
-    setEdges(updatedEdges);
-  }, [currentPipeline.jobs]);
+    dispatch(setEdges(updatedEdges));
+  }, [currentPipeline.jobs, dispatch]);
 
   const handleContextMenu = (right_click: MouseEvent<HTMLDivElement>) => {
     right_click.preventDefault();

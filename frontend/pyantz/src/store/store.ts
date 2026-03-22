@@ -2,6 +2,7 @@ import availableJobsReducer from './slices/availableJobSlice'
 import initialPipelineConfigReducer from './slices/currentPipeline'
 import jobSchemaReducer from './slices/jobSchemaSlice'
 import UiOptionsReducer from './slices/uiSlice'
+import GraphSliceReducer from './slices/graphSlice';
 import { type Action, type ThunkAction, configureStore } from '@reduxjs/toolkit'
 
 export const store = configureStore({
@@ -10,6 +11,7 @@ export const store = configureStore({
     jobSchemas: jobSchemaReducer,
     currentPipeline: initialPipelineConfigReducer,
     uiOptions: UiOptionsReducer,
+    jobGraph: GraphSliceReducer,
   },
 })
 

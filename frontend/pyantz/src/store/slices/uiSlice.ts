@@ -3,6 +3,20 @@
  */
 
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import {
+  ReactFlow,
+  applyNodeChanges,
+  applyEdgeChanges,
+  MiniMap,
+  Controls,
+  type Node,
+  type Edge,
+  type Connection,
+  type NodeChange,
+  type EdgeChange,
+  type NodeTypes,
+  MarkerType,
+} from "@xyflow/react";
 
 export interface ContextMenuOptions {
     showContextMenu: boolean;
@@ -13,7 +27,7 @@ export interface ContextMenuOptions {
 const initialContextMenu: () => ContextMenuOptions = () => ({
     showContextMenu: false,
     contextMenuPosition: {x: 0, y: 0},
-    editJobId: null
+    editJobId: null,
 });
 
 export interface UpdateContextMenuAction {
@@ -29,7 +43,7 @@ export interface UiOptions {
 
 const initialState: UiOptions = {
     showJobOptions: false,
-    contextMenu: initialContextMenu()
+    contextMenu: initialContextMenu(),
 
 }
 
@@ -38,7 +52,6 @@ export const uiOptions = createSlice({
     initialState,
     reducers: {
         showJobOptions: (state) => {
-            console.log("SHOW JOB OPTS")
             state.showJobOptions = true;
         },
         hideJobOptions: (state) => {
