@@ -5,7 +5,7 @@
  */
 
 import { useAppSelector } from "../store/hooks";
-import Form from "@rjsf/core";
+import Form from "@rjsf/mui";
 import validator from "@rjsf/validator-ajv8";
 import "./JobParameterEditor.css";
 import { useState } from "react";
@@ -78,8 +78,9 @@ export const JobParameterEditorForm = (props: IJobParameterEditorProps) => {
                 props.setValue(e.formData);
                 props.toggleShowEditor();
               }}
-              className="no-border-form"
+              // className="no-border-form"
             />
+
           )
           : (
             <>

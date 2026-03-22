@@ -2,10 +2,13 @@ import { useEffect, useState } from "react";
 import "./App.css";
 import JobBoard from "./components/JobBoard";
 import { useAppDispatch, useAppSelector } from "./store/hooks";
-import { JobSelection } from "./components/JobSelection";
-import { fetchAvailableJobs } from "./store/jobs/availableJobSlice";
-import { fetchJobSchemas } from "./store/jobs/jobSchemaSlice";
-import { JobList } from "./components/JobList";
+// import { JobSelection } from "./components/JobSelection";
+import { fetchAvailableJobs } from "./store/slices/availableJobSlice";
+import { fetchJobSchemas } from "./store/slices/jobSchemaSlice";
+// import { JobList } from "./components/JobList";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import JobOptionsMenu from "./components/JobOptionsMenu";
+
 
 function App() {
   const dispatch = useAppDispatch();
@@ -37,16 +40,13 @@ function App() {
     <>
       <div className="job-board-body" style={{ display: "flex", width: "100vw " }}>
         <div className="job-board-flow">
-          <JobSelection
-            displayPopup={displayPopup}
-            setDisplayPopup={setDisplayPopup}
-          />
+          <JobOptionsMenu />
           <JobBoard />
         </div>
         {
           displayPopup ? 
           <div className="job-board-popup">
-            <JobList />
+            {/* <JobList /> */}
           </div> 
           : null
         }

@@ -1,14 +1,10 @@
 .no-border-form {
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  outline: none !important;
+  /* border: none !important; */
+  /* box-shadow: none !important; */
+  /* background: transparent !important; */
+  /* outline: none !important; */
 }
 
-.no-border-form fieldset {
-  border: none !important;
-  box-shadow: none !important;
-}
 
 /* rjsf and common container elements */
 .no-border-form .panel,

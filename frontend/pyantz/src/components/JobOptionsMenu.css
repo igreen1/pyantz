@@ -1,0 +1,72 @@
+/* Show the job options menu */
+
+.job-options-menu {
+    /* Enables flexbox layout */
+    justify-content: center;
+    /* Centers content horizontally */
+    align-items: center;
+    /* Centers content vertically */
+    position: fixed;
+    /* Positions relative to the viewport, prevents scrolling away */
+    top: auto;
+    left: 12.5%;
+    top: 12.5%;
+    width: 75%;
+    height: 75%;
+    margin: auto;
+    /* Occupies the full screen height */
+    background-color: #10002b;
+    /* Adds a semi-transparent backdrop */
+    z-index: 1000;
+    /* Ensures the popup is above other elements */
+    overflow: scroll;
+    direction: rtl; /* Moves scrollbar to the left */
+}
+
+.job-options-menu-close-button {
+    position:absolute;
+    top: 0;
+    right: 0;
+    font-size: 30px;
+    z-index: 1001;
+    color: white;
+    margin: auto;
+    padding: auto;
+}
+.job-options-menu-close-button:hover {
+    background-color: rgba(115, 79, 150, 1); /* Dark lavender */
+}
+
+.job-options-menu-list {
+    color: white;
+    margin: auto;
+}
+
+.loading-animation {
+    display: flex;
+    justify-content: center;
+    /* Centers horizontally */
+    align-items: center;
+}
+
+.job-options-menu-inner-list {
+    list-style-type: none;
+    max-height: 100%;
+    overflow-y: auto;
+    padding: 0px;
+}
+
+.job-options-menu-list-item {
+    min-width: 50px;
+    margin-bottom: 10px;
+    border: "1px solid grey";
+}
+
+.job-options-menu-inner-list-item{
+    width: 100%;
+}
+
+.job-options-menu-inner-list-item:hover {
+    color: white;
+    background-color: rgba(115, 79, 150, 1); /* Dark lavender */
+}

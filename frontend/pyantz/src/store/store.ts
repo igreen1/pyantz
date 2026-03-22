@@ -1,13 +1,15 @@
-import availableJobsReducer from './jobs/availableJobSlice'
-import initialPipelineConfigReducer from './jobs/currentPipeline'
-import jobSchemaReducer from './jobs/jobSchemaSlice'
+import availableJobsReducer from './slices/availableJobSlice'
+import initialPipelineConfigReducer from './slices/currentPipeline'
+import jobSchemaReducer from './slices/jobSchemaSlice'
+import UiOptionsReducer from './slices/uiSlice'
 import { type Action, type ThunkAction, configureStore } from '@reduxjs/toolkit'
 
 export const store = configureStore({
   reducer: {
     availableJobs: availableJobsReducer,
     jobSchemas: jobSchemaReducer,
-    currentPipeline: initialPipelineConfigReducer
+    currentPipeline: initialPipelineConfigReducer,
+    uiOptions: UiOptionsReducer,
   },
 })
 

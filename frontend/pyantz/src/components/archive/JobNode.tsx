@@ -2,12 +2,12 @@
  * AI SLOP to create
  */
 import { useState } from "react";
+import { Handle, Position } from "@xyflow/react";
 import { useAppDispatch } from "../store/hooks";
-import { updateJob } from "../store/slices/currentPipeline";
-import { type Job } from "../store/slices/currentPipeline";
-// import "./JobNode.css";
-import { Handle, Position, NodeResizer } from '@xyflow/react';
-// import { FloatingJobParameterEditor } from "./JobParameterEditor";
+import { updateJob } from "../store/jobs/currentPipeline";
+import { type Job } from "../store/jobs/currentPipeline";
+import "./JobNode.css";
+import { FloatingJobParameterEditor } from "./JobParameterEditor";
 
 interface JobNodeProps {
   data: {
@@ -63,20 +63,34 @@ export default function JobNode({ data }: JobNodeProps) {
     const displayValue = Array.isArray(value)
       ? value.join(", ")
       : typeof value === "object"
-        ? JSON.stringify(value)
-        : String(value);
+      ? JSON.stringify(value)
+      : String(value);
 
     return (
       <div key={field} className="job-field">
         <span className="job-field-label">{label}:</span>
-
-        <span
-          className="job-field-value"
-          onDoubleClick={() => startEditing(field, value)}
-          title={displayValue}
-        >
-          {displayValue}
-        </span>
+        {isEditing ? (
+          <FloatingJobParameterEditor
+            job_id={data.job.job_id ?? "unknown"}
+            toggleShowEditor={() => {
+              setEditingField(null);
+            }}
+            setValue={(newValue: object) => {
+              console.log("Form submission:", newValue);
+              handleFieldChange(field, newValue);
+              setEditingField(null);
+              setEditValue("");
+            }}
+          />
+        ) : (
+          <span
+            className="job-field-value"
+            onDoubleClick={() => startEditing(field, value)}
+            title={displayValue}
+          >
+            {displayValue}
+          </span>
+        )}
       </div>
     );
   };
@@ -88,8 +102,8 @@ export default function JobNode({ data }: JobNodeProps) {
         ? Array.isArray(value)
           ? value.join(", ")
           : typeof value === "object"
-            ? JSON.stringify(value)
-            : String(value)
+          ? JSON.stringify(value)
+          : String(value)
         : "";
 
     return (
@@ -113,7 +127,6 @@ export default function JobNode({ data }: JobNodeProps) {
             className="job-field-value"
             onDoubleClick={() => startEditing(field, value)}
             title={displayValue}
-            style={{resize: "both"}}
           >
             {displayValue}
           </span>
@@ -125,7 +138,6 @@ export default function JobNode({ data }: JobNodeProps) {
 
   return (
     <div className={`job-node ${isExpanded ? "expanded" : "collapsed"}`}>
-      <NodeResizer />
       <Handle type="target" position={Position.Top} />
 
       <div
@@ -133,24 +145,24 @@ export default function JobNode({ data }: JobNodeProps) {
       >
         <div className="job-node-title" onDoubleClick={() => setEditingField("name")}>
           {
-            editingField === "name"
-              ? (<>
-                <input
-                  type="text"
-                  value={data.job.name}
-                  onChange={(e) => handleFieldChange("name", e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key == "Escape") setEditingField(null)
-                  }}
-                  onBlur={() => setEditingField(null)}
-                  autoFocus
-                />
-              </>)
-              : `${data.job.name} (ID: ${data.job.job_id})`
+            editingField === "name" 
+            ? (<>
+              <input
+              type="text"
+              value={data.job.name}
+              onChange={(e) => handleFieldChange("name", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key == "Escape") setEditingField(null)
+              }}
+              onBlur={() => setEditingField(null)}
+              autoFocus
+              />
+            </>)
+            : `${data.job.name} (ID: ${data.job.job_id})`
           }
-
+          
         </div>
-        <span className="job-node-toggle" onClick={() => setIsExpanded(!isExpanded)}>{isExpanded ? "−" : "+"}</span>
+        <span className="job-node-toggle"  onClick={() => setIsExpanded(!isExpanded)}>{isExpanded ? "−" : "+"}</span>
       </div>
 
       {isExpanded && (
