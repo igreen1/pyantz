@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict, FilePath
+from pydantic import BaseModel, ConfigDict
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 
@@ -14,7 +14,7 @@ class FromCsvToParquetParameters(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    csv_file: FilePath
+    csv_file: Path
 
     parquet_file: Path
 
@@ -48,7 +48,7 @@ def csv_to_parquet(params: FromCsvToParquetParameters) -> bool:
 class FromExcelToCsvParameters(BaseModel):
     """Load a page from an excel and dump it into a csv."""
 
-    excel_file: FilePath
+    excel_file: Path
 
     # name of the sheet in excel to execute
     sheet_name: str

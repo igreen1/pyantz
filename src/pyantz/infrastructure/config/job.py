@@ -65,7 +65,7 @@ class JobConfig(BaseModel):
         WithJsonSchema(
             {
                 "type": "string",
-                "format": "binary",
+                "format": "base64",
             }
         ),
     ]

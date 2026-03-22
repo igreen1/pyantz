@@ -30,7 +30,18 @@ export const graphSlice = createSlice({
         setEdges: (state, action: PayloadAction<Edge[]>) => {
             state.edges = action.payload;
         },
-        
+        addNode: (state, action: PayloadAction<Node>) => {
+            state.nodes = [
+                action.payload,
+                ...state.nodes
+            ];
+        },
+        addEdge: (state, action: PayloadAction<Edge>) => {
+            state.edges = [
+                action.payload,
+                ...state.edges
+            ]
+        },
         updateNodes: (state, action) => {
             state.nodes = applyNodeChanges(action.payload, state.nodes); // Apply changes to the store's state
         },
@@ -41,6 +52,8 @@ export const graphSlice = createSlice({
 })
 
 export const {
+    addEdge,
+    addNode,
     setEdges,
     setNodes,
     updateEdges,

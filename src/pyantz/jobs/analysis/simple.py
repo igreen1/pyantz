@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal, Self
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict, FilePath, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 
@@ -16,7 +16,7 @@ class ColumnarOperationParameters(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     #: Parquet file to read dataframe from for these operations
-    source_parquet_file: FilePath
+    source_parquet_file: Path
 
     #: Location to save the results after performing the operation
     result_parquet_file: str

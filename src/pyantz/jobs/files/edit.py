@@ -109,7 +109,7 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
         WithJsonSchema(
             {
                 "type": "string",
-                "format": "binary",
+                "format": "base64",
             }
         ),
     ]

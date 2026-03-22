@@ -2,6 +2,7 @@
 
 import logging
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import polars as pl
@@ -10,7 +11,6 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
-    FilePath,
     WithJsonSchema,
     field_serializer,
 )
@@ -41,7 +41,7 @@ class ExternalExtractParams(BaseModel):
         WithJsonSchema(
             {
                 "type": "string",
-                "format": "binary",
+                "format": "base64",
             }
         ),
     ]
@@ -112,7 +112,7 @@ class ExternalSimpleParams(BaseModel):
         WithJsonSchema(
             {
                 "type": "string",
-                "format": "binary",
+                "format": "base64",
             }
         ),
     ]
@@ -153,7 +153,7 @@ class ExternalAnalysisParams(BaseModel):
     #: map variable names to parquet files
     #: the parquet files will be read into polars lazy or dataframes
     #: and passed as kwargs to the analysis function
-    variable_names_to_parquets: Mapping[str, FilePath]
+    variable_names_to_parquets: Mapping[str, Path]
 
     #: if lazy, all dataframes are scanned into memory
     #: if eager, all dataframes are scanned into memory
@@ -173,7 +173,7 @@ class ExternalAnalysisParams(BaseModel):
         WithJsonSchema(
             {
                 "type": "string",
-                "format": "binary",
+                "format": "base64",
             }
         ),
     ]

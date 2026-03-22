@@ -3,7 +3,7 @@
 import shutil
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, DirectoryPath, FilePath
+from pydantic import BaseModel, ConfigDict
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 
@@ -14,7 +14,7 @@ class CopyParams(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # source file to copy over
-    src: FilePath | DirectoryPath
+    src: Path
 
     # location to create the copy
     dst: Path
@@ -37,7 +37,7 @@ class MoveParams(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # source file to move over
-    src: FilePath | DirectoryPath
+    src: Path
 
     # location to place the reuslt
     dst: Path
@@ -57,7 +57,7 @@ class DeleteParams(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # location to delete
-    path: FilePath | DirectoryPath
+    path: Path
 
     missing_ok: bool = True
 

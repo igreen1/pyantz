@@ -8,7 +8,7 @@ import { updateJob } from "../store/slices/currentPipeline";
 import { type Job } from "../store/slices/currentPipeline";
 import { Handle, Position, NodeResizer } from '@xyflow/react';
 import { addJobToContextMenu } from "../store/slices/uiSlice";
-import JobParameterEditor from "./JobParameterEditor";
+// import JobParameterEditor from "./JobParameterEditor";
 
 export interface IFancyJobNodeProps {
   data: {
@@ -64,7 +64,7 @@ export default function FancyJobNode({ data }: IFancyJobNodeProps) {
         </span>
       </div>
       {
-        isExpanded ? <JobParameterEditor job={data.job} /> : <></>
+        // isExpanded ? <JobParameterEditor job={data.job} /> : <></>
       }
       <Handle type="source" position={Position.Bottom} />
     </div>

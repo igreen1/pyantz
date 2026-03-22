@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 # import jobs so that they are all imported/registered
 import pyantz.jobs  # pyright: ignore[reportUnusedImport] # noqa: F401
@@ -16,6 +17,18 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
 router = APIRouter(prefix="/jobs")
+
+
+def strip_format[T](s: T) -> T:
+    """Strip `format` from string fields."""
+    if isinstance(s, dict):
+        return {
+            k: strip_format(v)  # type: ignore  # noqa: PGH003
+            for k, v in s.items()  # type: ignore  # noqa: PGH003
+            if s.get("type") != "string" or k != "format"  # type: ignore  # noqa: PGH003
+        }
+
+    return s
 
 
 @router.get("/schema/{fn_name}")
@@ -34,9 +47,12 @@ def get_job_schema(fn_name: str) -> GetJsonSchemaResponse:
     if hasattr(fn, "PYANTZ_VALIDATION_MODEL"):
         param_mod: BaseModel = fn.PYANTZ_VALIDATION_MODEL  # type: ignore[attr-defined]
 
+        json_schema = param_mod.model_json_schema()
+        json_schema = strip_format(json_schema)
+
         return GetJsonSchemaResponse(
             fn_path=fn.PYANTZ_NAME,  # type: ignore[attr-defined]
-            json_schema=param_mod.model_json_schema(),
+            json_schema=json_schema,
         )
 
     raise HTTPException(status_code=500, detail="No parameter model for: {fn_name}")
