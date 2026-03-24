@@ -8,6 +8,7 @@ import { addJob } from "../store/slices/currentPipeline";
 import { Oval } from 'react-loader-spinner'; // Import a specific spinner type
 import { BsXLg } from "react-icons/bs";
 import { hideJobOptions } from "../store/slices/uiSlice";
+import type { JSONSchema7 } from "json-schema";
 
 export default function JobOptionsMenu() {
   const dispatch = useAppDispatch();
@@ -46,11 +47,11 @@ export default function JobOptionsMenu() {
 const jobAdderFactory = (
   jobIdCounter: number,
   setJobIdCounter: Dispatch<SetStateAction<number>>,
-): (arg0: string) => void => {
+): (arg0: string, arg1: JSONSchema7 | undefined) => void => {
 
   const dispatch = useAppDispatch();
 
-  const addJobToPipeline = (jobName: string) => {
+  const addJobToPipeline = (jobName: string, jobSchema: JSONSchema7 | undefined) => {
     console.log("Adding job to pipeline:", jobName);
     const job_id = jobIdCounter.toString();
     setJobIdCounter(jobIdCounter + 1);
@@ -58,15 +59,24 @@ const jobAdderFactory = (
     const name_components = jobName.split(".");
     const defaultName = name_components[name_components.length - 1] + "_" + job_id;
 
+    // add default parameters if a schema is available
+    console.log("Got schema for job: ", jobSchema)
+    const entries = jobSchema?.required?.map((req_field) => [req_field, null]);
+
+    const parameters = jobSchema && entries ? (
+      Object.fromEntries(entries)
+    ) : {};
+
     const job = {
       job_id,
       depends_on: null,
       name: defaultName,
-      parameters: {},
+      parameters: parameters,
       function_name: jobName,
       num_attempted_runs: 0,
       strict: false,
     }
+
 
     dispatch(
       addJob(job)
@@ -95,7 +105,7 @@ const jobAdderFactory = (
 }
 
 interface JobListProps {
-  createJob: (jobName: string) => void;
+  createJob: (jobName: string, jobSchema: JSONSchema7 | undefined) => void;
 };
 
 const JobList = (
@@ -141,7 +151,7 @@ const JobList = (
 interface InnerJobListProps {
   names: string[];
   descriptions: string[];
-  createJob: (jobName: string) => void;
+  createJob: (jobName: string, jobSchema: JSONSchema7 | undefined) => void;
 }
 
 const InnerJobList = ({ names, descriptions, createJob }: InnerJobListProps) => {
@@ -151,11 +161,12 @@ const InnerJobList = ({ names, descriptions, createJob }: InnerJobListProps) => 
   };
 
   const makeListItem = (jobName: string, jobDesc: string) => {
+    const schema =  useAppSelector((state) => state?.jobSchemas?.schemas?.[jobName]);
     return (
       <li
         key={jobName}
         className="job-options-menu-inner-list-item"
-        onClick={() => createJob(jobName)}
+        onClick={() => createJob(jobName, schema)}
       >
         <strong>{jobName}</strong>
         <p>{jobDesc}</p>
