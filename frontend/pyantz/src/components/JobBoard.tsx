@@ -19,8 +19,12 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 // import JobNode from "./JobNode";
 import FancyJobNode from "./FancyJobNode";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
-import { showJobOptions, showContextMenu, hideContextMenu } from "../store/slices/uiSlice";
-import { updateNodes, updateEdges, addEdge, } from "../store/slices/graphSlice";
+import {
+  showJobOptions,
+  showContextMenu,
+  hideContextMenu,
+} from "../store/slices/uiSlice";
+import { updateNodes, updateEdges, addEdge } from "../store/slices/graphSlice";
 
 /**
  * React component to edit the jobs dynamically.
@@ -40,13 +44,13 @@ export default function JobBoard() {
     (changes: NodeChange[]) => {
       dispatch(updateNodes(changes));
     },
-    [dispatch]
+    [dispatch],
   );
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      dispatch(updateEdges(changes))
+      dispatch(updateEdges(changes));
     },
-    [dispatch]
+    [dispatch],
   );
   const onConnect = useCallback(
     (params: Connection) => {
@@ -58,14 +62,12 @@ export default function JobBoard() {
         target: job_id,
         animated: true,
         markerEnd: {
-          type: MarkerType.ArrowClosed
-        }
-      }
-      dispatch(
-        addEdge(con)
-      )
+          type: MarkerType.ArrowClosed,
+        },
+      };
+      dispatch(addEdge(con));
     },
-    [dispatch]
+    [dispatch],
   );
   // End callbacks used by the flow library
 
@@ -73,33 +75,31 @@ export default function JobBoard() {
     right_click.preventDefault();
     const position = { x: right_click.clientX, y: right_click.clientY };
     dispatch(
-      showContextMenu(
-        {
-          position,
-        }
-      )
-    )
-  }
+      showContextMenu({
+        position,
+      }),
+    );
+  };
 
   const closeContextMenu = () => {
-    dispatch(hideContextMenu())
-  }
+    dispatch(hideContextMenu());
+  };
 
   const contextMenuItems: ContextMenuItem[] = [
     {
-      "name": "Add Job",
-      "onClick": () => {
-        dispatch(
-          showJobOptions()
-        )
-        closeContextMenu()
-      }
-    }
-  ]
+      name: "Add Job",
+      onClick: () => {
+        dispatch(showJobOptions());
+        closeContextMenu();
+      },
+    },
+  ];
 
   return (
-    <div className="job-board-wrapper" style={{ width: "100%", height: "100%", border: "2px solid black" }}>
-
+    <div
+      className="job-board-wrapper"
+      style={{ width: "100%", height: "100%", border: "2px solid black" }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -114,10 +114,7 @@ export default function JobBoard() {
         <MiniMap />
         <Controls />
       </ReactFlow>
-      <ContextMenu
-        items={contextMenuItems}
-      />
+      <ContextMenu items={contextMenuItems} />
     </div>
-  )
-
+  );
 }

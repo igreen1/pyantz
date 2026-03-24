@@ -22,44 +22,36 @@ export interface Job {
  * @param value: any javascript variable
  * @returns True if the variable appears to represent a Job
  */
-export const isJob = (value: any): value is Job =>  {
-
-
-  const isObj = (item: any): item is object => (
-    typeof item === "object" &&
-    item !== null &&
-    !Array.isArray(item)
-  )
+export const isJob = (value: any): value is Job => {
+  const isObj = (item: any): item is object =>
+    typeof item === "object" && item !== null && !Array.isArray(item);
 
   const fieldIsType = (field: string, type: string) => {
     if (!(field in value)) {
       return false;
     } else if (type === "object") {
-      return isObj(value[field])
+      return isObj(value[field]);
     } else if (type === "array[string]") {
       return (
         Array.isArray(value[field]) &&
         value[field].every((item: any) => typeof item === "string")
-      )
+      );
     } else {
-      return (
-        typeof value[field] === type
-      )
+      return typeof value[field] === type;
     }
-  }
+  };
 
   return (
-    isObj(value) && 
+    isObj(value) &&
     fieldIsType("job_id", "string") &&
     fieldIsType("depends_on", "array[string]") &&
     fieldIsType("name", "string") &&
-    fieldIsType("parameters", "object") && 
+    fieldIsType("parameters", "object") &&
     fieldIsType("function_name", "string") &&
     fieldIsType("num_attempted_runs", "number") &&
     fieldIsType("strict", "boolean")
-  )
-
-}
+  );
+};
 
 export interface LocalRunnerConfig {
   type_: "local_proc";
