@@ -6,17 +6,9 @@ import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { useAppDispatch } from "../store/hooks";
 import { Handle, Position, NodeResizer, type NodeProps, type Node } from '@xyflow/react';
 import { addJobToContextMenu } from "../store/slices/uiSlice";
-// import JobParameterEditor from "./JobParameterEditor";
+import JobParameterEditor from "./JobParameterEditor";
 import type { Job } from "../store/slices/pipelineTypes";
 import { updateJobNode } from "../store/slices/graphSlice";
-
-// export interface IFancyJobNodeProps {
-//   id: number,
-//   data: {
-//     label: string;
-//     job: Job
-//   }
-// }
 
 
 type IFancyJobNodeProps = NodeProps<Node<{ job: Job, label: string }>>;
@@ -66,7 +58,7 @@ export default function FancyJobNode({ id, data }: IFancyJobNodeProps) {
         </span>
       </div>
       {
-        // isExpanded ? <JobParameterEditor job={data.job} /> : <></>
+        isExpanded ? <JobParameterEditor job={data.job} id={id} /> : <></>
       }
       <Handle type="source" position={Position.Bottom} />
     </div>
@@ -99,7 +91,6 @@ const EditableLabel = ({id, field_name, job}: IEditableLabelProps) => {
   const saveChanges = useCallback(
     () => {
       // dispatch changes to the simulation
-      console.log("dispatching save event")
       const newJob = {
         ...job,
         [field_name]: currValue

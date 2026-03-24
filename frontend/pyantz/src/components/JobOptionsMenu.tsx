@@ -51,7 +51,6 @@ const jobAdderFactory = (
   const dispatch = useAppDispatch();
 
   const addJobToPipeline = (jobName: string, jobSchema: JSONSchema7 | undefined) => {
-    console.log("Adding job to pipeline:", jobName);
     const job_id = jobIdCounter.toString();
     setJobIdCounter(jobIdCounter + 1);
 
@@ -59,7 +58,6 @@ const jobAdderFactory = (
     const defaultName = name_components[name_components.length - 1] + "_" + job_id;
 
     // add default parameters if a schema is available
-    console.log("Got schema for job: ", jobSchema)
     const entries = jobSchema?.required?.map((req_field) => [req_field, null]);
 
     const parameters = jobSchema && entries ? (

@@ -2,23 +2,22 @@
  * Handles editing the parameters of a job
  */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { JsonEditor } from 'json-edit-react'
 import { useAppSelector, useAppDispatch } from "../store/hooks";
-import {updateJobNode} from "../store/slices/graphSlice";
+import { updateJobNode } from "../store/slices/graphSlice";
 import Ajv2019, { _ } from "ajv/dist/2019"
 import type { JSONSchema7Definition, JSONSchema7 } from 'json-schema';
-import { keyword$DataError } from 'ajv/dist/compile/errors';
-import FancyJobNode from './FancyJobNode';
+import type { Job } from '../store/slices/pipelineTypes';
 
 
 interface IJobParameterEditorProps {
-  job: Job
+  id: string;
+  job: Job;
 }
 
-export default function JobParameterEditor({ job }: IJobParameterEditorProps) {
-  console.log("JOBJOB");
-  console.log(job);
+export default function JobParameterEditor({ id, job }: IJobParameterEditorProps) {
+  
   const dispatch = useAppDispatch();
 
   const jobParameterSchema = useAppSelector((state) => {
@@ -44,30 +43,31 @@ export default function JobParameterEditor({ job }: IJobParameterEditorProps) {
       multiJobParameters: null,
     };
 
-  // console.log("Splitting");
-  // console.log(simpleParameters);
-  // console.log(singleJobParameters);
-  // console.log(multiJobParameters);
-  // console.log("Done splitting");
 
-  const updateJobParameters = (newParams: Record<string, unknown>) => {
-    console.log("HELLO")
-    console.log(newParams)
-    const updatedParams = {
-      ...job.parameters,
-      ...newParams
-    };
-    const newJobDefinition = {
-      ...job,
-      parameters: updatedParams,
-    }
-    dispatch(
-      updateJob(newJobDefinition)
-    );
-    dispatch (
-      updateJobNode(newJobDefinition)
-    );
-  }
+  const updateJobParameters = useCallback((newParams: Record<string, unknown>) => {
+    
+      const updatedParams = {
+        ...job.parameters,
+        ...newParams
+      };
+      const newJobDefinition = {
+        ...job,
+        parameters: updatedParams,
+      }
+      dispatch(
+        updateJobNode({
+          id,
+          job: newJobDefinition
+        })
+      );
+    },
+    [
+      dispatch,
+      updateJobNode,
+      id,
+      job,
+    ]
+  )
 
   return <div>
     {

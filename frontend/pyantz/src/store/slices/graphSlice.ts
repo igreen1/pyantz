@@ -48,18 +48,16 @@ export const graphSlice = createSlice({
             const {id, job } = action.payload;
             const node = state.nodes.find((n) => n.id === id);
             if (node) {
-                console.log("updating node");
                 node.data = {
                     ...node.data,
                     job: {
                         ...(node.data?.job ?? {}),
-                        job
+                        ...job
                     }
                 }
             }
         },
         deleteJobNode: (state, action: PayloadAction<string>) => {
-            console.log("trying to delete!");
             const node_id = action.payload;
             console.log(node_id);
             state.nodes = state.nodes.filter((n) => n.id !== node_id);
