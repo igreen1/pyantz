@@ -19,7 +19,6 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 // import JobNode from "./JobNode";
 import FancyJobNode from "./FancyJobNode";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
-import { addDependency } from "../store/slices/currentPipeline";
 import { showJobOptions, showContextMenu, hideContextMenu } from "../store/slices/uiSlice";
 import { updateNodes, updateEdges, addEdge, } from "../store/slices/graphSlice";
 
@@ -51,9 +50,6 @@ export default function JobBoard() {
   );
   const onConnect = useCallback(
     (params: Connection) => {
-      dispatch(
-        addDependency({ job_id: params.target!, depends_on: params.source! })
-      );
       let dep_id = params.source!;
       let job_id = params.target!;
       let con = {
@@ -72,48 +68,6 @@ export default function JobBoard() {
     [dispatch]
   );
   // End callbacks used by the flow library
-
-  // useEffect(() => {
-  //   // Update nodes based on currentPipeline jobs
-  //   // const updatedNodes = currentPipeline.jobs
-  //   //   .map((job) => {
-  //   //     const previousElem = nodes.find((val: any) => val?.data?.job?.job_id === job.job_id);
-  //   //     const defaultElem = previousElem ? previousElem : {}
-  //   //     const x = previousElem ? previousElem.position.x : 0;
-  //   //     const y = previousElem ? previousElem.position.y : 0;
-  //   //     return {
-  //   //       id: job.job_id,
-  //   //       type: "jobNode",
-  //   //       position: { x, y },
-  //   //       data: {
-  //   //         label: job.name,
-  //   //         job
-  //   //       },
-  //   //       ...defaultElem, // keep any other fields form the node
-  //   //     }
-  //   //   })
-
-  //   // some nodes aren't "jobs" in the pipeline because they're parameters
-  //   // so we should keep them
-  //   dispatch(setNodes(updatedNodes));
-  //   console.log("New node states", updatedNodes)
-
-  //   // Update edges based on currentPipeline job dependencies
-  //   const updatedEdges = currentPipeline.jobs
-  //     .filter((job) => job.depends_on)
-  //     .flatMap((job) =>
-  //       job.depends_on!.map((dep) => ({
-  //         id: `e${dep}->${job.job_id}`,
-  //         source: dep,
-  //         target: job.job_id,
-  //         animated: true,
-  //         markerEnd: {
-  //           type: MarkerType.ArrowClosed,
-  //         },
-  //       }))
-  //     );
-  //   dispatch(setEdges(updatedEdges));
-  // }, [currentPipeline.jobs, dispatch]);
 
   const handleContextMenu = (right_click: MouseEvent<HTMLDivElement>) => {
     right_click.preventDefault();

@@ -2,33 +2,34 @@
  * Show fancier job nodes, including allowing nodes within nodes
  */
 
-import { useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useState, type MouseEvent } from "react";
 import { useAppDispatch } from "../store/hooks";
-import { updateJob } from "../store/slices/currentPipeline";
-import { type Job } from "../store/slices/currentPipeline";
-import { Handle, Position, NodeResizer } from '@xyflow/react';
+import { Handle, Position, NodeResizer, type NodeProps, type Node } from '@xyflow/react';
 import { addJobToContextMenu } from "../store/slices/uiSlice";
 // import JobParameterEditor from "./JobParameterEditor";
+import type { Job } from "../store/slices/pipelineTypes";
+import { updateJobNode } from "../store/slices/graphSlice";
 
-export interface IFancyJobNodeProps {
-  data: {
-    label: string;
-    job: Job
-  }
-}
+// export interface IFancyJobNodeProps {
+//   id: number,
+//   data: {
+//     label: string;
+//     job: Job
+//   }
+// }
 
 
+type IFancyJobNodeProps = NodeProps<Node<{ job: Job, label: string }>>;
 
-export default function FancyJobNode({ data }: IFancyJobNodeProps) {
+export default function FancyJobNode({ id, data }: IFancyJobNodeProps) {
   const dispatch = useAppDispatch();
 
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   const handleContextMenu = (right_click: MouseEvent<HTMLDivElement>) => {
     right_click.preventDefault();
-    const jobId = data.job.job_id;
     dispatch(
-      addJobToContextMenu(jobId)
+      addJobToContextMenu(id)
     )
   }
 
@@ -49,6 +50,7 @@ export default function FancyJobNode({ data }: IFancyJobNodeProps) {
         className="job-node-header"
       >
         <EditableLabel
+          id={id}
           field_name="name"
           job={data.job}
         />
@@ -72,32 +74,45 @@ export default function FancyJobNode({ data }: IFancyJobNodeProps) {
 
 }
 
+interface IEditableLabelProps {
+  id: string;
+  field_name: "function_name" | "name" | "job_id";
+  job: Job;
+}
 
-const EditableLabel = (props: { field_name: "function_name" | "name" | "job_id", job: Job }) => {
+const EditableLabel = ({id, field_name, job}: IEditableLabelProps) => {
 
   const dispatch = useAppDispatch();
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [currValue, setCurrValue] = useState(props.job[props.field_name]);
+  const [currValue, setCurrValue] = useState(job[field_name]);
 
   const handleUpdate = (newValue: string) => {
     setCurrValue(newValue)
   }
 
-  const saveChanges = () => {
-    // note: this will trigger a re-render of this entire component
-    // which isn't strictly necessary but not a big expense
-    console.log("dispatching save event")
-    const newJob = {
-      ...props.job,
-      [props.field_name]: currValue
-    };
-    dispatch(
-      updateJob(
-        newJob
+  // make sure changes made elsewhere are reflected here
+  // todo: how to better sync state? should we just dispatch on
+  useEffect(() => {
+    setCurrValue(job[field_name])
+  }, [job[field_name]])
+
+  const saveChanges = useCallback(
+    () => {
+      // dispatch changes to the simulation
+      console.log("dispatching save event")
+      const newJob = {
+        ...job,
+        [field_name]: currValue
+      };
+      dispatch(
+        updateJobNode(
+          {id, job: newJob}
+        )
       )
-    );
-    setIsEditing(false);
-  }
+      setIsEditing(false);
+
+    }, [dispatch, id, job, field_name]
+  )
 
   return (
     <div className="editable-text" onDoubleClick={() => setIsEditing(true)}>

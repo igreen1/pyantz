@@ -1,5 +1,4 @@
 import availableJobsReducer from './slices/availableJobSlice'
-import initialPipelineConfigReducer from './slices/currentPipeline'
 import jobSchemaReducer from './slices/jobSchemaSlice'
 import UiOptionsReducer from './slices/uiSlice'
 import GraphSliceReducer from './slices/graphSlice';
@@ -9,7 +8,6 @@ export const store = configureStore({
   reducer: {
     availableJobs: availableJobsReducer,
     jobSchemas: jobSchemaReducer,
-    currentPipeline: initialPipelineConfigReducer,
     uiOptions: UiOptionsReducer,
     jobGraph: GraphSliceReducer,
   },

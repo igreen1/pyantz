@@ -4,7 +4,6 @@ import { useState, type Dispatch, type SetStateAction } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { addNode } from "../store/slices/graphSlice";
 import "./JobOptionsMenu.css"
-import { addJob } from "../store/slices/currentPipeline";
 import { Oval } from 'react-loader-spinner'; // Import a specific spinner type
 import { BsXLg } from "react-icons/bs";
 import { hideJobOptions } from "../store/slices/uiSlice";
@@ -77,10 +76,6 @@ const jobAdderFactory = (
       strict: false,
     }
 
-
-    dispatch(
-      addJob(job)
-    )
 
     // add the node directly
     const newGraphNode = {
