@@ -3,7 +3,7 @@
 from .initial import AnyRunner, InitialConfig
 from .job import JobConfig, JobWithContext, SubmissionFnType
 from .parameters import add_parameters, no_submit_fn
-from .runners import LocalRunnerConfig, RunnerConfig
+from .runners import LocalRunnerConfig
 
 __all__ = [
     "AnyRunner",
@@ -11,7 +11,6 @@ __all__ = [
     "JobConfig",
     "JobWithContext",
     "LocalRunnerConfig",
-    "RunnerConfig",
     "SubmissionFnType",
     "add_parameters",
     "no_submit_fn",

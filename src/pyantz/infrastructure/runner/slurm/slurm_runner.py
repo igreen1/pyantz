@@ -116,7 +116,8 @@ def _create_job_submitter(config: SlurmRunnerConfig) -> SubmissionFnType:
         """Submit the job to the grid."""
         # submit our job
         new_job_id = sbatch(job, None)
-        _add_dependency(new_job_id, job_deps_to_update=job_dependencies)
+        if config.inherit_dependencies:
+            _add_dependency(new_job_id, job_deps_to_update=job_dependencies)
 
     return submit_fn
 

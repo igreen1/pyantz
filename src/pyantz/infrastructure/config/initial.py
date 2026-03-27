@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from .job import JobConfig
 from .runners import LocalRunnerConfig, SlurmRunnerConfig
 
-type AnyRunner = LocalRunnerConfig
+type AnyRunner = LocalRunnerConfig | SlurmRunnerConfig
 
 
 class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
