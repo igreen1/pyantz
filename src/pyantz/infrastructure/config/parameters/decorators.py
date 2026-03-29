@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from pydantic import BaseModel
 
@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     )
 
 PYANTZ_REGISTERED_FUNCTION: Final[list[JobFunctionType]] = []
+
+VIRTUAL_MARKER: Final[str] = "__PYANTZ_VIRTUAL__"
 
 
 def no_submit_fn[T: (BaseModel | ParametersType)](
@@ -90,3 +92,19 @@ def add_parameters[T: BaseModel](
         return _fn_with_checker
 
     return _decorate_fn_with_params
+
+
+def mark_virtual[T](
+    fn: T
+) -> T:
+    """Add a parameter marking the function as a virtual job."""
+
+    setattr(fn, VIRTUAL_MARKER, True) # type: ignore[attr-defined] # pyright: ignore[reportFunctionMemberAccess]
+
+    return fn
+    
+    
+def is_virtual(fn: Callable[..., Any]) -> bool:
+    """Return true if the function is marked as virtual."""
+
+    return hasattr(fn, VIRTUAL_MARKER) and getattr(fn, VIRTUAL_MARKER)

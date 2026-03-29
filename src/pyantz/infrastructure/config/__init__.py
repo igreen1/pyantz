@@ -2,7 +2,7 @@
 
 from .initial import AnyRunner, InitialConfig
 from .job import JobConfig, JobWithContext, SubmissionFnType
-from .parameters import add_parameters, no_submit_fn
+from .parameters import add_parameters, is_virtual, mark_virtual, no_submit_fn
 from .runners import LocalRunnerConfig
 
 __all__ = [
@@ -13,5 +13,7 @@ __all__ = [
     "LocalRunnerConfig",
     "SubmissionFnType",
     "add_parameters",
+    "is_virtual",
+    "mark_virtual",
     "no_submit_fn",
 ]

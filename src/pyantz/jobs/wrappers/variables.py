@@ -76,9 +76,10 @@ class VariableContextParams(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # The job's first parameter will be a dictionary
+    # Jobs to submit with the new variables
     jobs: list[JobConfig]
 
+    # variables to add to jobs when submitted
     shared_variables: Mapping[str, Any]
 
 
