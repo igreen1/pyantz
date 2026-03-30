@@ -24,6 +24,7 @@ def start(config: _InitialConfig[_AnyRunner] | Mapping[str, _Any]) -> None:
     loaded_config = _InitialConfig[_AnyRunner].model_validate(config)
     if loaded_config.submitter.type_ == "local_proc":
         # start local runner
+        print(loaded_config)
         _start_local(loaded_config)
     else:
         raise ValueError

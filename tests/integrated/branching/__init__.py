@@ -1,2 +1,1 @@
 """Test our branching code."""
-

@@ -92,7 +92,7 @@ def _compile_singular(
         for real_job in dep_jobs
     ]
     result = cast("VirtualJobConfig", job).compile_virtual(dep_jobs)
-    result = [
+    return [
         real_job.model_copy(update={
             "depends_on": {
                 id_ for id_ in (real_job.depends_on or set())
@@ -101,6 +101,3 @@ def _compile_singular(
         })
         for real_job in result
     ]
-
-
-    return result

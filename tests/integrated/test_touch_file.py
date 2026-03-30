@@ -30,6 +30,6 @@ def test_touch_file(tmp_path: Path) -> None:
     config["variables"] = {"FILE_PATH": os.fspath(file_path)}
     config["submitter"]["working_directory"] = os.fspath(tmp_path)
 
-    start(config) # type: ignore[arg-type]
+    start(config)  # type: ignore[arg-type]
 
     assert file_path.exists()

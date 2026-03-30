@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from pyantz import start
-from pyantz.infrastructure.config import JobConfig, InitialConfig
+from pyantz.infrastructure.config import InitialConfig
+from pyantz.infrastructure.config.job import make_job
 from pyantz.infrastructure.config.runners.local_runner import LocalRunnerConfig
 
 if TYPE_CHECKING:
@@ -31,8 +32,7 @@ def run_integrated_jobs(tmp_path: Path) -> Callable[[list[dict[str, Any]]], None
 
     def _run(jobs: list[dict[str, Any]]) -> None:
 
-        jobs_validated = [JobConfig.model_validate(j) for j in jobs]
-
+        jobs_validated = [make_job(config) for config in jobs]
         config = {
             **default_config,
             "jobs": jobs_validated,
