@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     """Compile any virtual jobs to concrete jobs."""
     # uncompiled lookup tables
+
     virtual_job_lookup = {
         job.job_id: cast("VirtualJobConfig", job) for job in jobs if job.virtual
     }
@@ -66,6 +67,7 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         node_deps = get_and_consume_dependencies(node_to_compile)
         compile_results = _compile_singular(node_def, node_deps)
         compiled_jobs.extend(compile_results)
+
 
     return compiled_jobs
 

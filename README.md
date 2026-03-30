@@ -3,7 +3,7 @@
 
 1. for jobs which submit other jobs (branch): improve frontend
 Useful jobs to do
-
+2. make case matrix a virtual job
 7. edit yaml
 8. edit generic file using external function
 9. (maybe) edit file using custom function (python `exec`?)

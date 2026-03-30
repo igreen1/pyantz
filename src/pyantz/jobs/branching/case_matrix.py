@@ -100,7 +100,7 @@ def pipeline_expansion_with_output_dir(
     submit_fn: SubmissionFnType,
 ) -> bool:
     """Add variables `output_dir` and `pipeline_id` for each child pipeline."""
-    id_counter = itertools.count[int]()
+    id_counter = itertools.count()
     output_dir = Path(params.output_dir)
     output_dir.mkdir(exist_ok=True)
 
@@ -192,7 +192,7 @@ def _pipeline_factory_factory(
         """Reset the job id and dependencies."""
         return job.model_copy(
             update={
-                "job_id": uuid.uuid4(),
+                "job_id": str(uuid.uuid4()),
                 "depends_on": (
                     dep
                     for dep in (job.depends_on or set())
@@ -209,7 +209,7 @@ def _pipeline_factory_factory(
             nonlocal prev
             updated = curr.model_copy(
                 update={
-                    "depends_on": [*(curr.depends_on or []), *([prev] if prev else [])]
+                    "depends_on": [*(curr.depends_on or []), *([prev.job_id] if prev else [])]
                 }
             )
             prev = updated

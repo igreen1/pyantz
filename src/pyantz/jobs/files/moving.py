@@ -62,10 +62,10 @@ class CopyParams(BaseModel):
     """Copy parameters to copy from location to location."""
 
     # source directory or file
-    source: Path
+    source: Path | str
 
     # destination directory or file
-    destination: Path
+    destination: Path | str
 
     # if true, will overwrite the destination
     overwrite: bool = True
@@ -77,29 +77,32 @@ def copy(params: CopyParams) -> bool:
     """Use python shutil to copy directories and files."""
     logger = logging.getLogger(__name__)
 
-    if not params.source.exists():
+    source = Path(params.source)
+    destination = Path(params.destination)
+
+    if not source.exists():
         logger.error(
             "Cannot copy - it doesn't exist! %s",
             params.source,
         )
         return False
-    if params.destination.exists():
+    if destination.exists():
         logger.warning("Destination file already exists!")
         if params.overwrite:
-            if params.destination.is_file():
-                params.destination.unlink()
+            if destination.is_file():
+                destination.unlink()
             else:
-                shutil.rmtree(params.destination)
+                shutil.rmtree(destination)
         else:
             logger.error("File exists and not overwriting - cannot copy ")
             return False
     try:
-        if params.source.is_file():
-            shutil.copy2(params.source, params.destination)
+        if source.is_file():
+            shutil.copy2(source, destination)
         else:
-            shutil.copytree(params.source, params.destination)
+            shutil.copytree(source, destination)
     except OSError as exc:
-        logger.exception("Cannot copy file: %s", params.source, exc_info=exc)
+        logger.exception("Cannot copy file: %s", source, exc_info=exc)
         return False
     else:
         return True

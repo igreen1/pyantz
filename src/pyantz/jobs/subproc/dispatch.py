@@ -28,18 +28,18 @@ class DispatchParams(BaseModel):
     # If env is not None, it must be a mapping that defines the environment variables
     # for the new process; these are used instead of the default behavior of inheriting
     # the current process environment
-    env: Mapping[str, str] | None
+    env: Mapping[str, str] | None = None
 
     # file location to write stdout
     # will overwrite any existing file
     # if the same as stderr, will start will stdout and then append stderr
     # will add a header to help distinguish
-    stdout_file: Path
+    stdout_file: Path | str | None = None
 
     # file location to write stderr
     # if the same as stdout, will start will stdout and then append stderr
     # will add a header to help distinguish
-    stderr_file: Path
+    stderr_file: Path | str | None = None
 
 
 @add_parameters(DispatchParams)
@@ -60,12 +60,14 @@ def dispatch(params: DispatchParams) -> bool:
 
         # save the output for the user
         if params.stdout_file:
-            params.stdout_file.parent.mkdir(exist_ok=True, parents=True)
-            with params.stdout_file.open("wb") as fh:
+            stdout_file = Path(params.stdout_file)
+            stdout_file.parent.mkdir(exist_ok=True, parents=True)
+            with stdout_file.open("wb") as fh:
                 fh.write(results.stdout)
         if params.stderr_file:
+            stderr_file = Path(params.stderr_file)
             mode = "a" if params.stdout_file else "w"
-            with params.stderr_file.open(mode + "b") as fh:
+            with stderr_file.open(mode + "b") as fh:
                 fh.write(results.stderr)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         logger.exception("Error in dispatch", exc_info=exc)
