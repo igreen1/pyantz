@@ -32,8 +32,9 @@ api = [
 ]
 dev = [
     "autodoc-pydantic>=2.2.0",
+    "hypothesis>=6.151.10",
     "mypy>=1.17.1",
-    "polars[all]>=1.36.1",
+    "polars[all]>=1.39.3",
     "pylint>=4.0.4",
     "pytest>=9.0.2",
     "ruff>=0.14.10",

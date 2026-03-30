@@ -2,22 +2,8 @@
 # TODO:
 
 1. for jobs which submit other jobs (branch): improve frontend
-2. support scoping of variables (submitting josb inherit parent variables)
-3. support resolving variables as a job is called in the configuration
-4. support setting variables in a job (as a submission?)
----> somehow want to be able to add variable scopes
----> would require messing with JobConfigWithContext (not just JobConfig)
-------> this could be funky... but i think it's doable with minimal "big" edits
-
 Useful jobs to do
-
-
-1. how to edit variables by a user? need to apss variables odwn a pipeline
----> submit job with context. submit functions aceept jobs with context.
-----> so simply add context and submit the job - easy peasy
-2. add a case matrix job (duh)
-3. add a case matrix creator job (cross join variables and output)
-4. 
+2. make case matrix a virtual job
 7. edit yaml
 8. edit generic file using external function
 9. (maybe) edit file using custom function (python `exec`?)

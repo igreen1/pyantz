@@ -43,7 +43,7 @@ def _resolve_var_any[T](
         a variable was detected but left unchanged.
     """
     if isinstance(some_val, str):
-        return _resolve_var_str(some_val, variables)  # type: ignore[return-value]
+        return cast("tuple[T, bool]", _resolve_var_str(some_val, variables))  # type: ignore[return-value]
     if isinstance(some_val, Mapping):
         resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
             k: _resolve_var_any(v, variables)  # pyright: ignore[reportUnknownArgumentType]
@@ -55,7 +55,7 @@ def _resolve_var_any[T](
         remaining_variable_flag = any(
             v[1] for v in resolved_variables_and_var_flag.values()
         )
-        return resolved_variables, remaining_variable_flag  # type: ignore[return-value]
+        return cast("T", resolved_variables), remaining_variable_flag  # type: ignore[return-value]
     if isinstance(some_val, Iterable):
         iter_cls: type[T] = type(some_val)  # type: ignore[assignment] # pyright: ignore[reportUnknownVariableType]
         result: list[tuple[Any, bool]] = [

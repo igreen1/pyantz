@@ -288,7 +288,6 @@ class SqliteQueue(QueueInterface):
                 eg., may be the error message for debugging.
 
         """
-        # not required but polite
         self._update_job_statuses()
 
         with Session(self._engine) as sesh:
@@ -303,7 +302,6 @@ class SqliteQueue(QueueInterface):
             sesh.flush()
             sesh.commit()
 
-        # not required but polite
         self._update_job_statuses()
 
     def add_job(
@@ -338,7 +336,7 @@ class SqliteQueue(QueueInterface):
                 for chunk_as_tuple in batched(jobs_json, CHUNKSIZE, strict=False)
             )
 
-            # then, add it to the job config defintion table
+            # then, add it to the job config definition table
             job_configs = [
                 JobConfigTable(
                     job_id=job_config.job_id,
@@ -359,10 +357,14 @@ class SqliteQueue(QueueInterface):
                 ]
                 sesh.add_all(dependencies)
             if parent_job_id is not None:
+                # inherit deps!
                 jobs_depending_on_parent = sa.select(
                     DependencyTable.job_id,
-                    sa.literal_column(f"{job_config.job_id}").alias("depends_on"),
+                    sa.literal(str(job_config.job_id), type_=sa.String).label(
+                        "depends_on"
+                    ),
                 ).where(DependencyTable.depends_on == parent_job_id)
+
                 query = sa.insert(DependencyTable).from_select(
                     ["job_id", "depends_on"],
                     jobs_depending_on_parent,

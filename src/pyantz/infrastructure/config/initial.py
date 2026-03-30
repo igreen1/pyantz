@@ -1,14 +1,21 @@
 """Configuration of the analysis overall."""
 
 from collections.abc import Mapping
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, BeforeValidator, Field
 
-from .job import JobConfig
+from pyantz.infrastructure.virtual import compile_virtual
+
+from .job import JobConfig, make_job
 from .runners import LocalRunnerConfig, SlurmRunnerConfig
 
-type AnyRunner = LocalRunnerConfig
+type AnyRunner = LocalRunnerConfig | SlurmRunnerConfig
+
+
+def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
+    """Make jobs and compile them."""
+    return compile_virtual(list(map(make_job, jobs)))
 
 
 class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
@@ -18,7 +25,7 @@ class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
     primary user configuration.
     """
 
-    jobs: tuple[JobConfig, ...]
+    jobs: Annotated[tuple[JobConfig, ...], BeforeValidator(make_and_compile)]
 
     submitter: S = Field(discriminator="type_")
 

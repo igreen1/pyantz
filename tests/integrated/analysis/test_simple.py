@@ -69,4 +69,4 @@ def test_join_parquets(tmp_path: Path) -> None:
     expected = left_df.join(right_df, on="idx", how="inner")
     result = pl.read_parquet(output_path)
 
-    assert_frame_equal(expected, result)
+    assert_frame_equal(expected.sort("idx"), result.sort("idx"))

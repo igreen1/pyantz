@@ -10,5 +10,9 @@ wheels/
 docs/build
 docs/source/pyantz*.rst
 
+.mypy*
+.ruff*
+.pytest*
+
 # Virtual environments
 .venv
