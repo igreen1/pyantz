@@ -1,6 +1,5 @@
 """Compile virtual jobs to 'real' jobs."""
 
-
 """
 
 Concrete job:

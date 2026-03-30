@@ -10,4 +10,3 @@ __all__ = [
     "mark_virtual",
     "no_submit_fn",
 ]
-

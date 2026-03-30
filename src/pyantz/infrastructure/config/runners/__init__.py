@@ -3,7 +3,6 @@
 from .local_runner import LocalRunnerConfig
 from .slurm_runner import SlurmRunnerConfig
 
-
 __all__ = [
     "LocalRunnerConfig",
     "SlurmRunnerConfig",
