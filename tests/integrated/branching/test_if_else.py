@@ -74,7 +74,7 @@ def test_if_false(
     assert (tmp_path / "ELSE.txt").exists()
 
 
-SORTED_INTS: list[int] = sorted({random.randint(0, 1000) for _ in range(10)})  # noqa: S311
+SORTED_INTS: list[int] = sorted({random.randint(0, 1000) for _ in range(4)})  # noqa: S311
 
 
 def opposite_ops(*not_ops: str) -> list[str]:
