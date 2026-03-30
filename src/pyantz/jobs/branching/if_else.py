@@ -12,7 +12,16 @@ from pyantz.infrastructure.config import JobConfig, SubmissionFnType, add_parame
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-type ValidOperators = Literal["=", "==", "<", "<=", ">", ">=", "!=", "~="]
+type ValidOperators = Literal[
+    "=",
+    "==",
+    "<",
+    "<=",
+    ">",
+    ">=",
+    "!=",
+    "~=",
+]
 
 
 class IfElseParams(BaseModel):

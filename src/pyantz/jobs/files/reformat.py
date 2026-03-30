@@ -22,7 +22,54 @@ class FromCsvToParquetParameters(BaseModel):
 @add_parameters(FromCsvToParquetParameters)
 @no_submit_fn
 def csv_to_parquet(params: FromCsvToParquetParameters) -> bool:
-    """Use polars to load a csv and dump it into a parquet."""
+    """Use polars to load a csv and dump it into a parquet.
+
+    :Example:
+
+    .. testsetup::
+
+        import polars as pl
+        pl.DataFrame({
+            "a": [1, 2, 3],
+            "b": [4.1, 5.1, 6.2],
+        }).write_csv("some_csv.csv")
+
+    .. testcode::
+
+        import polars as pl
+        from polars.testing import assert_frame_equal
+
+        from pyantz import start
+
+        start({
+            "submitter": {
+                "type_": "local_proc",
+                "working_directory": ".",
+            },
+            "jobs": [
+                {
+                    "function": "pyantz.jobs.files.reformat.csv_to_parquet",
+                    "parameters": {
+                        "csv_file": "some_csv.csv",
+                        "parquet_file": "reformatted.parquet",
+                    },
+                },
+            ],
+        })
+
+        from_csv = pl.read_csv("some_csv.csv")
+        from_parq = pl.read_parquet("reformatted.parquet")
+
+        assert_frame_equal(from_csv, from_parq)
+
+    .. testcleanup::
+
+        import os
+        for file in ("some_csv.csv", "reformatted.parquet"):
+            if os.path.exists(file):
+                os.remove(file)
+
+    """
     logger = logging.getLogger(__name__)
 
     logger.debug("From %s -> %s", params.csv_file, params.parquet_file)
