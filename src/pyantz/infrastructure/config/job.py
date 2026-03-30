@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable, Mapping
-from typing import Annotated, Any, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import (
     BaseModel,
     BeforeValidator,
+    ConfigDict,
     Field,
     WithJsonSchema,
     field_serializer,
@@ -37,12 +38,15 @@ def str_uuid4() -> str:
     return str(uuid.uuid4())
 
 
-class JobConfig(BaseModel):
-    """A job to be run."""
+class AbstractJobConfig(BaseModel):
+    """Shared between virtual and real jobs."""
 
     # unique identifier for this job
     # auto generated if the user doesn't specify
     job_id: str = Field(default_factory=str_uuid4)
+
+
+    model_config = ConfigDict(frozen=True)
 
     # the jobs upon which this one depends before it can be run
     depends_on: Annotated[
@@ -54,6 +58,16 @@ class JobConfig(BaseModel):
             },
         ),
     ] = None
+
+    # parameters to pass to the job while it's running
+    parameters: Mapping[str, Any]
+
+    # strict means no variables allowed, must use typed functions
+    strict: bool = False
+
+
+class JobConfig(AbstractJobConfig):
+    """A job to be run."""
 
     # human readable name for this job
     name: str | None = None
@@ -70,15 +84,13 @@ class JobConfig(BaseModel):
         ),
     ]
 
-    # parameters to pass to the job while it's running
-    parameters: Mapping[str, Any]
-
     # when error recovering a job should hold how many times its been
     # retried so the runner can decide whether to try to restart it
     num_attempted_runs: int = 0
 
-    # strict means no variables allowed, must use typed functions
-    strict: bool = False
+    # denotes that this a concrete job
+    # makes introspection easier/faster at runtime.
+    virtual: Literal[False] = False
 
     @model_validator(mode="after")
     def validate_fn(self) -> Self:

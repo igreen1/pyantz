@@ -15,5 +15,5 @@ class AddVariableParameters(BaseModel):
     # variables to add to subsequent jobs
     variables: Mapping[str, Any]
 
-    def compile(self, deps: list[JobConfig]) -> JobConfig:
+    def compile_virtual(self, deps: list[JobConfig]) -> JobConfig:
         """"""

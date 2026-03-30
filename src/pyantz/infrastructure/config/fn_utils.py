@@ -21,10 +21,15 @@ def serialize_function(fn: Callable[..., Any]) -> str:
 
 def import_function_by_name(fn_path: Any) -> JobFunctionType:  # noqa: ANN401
     """Import a function by its name."""
-    if not isinstance(fn_path, str):
-        return fn_path
+    return import_module_item_by_name(fn_path)
 
-    name_components = fn_path.split(".")
+
+def import_module_item_by_name(key: Any) -> Any: # no qa: ANN401
+    """Import a parameters model by its name."""
+    if not isinstance(key, str):
+        return key
+
+    name_components = key.split(".")
     mod_name = ".".join(name_components[:-1])
     fn_name = name_components[-1]
 

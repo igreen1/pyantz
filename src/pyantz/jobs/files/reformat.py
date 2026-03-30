@@ -107,7 +107,7 @@ class FromExcelToCsvParameters(BaseModel):
 @no_submit_fn
 def excel_to_csv(params: FromExcelToCsvParameters) -> bool:
     """Use polars to load an excel and dump it into a csv.
-    
+
     :Example:
 
     .. testsetup::
