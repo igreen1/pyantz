@@ -22,12 +22,7 @@ class AddVariables(BaseModel):
         configs = [
             {
                 "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
-                "parameters": {
-                    "jobs": deps,
-                    "shared_variables": self.variables
-                }
+                "parameters": {"jobs": deps, "shared_variables": self.variables},
             }
         ]
-        return [
-            JobConfig.model_validate(config) for config in configs
-        ]
+        return [JobConfig.model_validate(config) for config in configs]

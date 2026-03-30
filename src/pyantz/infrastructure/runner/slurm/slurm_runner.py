@@ -44,8 +44,9 @@ def _initial_submit(config: InitialConfig[SlurmRunnerConfig]) -> None:
     Done differently because rather than depending on current, the initial jobs
     have their own dependency graph that we must resolve up front.
     """
-    dependency_adj_graph: dict[str, list[str]] = {
-        str(job.job_id): list(map(str, (job.depends_on or []))) for job in config.jobs
+    dependency_adj_graph: dict[str, set[str]] = {
+        str(job.job_id): {str(dep) for dep in (job.depends_on or set())}
+        for job in config.jobs
     }
     submit_order = TopologicalSorter(graph=dependency_adj_graph).static_order()
 

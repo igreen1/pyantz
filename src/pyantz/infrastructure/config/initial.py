@@ -13,7 +13,7 @@ from .runners import LocalRunnerConfig, SlurmRunnerConfig
 type AnyRunner = LocalRunnerConfig | SlurmRunnerConfig
 
 
-def make_and_compile(jobs: Any) -> list[JobConfig]:
+def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
     """Make jobs and compile them."""
     return compile_virtual(list(map(make_job, jobs)))
 

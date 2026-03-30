@@ -5,7 +5,6 @@ from __future__ import annotations
 import graphlib
 from typing import TYPE_CHECKING, cast
 
-
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import (
         JobConfig as RealJobConfig,
@@ -15,7 +14,6 @@ if TYPE_CHECKING:
     )
 
     type AnyJobConfig = RealJobConfig | VirtualJobConfig
-
 
 
 def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
@@ -83,21 +81,23 @@ def _compile_singular(
         return [cast("RealJobConfig", job), *dep_jobs]
     virtual_id = job.job_id
     dep_jobs = [
-        real_job.model_copy(update={
-            "depends_on": {
-                id_ for id_ in (real_job.depends_on or set())
-                if id_ != virtual_id
+        real_job.model_copy(
+            update={
+                "depends_on": {
+                    id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
+                }
             }
-        })
+        )
         for real_job in dep_jobs
     ]
     result = cast("VirtualJobConfig", job).compile_virtual(dep_jobs)
     return [
-        real_job.model_copy(update={
-            "depends_on": {
-                id_ for id_ in (real_job.depends_on or set())
-                if id_ != virtual_id
+        real_job.model_copy(
+            update={
+                "depends_on": {
+                    id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
+                }
             }
-        })
+        )
         for real_job in result
     ]

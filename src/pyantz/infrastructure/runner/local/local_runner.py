@@ -3,10 +3,9 @@
 import logging
 import multiprocessing as mp
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config import (
-    AnyRunner,
     InitialConfig,
     JobWithContext,
     LocalRunnerConfig,
@@ -60,7 +59,7 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
     logger.debug("Local runner complete, shutting down.")
 
 
-def _fill_queue(config: InitialConfig[AnyRunner], queue: SqliteQueue) -> None:
+def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:
     """Fill the queue with the initial jobs to run."""
     logger = logging.getLogger(__name__)
     logger.debug("Filling queue with initial jobs to run.")

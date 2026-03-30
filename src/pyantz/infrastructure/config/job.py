@@ -36,7 +36,6 @@ They return True if they were successful; False otherwise.
 type JobFunctionType = Callable[[ParametersType, SubmissionFnType], bool]
 
 
-
 class JobConfig(AbstractJobConfig):
     """A job to be run."""
 

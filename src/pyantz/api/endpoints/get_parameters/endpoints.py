@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -22,11 +22,14 @@ router = APIRouter(prefix="/jobs")
 def strip_format[T](s: T) -> T:
     """Strip `format` from string fields."""
     if isinstance(s, dict):
-        return {
-            k: strip_format(v)  # type: ignore  # noqa: PGH003
-            for k, v in s.items()  # type: ignore  # noqa: PGH003
-            if s.get("type") != "string" or k != "format"  # type: ignore  # noqa: PGH003
-        }
+        return cast(
+            "T",
+            {
+                k: strip_format(v)  # pyright: ignore[reportUnknownArgumentType]
+                for k, v in s.items()  # pyright: ignore[reportUnknownVariableType]
+                if s.get("type") != "string" or k != "format"  # ty: ignore[invalid-argument-type] # pyright: ignore[reportUnknownMemberType]
+            },
+        )
 
     return s
 
@@ -45,13 +48,13 @@ def get_job_schema(fn_name: str) -> GetJsonSchemaResponse:
     fn = matching_fn[0]
 
     if hasattr(fn, "PYANTZ_VALIDATION_MODEL"):
-        param_mod: BaseModel = fn.PYANTZ_VALIDATION_MODEL  # type: ignore[attr-defined]
+        param_mod: BaseModel = fn.PYANTZ_VALIDATION_MODEL  # type: ignore[attr-defined] # ty: ignore[invalid-assignment]
 
         json_schema = param_mod.model_json_schema()
         json_schema = strip_format(json_schema)
 
         return GetJsonSchemaResponse(
-            fn_path=fn.PYANTZ_NAME,  # type: ignore[attr-defined]
+            fn_path=fn.PYANTZ_NAME,  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute]
             json_schema=json_schema,
         )
 

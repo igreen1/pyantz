@@ -101,6 +101,6 @@ def mark_virtual[T](fn: T) -> T:
     return fn
 
 
-def is_virtual(fn: Any) -> bool: # noqa: ANN401
+def is_virtual(fn: Any) -> bool:  # noqa: ANN401
     """Return true if the function is marked as virtual."""
     return hasattr(fn, VIRTUAL_MARKER) and getattr(fn, VIRTUAL_MARKER)

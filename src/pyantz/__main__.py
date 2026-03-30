@@ -5,9 +5,9 @@ Pass a path to the configuration file.
 
 import argparse as _argparse
 from pathlib import Path as _Path
+from typing import Any
 
 from pyantz import start as _start
-from pyantz.infrastructure.config import AnyRunner as _AnyRunner
 from pyantz.infrastructure.config import InitialConfig as _InitialConfig
 
 if __name__ == "__main__":
@@ -25,5 +25,5 @@ if __name__ == "__main__":
 
     # load config
     config_text = config_location.read_text(encoding="utf-8")
-    config: _InitialConfig[_AnyRunner] = _InitialConfig.model_validate_json(config_text)  # pyright: ignore[reportUnknownVariableType]
+    config: _InitialConfig[Any] = _InitialConfig.model_validate_json(config_text)  # pyright: ignore[reportUnknownVariableType]
     _start(config)

@@ -1,9 +1,10 @@
 """Run pipelines from a case matrix."""
 
+import itertools
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import polars as pl
 from pydantic import BaseModel, ConfigDict
@@ -18,7 +19,6 @@ from pyantz.infrastructure.config import (
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from typing import Any
 
 
 class CaseMatrixExpansionParams(BaseModel):
@@ -51,7 +51,7 @@ class ContinuousRange[S: int | float](BaseModel):
         curr_value: S = self.min_value
         while curr_value < self.max_value:  # type: ignore[operator]
             yield curr_value
-            curr_value += self.step  # type: ignore[assignment,operator]
+            curr_value += self.step  # type: ignore[assignment,operator] # ty: ignore[unsupported-operator]
 
 
 class DiscreteRange[S](BaseModel):
@@ -87,6 +87,45 @@ class CaseMatrixCreator(BaseModel):
     save_file: str
 
 
+class CaseMatrixRunSetup(CaseMatrixExpansionParams):
+    """Create a case matrix and provide each sub-pipeline with an output directory."""
+
+    # root path for all the output directories
+    output_dir: str
+
+
+@add_parameters(CaseMatrixRunSetup)
+def pipeline_expansion_with_output_dir(
+    params: CaseMatrixRunSetup,
+    submit_fn: SubmissionFnType,
+) -> bool:
+    """Add variables `output_dir` and `pipeline_id` for each child pipeline."""
+    id_counter = itertools.count[int]()
+    output_dir = Path(params.output_dir)
+    output_dir.mkdir(exist_ok=True)
+
+    def output_dir_submit(child_job: JobConfig) -> None:
+        """Submit the job with an additional output_dir variable."""
+        id_ = next(id_counter)
+        run_dir = output_dir / f"run_{id_}"
+        run_dir.mkdir(exist_ok=True)
+        wrapped_job = JobWithContext.from_config(child_job).inherit_context(
+            {
+                "pipeline_id": id_,
+                "output_dir": run_dir,
+            }
+        )
+        submit_fn(wrapped_job)
+
+    pipeline_params = CaseMatrixExpansionParams(
+        case_matrix_parquet=params.case_matrix_parquet,
+        cols_to_exclude=params.cols_to_exclude,
+        pipeline_template=params.pipeline_template,
+    )
+
+    return pipeline_expansion(pipeline_params.model_dump(), output_dir_submit)
+
+
 @add_parameters(CaseMatrixCreator)
 @no_submit_fn
 def create_case_matrix(
@@ -116,7 +155,8 @@ def create_case_matrix(
 
 @add_parameters(CaseMatrixExpansionParams)
 def pipeline_expansion(
-    params: CaseMatrixExpansionParams, submit_fn: SubmissionFnType
+    params: CaseMatrixExpansionParams,
+    submit_fn: SubmissionFnType,
 ) -> bool:
     """Submit a set of pipelines based on the case matrix."""
     case_matrix = pl.scan_parquet(
@@ -154,7 +194,9 @@ def _pipeline_factory_factory(
             update={
                 "job_id": uuid.uuid4(),
                 "depends_on": (
-                    dep for dep in (job.depends_on or []) if dep not in ids_in_pipeline
+                    dep
+                    for dep in (job.depends_on or set())
+                    if dep not in ids_in_pipeline
                 ),
             }
         )
