@@ -41,7 +41,7 @@ def get_registered_functions(fn_name: str | None = None) -> list[JobFunctionType
     if fn_name is None:
         return PYANTZ_REGISTERED_FUNCTION
     for fn in PYANTZ_REGISTERED_FUNCTION:
-        registered_name = fn.PYANTZ_NAME  # type: ignore[attr-defined]
+        registered_name = fn.PYANTZ_NAME  # type: ignore[attr-defined]   # ty:ignore[unresolved-attribute]
         if registered_name.endswith(fn_name):
             return [fn]
     return []
@@ -82,10 +82,10 @@ def add_parameters[T: BaseModel](
             return fn(typed_params, submit_fn)
 
         # add special variables so that we can check if a function has been marked
-        _fn_with_checker.PYANTZ_CHECKED = True  # type: ignore[attr-defined]
-        _fn_with_checker.PYANTZ_CHECK_AT_STARTUP = check_at_startup  # type: ignore[attr-defined]
-        _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]
-        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker)  # type: ignore[attr-defined]
+        _fn_with_checker.PYANTZ_CHECKED = True  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+        _fn_with_checker.PYANTZ_CHECK_AT_STARTUP = check_at_startup  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+        _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker)  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 
         PYANTZ_REGISTERED_FUNCTION.append(_fn_with_checker)
 
@@ -101,6 +101,6 @@ def mark_virtual[T](fn: T) -> T:
     return fn
 
 
-def is_virtual(fn: Callable[..., Any]) -> bool:
+def is_virtual(fn: Any) -> bool: # noqa: ANN401
     """Return true if the function is marked as virtual."""
     return hasattr(fn, VIRTUAL_MARKER) and getattr(fn, VIRTUAL_MARKER)

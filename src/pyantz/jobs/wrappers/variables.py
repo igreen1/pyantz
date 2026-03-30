@@ -85,7 +85,8 @@ class VariableContextParams(BaseModel):
 
 @add_parameters(VariableContextParams)
 def run_jobs_in_context(
-    params: VariableContextParams, submit_fn: SubmissionFnType
+    params: VariableContextParams,
+    submit_fn: SubmissionFnType,
 ) -> bool:
     """Submit the set of jobs with the shared variables. Not really anything fancy."""
     for job in params.jobs:

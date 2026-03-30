@@ -3,18 +3,31 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Literal
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Literal,
+    Protocol,
+    Self,
+    runtime_checkable,
+)
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AfterValidator, BeforeValidator, ConfigDict
 
+from pyantz.infrastructure.config.parameters import is_virtual
+
+from .abtrast_job import AbstractJobConfig
 from .fn_utils import import_module_item_by_name
-from .job import AbstractJobConfig, JobConfig
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from . import JobConfig
 
 
-class VirtualParamModel(BaseModel):
+@runtime_checkable
+class VirtualParamModel(Protocol):
     """Model to be inherited by parameters of virtual jobs.
 
     Virtual jobs have no functions, so they are purely defined by
@@ -22,11 +35,20 @@ class VirtualParamModel(BaseModel):
     job configs (which will primarily focus on the parameters).
     """
 
-    model_config = ConfigDict(frozen=True)
-
     @abstractmethod
     def compile_virtual(self, dependent_jobs: list[JobConfig]) -> list[JobConfig]:
         """Compile our job into a list of real jobs."""
+
+    @classmethod
+    @abstractmethod
+    def model_validate(cls, params: Mapping[str, Any]) -> Self:
+        """Pydantic model validation."""
+
+
+def _is_virtual(params: VirtualParamModel) -> VirtualParamModel:
+    if not is_virtual(params):
+        raise ValueError
+    return params
 
 
 class VirtualJobConfig(AbstractJobConfig):
@@ -34,21 +56,23 @@ class VirtualJobConfig(AbstractJobConfig):
 
     model_config = ConfigDict(frozen=True)
 
-    # name, which points to the name of the Parameters to be used
-    name: str
+    # human readable name
+    name: str | None = None
+
+    # points to the virtual job parameter model
+    function: Annotated[
+        type[VirtualParamModel],
+        AfterValidator(_is_virtual),
+        BeforeValidator(import_module_item_by_name),
+    ]
 
     virtual: Literal[True] = True
 
     @property
-    def param_model(self) -> type[VirtualParamModel]:
-        """Model of the parameters to use to compile to real jobs."""
-        return import_module_item_by_name(self.name)
-
-    @property
     def compiled_params(self) -> VirtualParamModel:
         """Build our parameters."""
-        return self.param_model.model_validate(self.parameters)
+        return self.function.model_validate(self.parameters)
 
     def compile_virtual(self, dependent_jobs: list[JobConfig]) -> list[JobConfig]:
         """Compile from our parameters to real jobs."""
-        return self.compiled_params.compile(dependent_jobs)
+        return self.compiled_params.compile_virtual(dependent_jobs)

@@ -24,7 +24,7 @@ def import_function_by_name(fn_path: Any) -> JobFunctionType:  # noqa: ANN401
     return import_module_item_by_name(fn_path)
 
 
-def import_module_item_by_name(key: Any) -> Any: # no qa: ANN401
+def import_module_item_by_name(key: Any) -> Any:  # no qa: ANN401
     """Import a parameters model by its name."""
     if not isinstance(key, str):
         return key

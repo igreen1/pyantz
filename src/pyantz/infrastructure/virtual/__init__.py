@@ -13,3 +13,9 @@ Is actually
 
 SubmitInContext[JobA]
 """
+
+from .compile import compile_virtual
+
+__all__ = [
+    "compile_virtual",
+]

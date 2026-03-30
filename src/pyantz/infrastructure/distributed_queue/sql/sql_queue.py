@@ -288,7 +288,6 @@ class SqliteQueue(QueueInterface):
                 eg., may be the error message for debugging.
 
         """
-        # not required but polite
         self._update_job_statuses()
 
         with Session(self._engine) as sesh:
@@ -303,7 +302,6 @@ class SqliteQueue(QueueInterface):
             sesh.flush()
             sesh.commit()
 
-        # not required but polite
         self._update_job_statuses()
 
     def add_job(

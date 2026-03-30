@@ -2,22 +2,25 @@
 
 from __future__ import annotations
 
-import uuid
 from collections.abc import Callable, Mapping
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal, Self, cast
 
 from pydantic import (
-    BaseModel,
     BeforeValidator,
-    ConfigDict,
-    Field,
     WithJsonSchema,
     field_serializer,
     model_validator,
 )
 
-from .fn_utils import import_function_by_name, serialize_function
+from .abtrast_job import AbstractJobConfig
+from .fn_utils import (
+    import_function_by_name,
+    import_module_item_by_name,
+    serialize_function,
+)
+from .parameters import is_virtual
 from .parameters.compile_check import check_config
+from .virtual import VirtualJobConfig
 
 """Jobs can use the passed function to create children jobs.
 Args:
@@ -32,38 +35,6 @@ They return True if they were successful; False otherwise.
 """
 type JobFunctionType = Callable[[ParametersType, SubmissionFnType], bool]
 
-
-def str_uuid4() -> str:
-    """Return uuid4 as a string."""
-    return str(uuid.uuid4())
-
-
-class AbstractJobConfig(BaseModel):
-    """Shared between virtual and real jobs."""
-
-    # unique identifier for this job
-    # auto generated if the user doesn't specify
-    job_id: str = Field(default_factory=str_uuid4)
-
-
-    model_config = ConfigDict(frozen=True)
-
-    # the jobs upon which this one depends before it can be run
-    depends_on: Annotated[
-        set[str] | None,
-        WithJsonSchema(
-            {
-                "type": "array",
-                "items": {"type": "string"},
-            },
-        ),
-    ] = None
-
-    # parameters to pass to the job while it's running
-    parameters: Mapping[str, Any]
-
-    # strict means no variables allowed, must use typed functions
-    strict: bool = False
 
 
 class JobConfig(AbstractJobConfig):
@@ -141,3 +112,31 @@ class JobWithContext(JobConfig):
                 }
             }
         )
+
+
+def make_job(
+    config: Any,  # noqa: ANN401
+) -> JobConfig | VirtualJobConfig:
+    """Make a job based on a user provided configuration."""
+    if isinstance(config, (AbstractJobConfig)):
+        return config  # type: ignore[return-value] # pyright: ignore[reportReturnType]
+    if not isinstance(config, Mapping):
+        raise TypeError
+    config = cast("Mapping[str, Any]", config)
+    if "function" not in config:
+        raise ValueError
+    use_virtual = cast(
+        "bool",
+        config.get(
+            "virtual",
+            is_virtual(
+                import_module_item_by_name(
+                    config["function"],
+                ),
+            ),
+        ),
+    )
+
+    if use_virtual:
+        return VirtualJobConfig.model_validate(config)
+    return JobConfig.model_validate(config)
