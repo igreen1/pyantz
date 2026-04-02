@@ -53,12 +53,12 @@
 #         for field in fields:
 #             if isinstance(job.parameters, JobConfig):
 #                 job = job.model_copy(update={
-                    
+
 #                 })
 #             else:
 #                 job.parameters
-                
-        
+
+
 #         return job
 
 #     def recursively_update[T: (JobConfig, Mapping[str, Any])](job: T) -> T:

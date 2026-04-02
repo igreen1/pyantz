@@ -102,7 +102,7 @@ class JobWithContext(JobConfig):
                 return self.model_copy(update=updates)
         except ValueError as exc:
             msg = "Error modifying hyper-params with variables"
-            raise ValueError(msg) from exc 
+            raise ValueError(msg) from exc
         return self
 
     @classmethod

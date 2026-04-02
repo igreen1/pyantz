@@ -134,11 +134,7 @@ def create_case_matrix(
 ) -> bool:
     """Create a case matrix as a cartesian product of the variables."""
     variables: list[pl.LazyFrame] = [
-        pl.DataFrame(
-            {
-                variable_name: list(var_def.range.get_values())
-            }
-        ).lazy()
+        pl.DataFrame({variable_name: list(var_def.range.get_values())}).lazy()
         for variable_name, var_def in params.variables.items()
     ]
     left = variables[0]
@@ -187,7 +183,7 @@ def _pipeline_factory_factory(
     """Create a factory which accepts variables and returns a job config."""
     # get the original ids to erase them
     ids_in_pipeline = {job.job_id for job in pipeline_template}
-    
+
     # TODO:
     # consider a job with wrapped children jobs
     # the wrapped children jobs will have non-unique ids
@@ -215,7 +211,10 @@ def _pipeline_factory_factory(
             nonlocal prev
             updated = curr.model_copy(
                 update={
-                    "depends_on": {*(curr.depends_on or []), *([prev.job_id] if prev else [])}
+                    "depends_on": {
+                        *(curr.depends_on or []),
+                        *([prev.job_id] if prev else []),
+                    }
                 }
             )
             prev = updated

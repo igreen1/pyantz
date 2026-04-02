@@ -38,7 +38,6 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
         _start_pool(config, queue_file)
 
 
-
 def _run_within_same_proc(
     config: InitialConfig[LocalRunnerConfig], queue_file: Path
 ) -> None:

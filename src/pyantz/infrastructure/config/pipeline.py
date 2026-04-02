@@ -15,7 +15,7 @@ def _make_pipeline(
     if not isinstance(pipeline, Iterable):
         raise TypeError
 
-    return [make_job(config) for config in pipeline] # pyright: ignore[reportUnknownVariableType]
+    return [make_job(config) for config in pipeline]  # pyright: ignore[reportUnknownVariableType]
 
 
 type JobPipeline = Annotated[list[JobConfig], BeforeValidator(_make_pipeline)]

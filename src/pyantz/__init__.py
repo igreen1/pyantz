@@ -19,7 +19,7 @@ def start(config: _InitialConfig[Any] | Mapping[str, Any]) -> None:
     This is a blocking operation if running locally.
     """
     # if not loaded, check it
-    loaded_config: _InitialConfig[Any] = _InitialConfig.model_validate(config) # pyright: ignore[reportUnknownVariableType]
+    loaded_config: _InitialConfig[Any] = _InitialConfig.model_validate(config)  # pyright: ignore[reportUnknownVariableType]
     if loaded_config.submitter.type_ == "local_proc":
         # start local runner
         _start_local(loaded_config)

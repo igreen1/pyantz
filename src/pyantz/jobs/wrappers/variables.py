@@ -24,7 +24,6 @@ from pyantz.infrastructure.config import (
     JobWithContext,
     add_parameters,
     import_module_item_by_name,
-    no_submit_fn,
 )
 from pyantz.infrastructure.runner.job_manager import (
     JobVariables,
@@ -41,7 +40,9 @@ class SetVariables(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # job which will edit the variable context
-    setter_job: Annotated[Callable[..., Any], BeforeValidator(import_module_item_by_name)]
+    setter_job: Annotated[
+        Callable[..., Any], BeforeValidator(import_module_item_by_name)
+    ]
 
     # Kwargs to pass to the setter job
     set_job_kwargs: Mapping[str, Any]
@@ -74,9 +75,7 @@ def set_variables(params: SetVariables, submit_fn: SubmissionFnType) -> bool:
         return False
     else:
         for job in params.jobs:
-            updated_job = JobWithContext.from_config(job).inherit_context(
-                new_variables
-            )
+            updated_job = JobWithContext.from_config(job).inherit_context(new_variables)
             submit_fn(updated_job)
         return True
 

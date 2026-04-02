@@ -15,6 +15,7 @@ def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
     """Make jobs and compile them."""
     return [make_job(config) for config in jobs]
 
+
 class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
     """Configuration of the overall system.
 
