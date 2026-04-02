@@ -5,7 +5,7 @@ from __future__ import annotations
 import operator
 from typing import TYPE_CHECKING, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from pyantz.infrastructure.config import JobConfig, SubmissionFnType, add_parameters
 
@@ -26,6 +26,8 @@ type ValidOperators = Literal[
 
 class IfElseParams(BaseModel):
     """Parameters for the if/else job."""
+
+    model_config = ConfigDict(frozen=True)
 
     left_side: str | float
 
@@ -55,6 +57,34 @@ def if_else(params: IfElseParams, submit_fn: SubmissionFnType) -> bool:
             params.if_false,
         )
 
+    return True
+
+
+class ConditionalExecution(BaseModel):
+    """Execute a job iff a condition is true."""
+
+    model_config = ConfigDict(frozen=True)
+
+    left_side: str | float
+
+    right_side: str | float
+
+    comparator: ValidOperators
+
+    if_true: JobConfig
+
+
+@add_parameters(ConditionalExecution)
+def conditionally_execute(
+    params: ConditionalExecution, submit_fn: SubmissionFnType
+) -> bool:
+    """Execute a job iff a condition is true."""
+    op = op_mapping[params.comparator]
+
+    if op(params.left_side, params.right_side):
+        submit_fn(
+            params.if_true,
+        )
     return True
 
 

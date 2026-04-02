@@ -28,11 +28,35 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
     """Start the lcoal runner processes."""
     logger = logging.getLogger(__name__)
 
-    runner_config = config.submitter
-    queue_file = runner_config.working_directory / "queue.db"
+    queue_file = config.submitter.working_directory / "queue.db"
     logger.debug("Creating sqlite queue %s", queue_file)
 
     _fill_queue(config, SqliteQueue(queue_file))
+    if config.submitter.use_same_proc:
+        _run_within_same_proc(config, queue_file)
+    else:
+        _start_pool(config, queue_file)
+
+
+def _run_within_same_proc(
+    config: InitialConfig[LocalRunnerConfig], queue_file: Path
+) -> None:
+    """Run the local runner pool in this process.
+
+    Mostly used for testing.
+    """
+    runner_config = config.submitter
+    _worker(
+        queue_file=queue_file,
+        poll_time=runner_config.poll_timeout,
+        timeout=runner_config.timeout,
+    )
+
+
+def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> None:
+    """Start the local runner pool."""
+    logger = logging.getLogger(__name__)
+    runner_config = config.submitter
 
     logger.debug("Starting local runners")
     procs = [
@@ -107,6 +131,8 @@ def _worker(
         match queue.get_job().payload:
             case JobReturn(job=job_config):
                 # set job to running
+                print("Got Job: ", job_config)
+                print()
                 queue.update_job_status(job_config.job_id, status=JobStatus.RUNNING)
                 try:
                     result = run_job(job_config, submit_fn)

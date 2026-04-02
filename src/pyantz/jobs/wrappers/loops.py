@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, ConfigDict
 
 from pyantz.infrastructure.config import (
-    JobConfig,
+    JobPipeline,
     JobWithContext,
     SubmissionFnType,
     add_parameters,
@@ -29,7 +29,7 @@ class LocalForLoopParams(BaseModel):
 
     num_iterations: int
 
-    jobs: list[JobConfig]
+    jobs: JobPipeline
 
 
 @add_parameters(LocalForLoopParams)

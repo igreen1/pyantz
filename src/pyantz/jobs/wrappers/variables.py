@@ -3,15 +3,22 @@
 A user may wish to declare some variables locally for a few common jobs.
 """
 
+import logging
 import random
 import string
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, DirectoryPath, model_validator
 
-from pyantz.infrastructure.config import JobConfig, JobWithContext, add_parameters
+from pyantz.infrastructure.config import (
+    JobConfig,
+    JobPipeline,
+    JobWithContext,
+    add_parameters,
+    no_submit_fn,
+)
 from pyantz.infrastructure.runner.job_manager import (
     JobVariables,
     run_job_no_parent_wrapper,
@@ -27,48 +34,39 @@ class SetVariables(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # job which will edit the variable context
-    setter_job: JobConfig
+    setter_job: Callable[..., Any]
+
+    # Kwargs to pass to the setter job
+    set_job_kwargs: Mapping[str, Any]
 
     # jobs to submit with the context of the setter job
-    jobs: list[JobConfig]
-
+    jobs: JobPipeline
 
 @add_parameters(SetVariables)
-def set_variables(params: SetVariables, submit_fn: SubmissionFnType) -> bool:
+@no_submit_fn
+def set_variables(params: SetVariables) -> bool:
     """Set the variables for subsequent defined jobs.
 
     The `setter_job` is a slightly abnormal job. One of the parameters it accepts
     shall be `set_variable`, which is a closure that will set the enclosing variables.
     """
+    logger = logging.getLogger(__name__)
     new_variables: dict[str, Any] = {}
 
     def set_var(key: str, value: Any) -> None:  # noqa: ANN401
         nonlocal new_variables
         new_variables[key] = value
 
-    curr_variables: Final[Mapping[str, Any]] = (
-        _vars if (_vars := JobVariables.get()) else {}
-    )
-    set_job = params.setter_job.model_copy(
-        update={
-            **params.setter_job.parameters,
-            "set_variable": set_var,
-        }
-    )
-    set_job_ctx = JobWithContext.from_config(set_job).inherit_context(curr_variables)
-
-    if not run_job_no_parent_wrapper(set_job_ctx, submit_fn):
-        return False
-
-    success = True
-    for job in params.jobs:
-        job_ctx = JobWithContext.from_config(job).inherit_context(
-            {**curr_variables, **new_variables}
+    try:
+        params.setter_job(
+            set_var=set_var,
+            **params.set_job_kwargs,
         )
-        success &= run_job_no_parent_wrapper(job_ctx, submit_fn)
-        if not success:
-            break
-    return success
+    except Exception as exc:
+        logger.exception("Unknown error in external set variable job.", exc_info=exc)
+        return False
+    else:
+        return True
 
 
 class VariableContextParams(BaseModel):
@@ -77,7 +75,7 @@ class VariableContextParams(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # Jobs to submit with the new variables
-    jobs: list[JobConfig]
+    jobs: JobPipeline
 
     # variables to add to jobs when submitted
     shared_variables: Mapping[str, Any]
@@ -89,6 +87,7 @@ def run_jobs_in_context(
     submit_fn: SubmissionFnType,
 ) -> bool:
     """Submit the set of jobs with the shared variables. Not really anything fancy."""
+    print("Submitting child job in context")
     for job in params.jobs:
         # add context
         updated_job = JobWithContext.from_config(job).inherit_context(
@@ -105,7 +104,7 @@ class TemporaryDirectoryParams(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # jobs to run
-    jobs: list[JobConfig]
+    jobs: JobPipeline
 
     # used when placing the path to the temporary directory in variables
     variable_name: str

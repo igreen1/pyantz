@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+import uuid
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
 from pydantic import BaseModel
 
@@ -12,7 +14,10 @@ from pyantz.infrastructure.config.fn_utils import serialize_function
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from pydantic import BaseModel
+
     from pyantz.infrastructure.config.job import (
+        JobConfig,
         JobFunctionType,
         ParametersType,
         SubmissionFnType,
@@ -47,6 +52,26 @@ def get_registered_functions(fn_name: str | None = None) -> list[JobFunctionType
     return []
 
 
+def trace_fn[**P, T](fn: Callable[P, T]) -> Callable[P, T]:
+    """Log when a function starts and finishes."""
+    logger = logging.getLogger(fn.__name__ if hasattr(fn, "__name__") else __name__)
+
+    @wraps(fn)
+    def _log_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+        """Run the function, debug logging start/end."""
+        logger.debug("Starting function: %s", str(fn))
+        try:
+            result = fn(*args, **kwargs)
+        except:
+            logger.debug("Exception in function: %s", str(fn))
+            raise
+        else:
+            logger.debug("Finished function %s", str(fn))
+        return result
+
+    return _log_wrapper
+
+
 def add_parameters[T: BaseModel](
     param_cls: type[T],
     *,
@@ -74,6 +99,7 @@ def add_parameters[T: BaseModel](
         """Wrap the function in a caster to cast params to the provided params model."""
 
         @wraps(fn)
+        @trace_fn
         def _fn_with_checker(
             untyped_params: ParametersType, submit_fn: SubmissionFnType
         ) -> bool:
@@ -94,13 +120,29 @@ def add_parameters[T: BaseModel](
     return _decorate_fn_with_params
 
 
-def mark_virtual[T](fn: T) -> T:
-    """Add a parameter marking the function as a virtual job."""
-    setattr(fn, VIRTUAL_MARKER, True)  # type: ignore[attr-defined] # pyright: ignore[reportFunctionMemberAccess]
+def update_deps[T: BaseModel](
+    fn: Callable[[T, list[JobConfig]], list[JobConfig]],
+) -> Callable[[T, list[JobConfig]], list[JobConfig]]:
+    """Wrap a compilation function in a wrapper.
 
-    return fn
+    This will "scramble" the ids of all the jobs to reduce conflicts of
+    multiple ids as they're wrapped into virtual jobs. While other jobs
+    **should** handle this, this will make life easier.
+    """
 
+    def scramble_deps(job_params: T, deps: list[JobConfig]) -> list[JobConfig]:
+        """Scramble dependency ids while maintaining dependencies."""
+        old_ids_to_new_ids = {job.job_id: str(uuid.uuid4()) for job in deps}
 
-def is_virtual(fn: Any) -> bool:  # noqa: ANN401
-    """Return true if the function is marked as virtual."""
-    return hasattr(fn, VIRTUAL_MARKER) and getattr(fn, VIRTUAL_MARKER)
+        deps = [
+            job.model_copy(
+                update={
+                    "job_id": old_ids_to_new_ids[job.job_id],
+                }
+            )
+            for job in deps
+        ]
+
+        return fn(job_params, deps)
+
+    return scramble_deps

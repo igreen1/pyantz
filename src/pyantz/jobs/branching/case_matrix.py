@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from pyantz.infrastructure.config import (
     JobConfig,
+    JobPipeline,
     JobWithContext,
     SubmissionFnType,
     add_parameters,
@@ -32,7 +33,7 @@ class CaseMatrixExpansionParams(BaseModel):
     # useful if you have large columns just for human readability
     cols_to_exclude: tuple[str] | None = None
 
-    pipeline_template: list[JobConfig]
+    pipeline_template: JobPipeline
 
 
 class ContinuousRange[S: int | float](BaseModel):
@@ -187,6 +188,12 @@ def _pipeline_factory_factory(
     """Create a factory which accepts variables and returns a job config."""
     # get the original ids to erase them
     ids_in_pipeline = {job.job_id for job in pipeline_template}
+    
+    # TODO:
+    # consider a job with wrapped children jobs
+    # the wrapped children jobs will have non-unique ids
+    # so, how can we handle this
+    # every job in the template must be recursively re-ided?
 
     def reset_job_template(job: JobConfig) -> JobConfig:
         """Reset the job id and dependencies."""
@@ -209,7 +216,7 @@ def _pipeline_factory_factory(
             nonlocal prev
             updated = curr.model_copy(
                 update={
-                    "depends_on": [*(curr.depends_on or []), *([prev.job_id] if prev else [])]
+                    "depends_on": {*(curr.depends_on or []), *([prev.job_id] if prev else [])}
                 }
             )
             prev = updated
@@ -237,6 +244,8 @@ def _pipeline_factory_factory(
 
         # not make our closure
         def submit_pipeline(submit_fn: SubmissionFnType) -> None:
+            print("Submitting children")
+            print(child_pipeline)
             for job in child_pipeline:
                 submit_fn(job)
 

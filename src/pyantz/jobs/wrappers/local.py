@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 
 from pyantz.infrastructure.config import (
     JobConfig,
+    JobPipeline,
     JobWithContext,
     add_parameters,
     no_submit_fn,
@@ -29,7 +30,7 @@ class LocalPipelineParameters(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # The job's first parameter will be a dictionary
-    jobs: list[JobConfig]
+    jobs: JobPipeline
 
     inter_job_named_pipes: list[str]
 

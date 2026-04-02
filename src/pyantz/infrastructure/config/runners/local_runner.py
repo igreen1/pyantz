@@ -1,5 +1,6 @@
 """A local runner runs within the machine in multiple processes."""
 
+import os
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, DirectoryPath
@@ -26,3 +27,8 @@ class LocalRunnerConfig(BaseModel):
     # if set, will timeout the runner if jobs are
     # not received in a certain time
     timeout: float | None = None
+
+    # if true, use this process rather than a pool
+    # default to running locally for pytest (easier debugging and faster for small jobs)
+    # run in a separate process for users
+    use_same_proc: bool = "PYTEST_VERSION" in os.environ

@@ -61,7 +61,13 @@ def _resolve_var_any[T](
         result: list[tuple[Any, bool]] = [
             _resolve_var_any(i, variables) for i in cast("Iterable[Any]", some_val)
         ]
-        some_val_variables_resolved, unmade_edits = tuple(zip(*result, strict=True))
+
+        some_val_variables_resolved: Iterable[Any]
+        if not result:
+            some_val_variables_resolved = []
+            unmade_edits = [False]
+        else:
+            some_val_variables_resolved, unmade_edits = tuple(zip(*result, strict=True))
         unresolved_variables = any(unmade_edits)
         return iter_cls(some_val_variables_resolved), unresolved_variables  # type: ignore[return-value,call-arg]
     return some_val, False
@@ -82,7 +88,7 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
         end = match.end()
         substr = s[start:end]
         if substr[2:-1] in variables:
-            s = s.replace(substr, variables[substr[2:-1]])
+            s = s.replace(substr, str(variables[substr[2:-1]]))
         else:
             unmade_change = True
 

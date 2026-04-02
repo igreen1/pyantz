@@ -35,7 +35,6 @@ def check_config(
 
     return True
 
-
 def get_params(job: JobConfig) -> type[BaseModel] | None:
     """Retrieve parameters attached to the job function, if any registered."""
     if hasattr(job.function, "PYANTZ_VALIDATION_MODEL"):

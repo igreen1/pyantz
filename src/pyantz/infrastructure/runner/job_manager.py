@@ -82,7 +82,14 @@ def run_job_no_parent_wrapper(
         parameters = job_config.parameters
         logger.debug("No variables, parameters: %s", parameters)
 
+    def _validate_job() -> None:
+        """Validate that the job is not virtual."""
+        if job_config.virtual:
+            msg = "Virtual job being run"
+            raise RuntimeError(msg)
+
     try:
+        _validate_job()
         logger.info("Running job %s", job_config.job_id)
         # mypy hasn't updated properly to 3.14
         with JobVariables.set(job_config.variables):  # type: ignore[attr-defined]
