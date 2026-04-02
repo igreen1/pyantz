@@ -7,6 +7,7 @@ from pydantic import BaseModel, BeforeValidator, Field
 
 from pyantz.infrastructure.virtual import compile_virtual
 
+from .host_config import HostConfig, LocalConfig
 from .job import JobConfig, make_job
 from .runners import LocalRunnerConfig, SlurmRunnerConfig
 
@@ -30,3 +31,5 @@ class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
     submitter: S = Field(discriminator="type_")
 
     variables: Mapping[str, Any] = Field(default_factory=dict)
+
+    host: HostConfig = LocalConfig()

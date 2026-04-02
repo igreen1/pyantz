@@ -1,14 +1,22 @@
-"""Configuration for the remote execution."""
+"""Configuration for the host execution location.
 
-from typing import Literal
+Before the first submitter is started, the program will look
+to the host configuration to determine where to start the program.
+So, while the submitter configuration tells the program how to submit new jobs
+the host config tells the program how to start itself.
+"""
 
-from pydantic import BaseModel, ConfigDict
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
 
 
-class RemoteExecutionConfig(BaseModel):
-    """Configuration for executing remotely."""
+class LocalConfig(BaseModel):
+    """Execute the submitter locally."""
 
     model_config = ConfigDict(frozen=True)
+
+    type_: Literal["local"] = "local"
 
 
 class SshConfig(BaseModel):
@@ -37,3 +45,9 @@ class ContainerConfig(BaseModel):
 
     # name of the container to exec into
     container_name: str
+
+
+type HostConfig = Annotated[
+    SshConfig | ContainerConfig | LocalConfig,
+    Field(discriminator="type_"),
+]
