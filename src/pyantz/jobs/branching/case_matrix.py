@@ -17,6 +17,7 @@ from pyantz.infrastructure.config import (
     add_parameters,
     no_submit_fn,
 )
+from pyantz.infrastructure.runner.job_manager import JobVariables
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -105,13 +106,36 @@ def pipeline_expansion_with_output_dir(
     output_dir = Path(params.output_dir)
     output_dir.mkdir(exist_ok=True)
 
+    # if a pipeline runs in a pipeline running in a pipeline
+    # we want it to have pipeline_id, its parent pipeline id, and its "grand parent" id
+    # to do this, we look at our current context
+    # if, in our current context, we are in a pipeline
+    # we create variables like "parent_pipeline_id"
+    # rather than "grandparent", we just keep pre-pending parent for simplicity
+    # so great-grand-parent pipeline id = parent_parent_parent_pipeline_id
+    parent_variables = JobVariables.get()
+    if parent_variables:
+        parent_pipelines = {
+            var: value
+            for var, value in parent_variables.items()
+            if var.endswith("pipeline_id")
+        }
+    else:
+        parent_pipelines = {}
+    new_variables = {
+        "parent_"+pipeline_id_name: pipeline_id_val
+        for pipeline_id_name, pipeline_id_val in parent_pipelines.items()
+    }
+
     def output_dir_submit(child_job: JobConfig) -> None:
         """Submit the job with an additional output_dir variable."""
         id_ = next(id_counter)
         run_dir = output_dir / f"run_{id_}"
         run_dir.mkdir(exist_ok=True)
+
         wrapped_job = JobWithContext.from_config(child_job).inherit_context(
             {
+                **new_variables,
                 "pipeline_id": id_,
                 "output_dir": run_dir,
             }
@@ -184,12 +208,6 @@ def _pipeline_factory_factory(
     # get the original ids to erase them
     ids_in_pipeline = {job.job_id for job in pipeline_template}
 
-    # TODO:
-    # consider a job with wrapped children jobs
-    # the wrapped children jobs will have non-unique ids
-    # so, how can we handle this
-    # every job in the template must be recursively re-ided?
-
     def reset_job_template(job: JobConfig) -> JobConfig:
         """Reset the job id and dependencies."""
         return job.model_copy(
@@ -239,7 +257,6 @@ def _pipeline_factory_factory(
         child_pipeline = string_pipeline(child_pipeline)
         # now add our variables to the child pipeline
         child_pipeline = add_variables(child_pipeline, pipeline_vars)
-
         # not make our closure
         def submit_pipeline(submit_fn: SubmissionFnType) -> None:
             for job in child_pipeline:

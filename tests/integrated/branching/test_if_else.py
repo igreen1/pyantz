@@ -43,6 +43,7 @@ def test_if_true(
         "if_false": make_else_job(tmp_path),
     }
     job = {
+        "job_id": "test_if_true",
         "function": "pyantz.jobs.branching.if_else.if_else",
         "parameters": conditional_parms,
     }

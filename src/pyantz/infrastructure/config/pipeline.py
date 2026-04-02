@@ -6,11 +6,12 @@ from typing import Annotated, Any
 from pydantic import BeforeValidator
 
 from .job import JobConfig, make_job
+from .virtual import VirtualJobConfig
 
 
 def _make_pipeline(
-    pipeline: Any,
-) -> list[JobConfig]:
+    pipeline: Any,  # noqa: ANN401
+) -> list[JobConfig | VirtualJobConfig]:
     """Make pipeline from anything."""
     if not isinstance(pipeline, Iterable):
         raise TypeError
@@ -18,4 +19,6 @@ def _make_pipeline(
     return [make_job(config) for config in pipeline]  # pyright: ignore[reportUnknownVariableType]
 
 
-type JobPipeline = Annotated[list[JobConfig], BeforeValidator(_make_pipeline)]
+type JobPipeline = Annotated[
+    list[JobConfig | VirtualJobConfig], BeforeValidator(_make_pipeline)
+]
