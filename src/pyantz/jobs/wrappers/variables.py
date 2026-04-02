@@ -8,15 +8,22 @@ import random
 import string
 import tempfile
 from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, DirectoryPath, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    DirectoryPath,
+    model_validator,
+)
 
 from pyantz.infrastructure.config import (
     JobConfig,
     JobPipeline,
     JobWithContext,
     add_parameters,
+    import_module_item_by_name,
     no_submit_fn,
 )
 from pyantz.infrastructure.runner.job_manager import (
@@ -34,7 +41,7 @@ class SetVariables(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # job which will edit the variable context
-    setter_job: Callable[..., Any]
+    setter_job: Annotated[Callable[..., Any], BeforeValidator(import_module_item_by_name)]
 
     # Kwargs to pass to the setter job
     set_job_kwargs: Mapping[str, Any]
@@ -42,9 +49,9 @@ class SetVariables(BaseModel):
     # jobs to submit with the context of the setter job
     jobs: JobPipeline
 
+
 @add_parameters(SetVariables)
-@no_submit_fn
-def set_variables(params: SetVariables) -> bool:
+def set_variables(params: SetVariables, submit_fn: SubmissionFnType) -> bool:
     """Set the variables for subsequent defined jobs.
 
     The `setter_job` is a slightly abnormal job. One of the parameters it accepts
@@ -66,6 +73,11 @@ def set_variables(params: SetVariables) -> bool:
         logger.exception("Unknown error in external set variable job.", exc_info=exc)
         return False
     else:
+        for job in params.jobs:
+            updated_job = JobWithContext.from_config(job).inherit_context(
+                new_variables
+            )
+            submit_fn(updated_job)
         return True
 
 

@@ -38,6 +38,7 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
         _start_pool(config, queue_file)
 
 
+
 def _run_within_same_proc(
     config: InitialConfig[LocalRunnerConfig], queue_file: Path
 ) -> None:
@@ -147,6 +148,7 @@ def _worker(
                 timeout_ctr += poll_time
             case CompleteReturn():
                 return
+
         if timeout is not None and timeout_ctr > timeout:
             logger.warning("Worker died due to timeout - exiting")
             return

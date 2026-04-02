@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal, Self, cast
 
 from pydantic import (
     BeforeValidator,
+    ConfigDict,
     WithJsonSchema,
     field_serializer,
     model_validator,
@@ -18,6 +19,7 @@ from .fn_utils import (
     serialize_function,
 )
 from .parameters.compile_check import check_config
+from .variables import resolve_var_any
 
 """Jobs can use the passed function to create children jobs.
 Args:
@@ -35,6 +37,8 @@ type JobFunctionType = Callable[[ParametersType, SubmissionFnType], bool]
 
 class JobConfig(AbstractJobConfig):
     """A job to be run."""
+
+    model_config = ConfigDict(frozen=True)
 
     # human readable name for this job
     name: str | None = None
@@ -63,7 +67,8 @@ class JobConfig(AbstractJobConfig):
     def validate_fn(self) -> Self:
         """Check the parameters for the function."""
         if not check_config(self, strict=self.strict, check_at_startup=True):
-            raise ValueError
+            msg = "Bad function definition"
+            raise ValueError(msg)
         return self
 
     @field_serializer("function")
@@ -75,7 +80,30 @@ class JobConfig(AbstractJobConfig):
 class JobWithContext(JobConfig):
     """Job to be run along with its variables in scope."""
 
+    model_config = ConfigDict(frozen=True)
+
     variables: Mapping[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def _update_ids_in_hyper_parameters(self) -> Self:
+        """Update ids in the "hyper params" (like id, depends_on)."""
+        try:
+            if not self.variables:
+                return self
+            updates: dict[str, Any] = {}
+
+            for field in ("job_id", "depends_on", "function"):
+                original_field = getattr(self, field)
+                new_field, _ = resolve_var_any(original_field, variables=self.variables)
+                if new_field != original_field:
+                    updates[field] = new_field
+
+            if updates:
+                return self.model_copy(update=updates)
+        except ValueError as exc:
+            msg = "Error modifying hyper-params with variables"
+            raise ValueError(msg) from exc 
+        return self
 
     @classmethod
     def from_config(

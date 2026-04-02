@@ -13,6 +13,7 @@ from pyantz.infrastructure.config.fn_utils import serialize_function
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import Any
 
     from pydantic import BaseModel
 
@@ -118,6 +119,10 @@ def add_parameters[T: BaseModel](
         return _fn_with_checker
 
     return _decorate_fn_with_params
+
+def get_parameters(fn: Any) -> type[BaseModel] | None: # noqa: ANN401
+    """Get the add parameters if PYANTZ_VALIDATION_MODEL set."""
+    return fn.PYANTZ_VALIDATION_MODEL if hasattr(fn, "PYANTZ_VALIDATION_MODEL") else None
 
 
 def update_deps[T: BaseModel](

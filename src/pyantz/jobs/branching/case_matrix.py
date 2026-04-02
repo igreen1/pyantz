@@ -133,6 +133,7 @@ def create_case_matrix(
     params: CaseMatrixCreator,
 ) -> bool:
     """Create a case matrix as a cartesian product of the variables."""
+    print("HEYUYYY")
     variables: list[pl.LazyFrame] = [
         pl.DataFrame(
             {

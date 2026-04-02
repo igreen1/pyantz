@@ -28,12 +28,12 @@ def resolve_parameters(
     logger = logging.getLogger(__name__)
     logger.info("Resolving parameters")
     logger.debug("Pre resolution: %s", job_parameters)
-    result = _resolve_var_any(job_parameters, variables=variables)
+    result = resolve_var_any(job_parameters, variables=variables)
     logger.debug("Post resolution %s", result)
     return result
 
 
-def _resolve_var_any[T](
+def resolve_var_any[T](
     some_val: T,
     variables: Mapping[str, Any],
 ) -> tuple[T, bool]:
@@ -46,7 +46,7 @@ def _resolve_var_any[T](
         return cast("tuple[T, bool]", _resolve_var_str(some_val, variables))  # type: ignore[return-value]
     if isinstance(some_val, Mapping):
         resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
-            k: _resolve_var_any(v, variables)  # pyright: ignore[reportUnknownArgumentType]
+            k: resolve_var_any(v, variables)  # pyright: ignore[reportUnknownArgumentType]
             for k, v in cast("dict[str, Any]", some_val).items()  # pyright: ignore[reportUnknownVariableType]
         }
         resolved_variables = {
@@ -59,7 +59,7 @@ def _resolve_var_any[T](
     if isinstance(some_val, Iterable):
         iter_cls: type[T] = type(some_val)  # type: ignore[assignment] # pyright: ignore[reportUnknownVariableType]
         result: list[tuple[Any, bool]] = [
-            _resolve_var_any(i, variables) for i in cast("Iterable[Any]", some_val)
+            resolve_var_any(i, variables) for i in cast("Iterable[Any]", some_val)
         ]
 
         some_val_variables_resolved: Iterable[Any]
