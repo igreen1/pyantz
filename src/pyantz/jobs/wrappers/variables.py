@@ -99,7 +99,6 @@ def run_jobs_in_context(
     submit_fn: SubmissionFnType,
 ) -> bool:
     """Submit the set of jobs with the shared variables. Not really anything fancy."""
-    print("Submitting child job in context")
     for job in params.jobs:
         # add context
         updated_job = JobWithContext.from_config(job).inherit_context(

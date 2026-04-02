@@ -182,7 +182,6 @@ def test_if_true_ints(
         "function": "pyantz.jobs.branching.if_else.if_else",
         "parameters": conditional_parms,
     }
-    print(job)
     run_integrated_jobs([job])
 
     assert (tmp_path / "IF.txt").exists()

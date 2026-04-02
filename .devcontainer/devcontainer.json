@@ -19,7 +19,8 @@
 				"ms-python.vscode-pylance",
 				"njpwerner.autodocstring",
 				"ms-python.debugpy",
-				"ms-vscode.live-server"
+				"ms-vscode.live-server",
+				"esbenp.prettier-vscode"
 			]
 		}
 	},

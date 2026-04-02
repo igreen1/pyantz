@@ -132,8 +132,6 @@ def _worker(
         match queue.get_job().payload:
             case JobReturn(job=job_config):
                 # set job to running
-                print("Got Job: ", job_config)
-                print()
                 queue.update_job_status(job_config.job_id, status=JobStatus.RUNNING)
                 try:
                     result = run_job(job_config, submit_fn)

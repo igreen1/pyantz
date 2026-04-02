@@ -27,6 +27,7 @@ export default function JobParameterEditor({
     return func_name && schemas ? schemas?.[func_name] || undefined : undefined;
   });
 
+  // somewhat slow, can be cumbersome for massive re-renders
   const { simpleParameters, singleJobParameters, multiJobParameters } = useMemo(
     () =>
       jobParameterSchema
@@ -39,6 +40,7 @@ export default function JobParameterEditor({
     [job, jobParameterSchema],
   );
 
+  // used as prop to child, so use useCallback
   const updateJobParameters = useCallback(
     (newParams: Record<string, unknown>) => {
       const updatedParams = {

@@ -133,16 +133,14 @@ def create_case_matrix(
     params: CaseMatrixCreator,
 ) -> bool:
     """Create a case matrix as a cartesian product of the variables."""
-    print("HEYUYYY")
     variables: list[pl.LazyFrame] = [
         pl.DataFrame(
             {
                 variable_name: list(var_def.range.get_values())
-                for variable_name, var_def in params.variables.items()
             }
         ).lazy()
+        for variable_name, var_def in params.variables.items()
     ]
-
     left = variables[0]
     for right in variables[1:]:
         left = left.join(
@@ -245,8 +243,6 @@ def _pipeline_factory_factory(
 
         # not make our closure
         def submit_pipeline(submit_fn: SubmissionFnType) -> None:
-            print("Submitting children")
-            print(child_pipeline)
             for job in child_pipeline:
                 submit_fn(job)
 

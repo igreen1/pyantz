@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pydantic import ValidationError
+import polars as pl
+from polars.testing import assert_frame_equal
 
 from pyantz import start
-from pyantz.infrastructure.config import JobConfig
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,6 +20,7 @@ def set_variable(set_var: Callable[[str, Any], None], test_path: str) -> None:
     set_var("output_file", os.path.join(test_path, "my_super_cool.csv"))
     set_var("case_matrix", os.path.join(test_path, "case_matrix.parquet"))
     set_var("root_output_dir", os.path.join(test_path, "output"))
+
 
 def test_large_pipeline(tmp_path: Path) -> None:
 
@@ -41,7 +42,7 @@ def test_large_pipeline(tmp_path: Path) -> None:
                         "function": "pyantz.jobs.subproc.dispatch.dispatch",
                         "depends_on": ["%{pipeline_id}_a"],
                         "parameters": {
-                            "cmd": ("%{script_path}", "%{output_dir}/file.txt"),
+                            "cmd": ("%{script_path}", "%{output_dir}/%{file}.txt"),
                             "stdout_file": "%{output_dir}/stdout.txt",
                         },
                     },
@@ -122,5 +123,49 @@ def test_large_pipeline(tmp_path: Path) -> None:
         },
     }
     start(config)
-    breakpoint()
-    raise AssertionError
+
+    assert (tmp_path / "output").exists()
+    assert (tmp_path / "case_matrix.parquet").exists()
+    expected_case_matrix = pl.DataFrame(
+        {
+            "columnA": [
+                10,
+                10,
+                10,
+                12,
+                12,
+                12,
+                14,
+                14,
+                14,
+            ],
+            "file": [
+                "fileA",
+                "fileB",
+                "fileC",
+                "fileA",
+                "fileB",
+                "fileC",
+                "fileA",
+                "fileB",
+                "fileC",
+            ],
+        }
+    )
+    result_case_matrix = pl.read_parquet(tmp_path / "case_matrix.parquet")
+    assert len(result_case_matrix) == 9
+    assert_frame_equal(
+        expected_case_matrix,
+        result_case_matrix,
+        check_row_order=False,
+        check_dtypes=False,
+    )
+    for i, (file_name,) in enumerate(result_case_matrix.select("file").iter_rows()):
+        run_dir = tmp_path / "output" / f"run_{i}"
+        assert run_dir.exists()
+        assert (run_dir / "script.bash").exists()
+        assert (run_dir / "script.bash").read_text() == exec_path.read_text()
+        assert (run_dir / f"{file_name}.txt").exists()
+        assert (run_dir / f"{file_name}.txt").read_text() == "a,b,c\n1,2,3\n"
+        assert (run_dir / "stdout.txt").exists()
+        assert (run_dir / "stdout.txt").read_text() == ""
