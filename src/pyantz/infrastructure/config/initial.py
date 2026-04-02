@@ -5,6 +5,8 @@ from typing import Annotated, Any
 
 from pydantic import BaseModel, BeforeValidator, Field
 
+from pyantz.infrastructure.virtual import compile_virtual
+
 from .job import JobConfig, make_job
 from .runners import LocalRunnerConfig, SlurmRunnerConfig
 
@@ -13,7 +15,7 @@ type AnyRunner = LocalRunnerConfig | SlurmRunnerConfig
 
 def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
     """Make jobs and compile them."""
-    return [make_job(config) for config in jobs]
+    return compile_virtual(list(map(make_job, jobs)))
 
 
 class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):

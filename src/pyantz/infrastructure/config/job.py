@@ -16,10 +16,13 @@ from pydantic import (
 from .abtrast_job import AbstractJobConfig
 from .fn_utils import (
     import_function_by_name,
+    import_module_item_by_name,
     serialize_function,
 )
+from .parameters import is_virtual
 from .parameters.compile_check import check_config
 from .variables import resolve_var_any
+from .virtual import VirtualJobConfig
 
 """Jobs can use the passed function to create children jobs.
 Args:
@@ -140,7 +143,7 @@ class JobWithContext(JobConfig):
 
 def make_job(
     config: Any,  # noqa: ANN401
-) -> JobConfig:
+) -> JobConfig | VirtualJobConfig:
     """Make a job based on a user provided configuration."""
     if isinstance(config, (AbstractJobConfig)):
         return config  # type: ignore[return-value] # pyright: ignore[reportReturnType]
@@ -149,4 +152,18 @@ def make_job(
     config = cast("Mapping[str, Any]", config)
     if "function" not in config:
         raise ValueError
+    use_virtual = cast(
+        "bool",
+        config.get(
+            "virtual",
+            is_virtual(
+                import_module_item_by_name(
+                    config["function"],
+                ),
+            ),
+        ),
+    )
+
+    if use_virtual:
+        return VirtualJobConfig.model_validate(config)
     return JobConfig.model_validate(config)

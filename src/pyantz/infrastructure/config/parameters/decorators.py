@@ -154,3 +154,14 @@ def update_deps[T: BaseModel](
         return fn(job_params, deps)
 
     return scramble_deps
+
+def mark_virtual[T](fn: T) -> T:
+    """Add a parameter marking the function as a virtual job."""
+    setattr(fn, VIRTUAL_MARKER, True)  # type: ignore[attr-defined] # pyright: ignore[reportFunctionMemberAccess]
+
+    return fn
+
+
+def is_virtual(fn: Any) -> bool:  # noqa: ANN401
+    """Return true if the function is marked as virtual."""
+    return hasattr(fn, VIRTUAL_MARKER) and getattr(fn, VIRTUAL_MARKER)
