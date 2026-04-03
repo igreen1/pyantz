@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .fn_utils import import_module_item_by_name
+from .host_config import ContainerConfig, LocalConfig, SshConfig
 from .initial import AnyRunner, InitialConfig
 from .job import JobConfig, JobWithContext, SubmissionFnType
 from .parameters import (
@@ -18,11 +19,14 @@ from .virtual import VirtualJobConfig, VirtualParamModel
 
 __all__ = [
     "AnyRunner",
+    "ContainerConfig",
     "InitialConfig",
     "JobConfig",
     "JobPipeline",
     "JobWithContext",
+    "LocalConfig",
     "LocalRunnerConfig",
+    "SshConfig",
     "SubmissionFnType",
     "VirtualJobConfig",
     "VirtualParamModel",

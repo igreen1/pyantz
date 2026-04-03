@@ -23,7 +23,7 @@ def set_variable(set_var: Callable[[str, Any], None], test_path: str) -> None:
 
 
 def test_large_pipeline(tmp_path: Path) -> None:
-
+    """Test a large pipeline that is sort-of like a real analysis."""
     child_template: list[dict[str, Any]] = [
         {
             "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
@@ -232,9 +232,122 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
     _check_run(tmp_path)
 
 
+def test_large_pipeline_container(tmp_path: Path) -> None:
+    """Test a large pipeline that is sort-of like a real analysis."""
+    child_template: list[dict[str, Any]] = [
+        {
+            "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
+            "parameters": {
+                "shared_variables": {"script_path": "%{output_dir}/script.bash"},
+                "jobs": [
+                    {
+                        "function": "pyantz.jobs.files.moving.copy",
+                        "job_id": "%{pipeline_id}_a",
+                        "parameters": {
+                            "source": os.fspath(exec_path),
+                            "destination": "%{script_path}",
+                        },
+                    },
+                    {
+                        "job_id": "%{pipeline_id}_b",
+                        "function": "pyantz.jobs.subproc.dispatch.dispatch",
+                        "depends_on": ["%{pipeline_id}_a"],
+                        "parameters": {
+                            "cmd": ("%{script_path}", "%{output_dir}/%{file}.txt"),
+                            "stdout_file": "%{output_dir}/stdout.txt",
+                        },
+                    },
+                ],
+            },
+        },
+    ]
+
+    pipeline_config: list[dict[str, Any]] = [
+        {
+            "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
+            "parameters": {
+                "shared_variables": {
+                    "output_file": os.fspath(tmp_path / "my_super_cool.csv"),
+                    "case_matrix": os.fspath(tmp_path / "case_matrix.parquet"),
+                    "root_output_dir": os.fspath(tmp_path / "output"),
+                },
+                "jobs": [
+                    {
+                        "job_id": "matrix_creation",
+                        "function": "pyantz.jobs.branching.case_matrix.create_case_matrix",
+                        "parameters": {
+                            "save_file": "%{case_matrix}",
+                            "variables": {
+                                "columnA": {
+                                    "range": {
+                                        "possible_values": (
+                                            10,
+                                            12,
+                                            14,
+                                        ),
+                                    },
+                                },
+                                "file": {
+                                    "range": {
+                                        "possible_values": (
+                                            "fileA",
+                                            "fileB",
+                                            "fileC",
+                                        ),
+                                    }
+                                },
+                            },
+                        },
+                    },
+                    {
+                        "job_id": "make_output_dir",
+                        "depends_on": ["matrix_creation"],
+                        "function": "pyantz.jobs.files.simple.mkdir",
+                        "parameters": {
+                            "dir_path": "%{root_output_dir}",
+                        },
+                    },
+                    {
+                        "job_id": "case matrix set",
+                        "depends_on": ["make_output_dir"],
+                        "function": "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir",
+                        "parameters": {
+                            "case_matrix_parquet": "%{case_matrix}",
+                            "output_dir": "%{root_output_dir}",
+                            "pipeline_template": child_template,
+                        },
+                    },
+                ],
+            },
+        },
+    ]
+
+    jobs = pipeline_config
+
+    working_dir = tmp_path / "working_dir"
+    working_dir.mkdir()
+
+    config: dict[str, Any] = {
+        "jobs": jobs,
+        "submitter": {
+            "type_": "local_proc",
+            "working_directory": working_dir,
+            "use_same_proc": True,
+            "timeout": 1,
+        },
+        "host": {
+            "type_": "container",
+            "requirements": [
+                "celery",
+            ]
+        }
+    }
+    start(config)
+    _check_run(tmp_path)
+
+
 def _check_run(tmp_path: Path) -> None:
     """Check that the pipeline ran successfully."""
-
     assert (tmp_path / "output").exists()
     assert (tmp_path / "case_matrix.parquet").exists()
     expected_case_matrix = pl.DataFrame(

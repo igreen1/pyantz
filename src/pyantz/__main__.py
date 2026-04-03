@@ -10,7 +10,9 @@ from typing import Any
 from pyantz import start as _start
 from pyantz.infrastructure.config import InitialConfig as _InitialConfig
 
-if __name__ == "__main__":
+
+def main() -> None:
+    """Entry point for running pyantz."""
     parser = _argparse.ArgumentParser("PyAntz", description="Run a DAG of data jobs.")
     parser.add_argument(
         "config_location", help="JSON file with the configuration to run"
@@ -27,3 +29,7 @@ if __name__ == "__main__":
     config_text = config_location.read_text(encoding="utf-8")
     config: _InitialConfig[Any] = _InitialConfig.model_validate_json(config_text)  # pyright: ignore[reportUnknownVariableType]
     _start(config)
+
+
+if __name__ == "__main__":
+    main()
