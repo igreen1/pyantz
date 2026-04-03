@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "docker>=7.1.0",
     "fastapi[standard]>=0.127.0",
     "polars>=1.36.1",
     "pydantic>=2.11.7",
@@ -15,6 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
+pyantz = "pyantz.__main__:main"
 pyantz-dev = "pyantz.api.dev_server:start_dev_server"
 pyantz-prod = "pyantz.api.backend:start_prod_server"
 
@@ -44,6 +46,7 @@ dev = [
     "sphinx-autodoc-typehints>=3.9.9",
     "sphinx-book-theme>=1.2.0",
     "ty>=0.0.4",
+    "types-docker>=7.1.0.20260402",
 ]
 
 [tool.ruff.lint.flake8-type-checking]
