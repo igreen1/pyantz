@@ -1,9 +1,10 @@
 """A local runner runs within the machine in multiple processes."""
 
 import os
+from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, DirectoryPath
+from pydantic import BaseModel, ConfigDict
 
 
 class LocalRunnerConfig(BaseModel):
@@ -15,7 +16,7 @@ class LocalRunnerConfig(BaseModel):
     type_: Literal["local_proc"] = "local_proc"
 
     # location to save temporary files and the queue
-    working_directory: DirectoryPath
+    working_directory: Path
 
     # how long to wait between each check of the qeue
     # used while actively pending

@@ -61,10 +61,14 @@ class ContainerConfig(BaseModel):
 
     # if set, will use this as the directory to run as cwd
     # if not set, will use the tmpfs location
-    working_dir: str = "/pyantz"
+    working_dir: str = "/workspace"
 
     # files to add as python requirements
     requirements: list[str] | None = None
+
+    # if true, copy this project directory
+    # primarily useful for testing
+    copy_project_dir: bool = False
 
 type HostConfig = Annotated[
     SshConfig | ContainerConfig | LocalConfig,

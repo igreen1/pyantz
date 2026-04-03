@@ -8,8 +8,11 @@ from pydantic import BaseModel, ConfigDict
 
 from pyantz import start
 from pyantz.infrastructure.config import (
+    ContainerConfig,
     InitialConfig,
     JobConfig,
+    LocalConfig,
+    SshConfig,
     add_parameters,
     no_submit_fn,
 )
@@ -51,6 +54,42 @@ def submit(params: SubmitParams[Any]) -> bool:
     )
     new_initial_config = InitialConfig(
         jobs=params.jobs, submitter=params.runner_config, variables=curr_variables
+    )
+
+    start(new_initial_config)
+
+    return True
+
+
+class HostParams[
+    H: (ContainerConfig, LocalConfig, SshConfig),
+    S: (LocalRunnerConfig, SlurmRunnerConfig),
+](BaseModel):
+    """Parameters to submit a job through a new submitter."""
+
+    model_config = ConfigDict(frozen=True)
+
+    # configuration of the host to run on
+    host_config: H
+
+    # configuration of the submitter to use on the new host
+    submit_config: S
+
+    jobs: tuple[JobConfig, ...]
+
+
+@add_parameters(HostParams)
+@no_submit_fn  # we're making our own!
+def new_host(params: HostParams[Any, Any]) -> bool:
+    """Run a set of jobs on a new host."""
+    curr_variables: Final[Mapping[str, Any]] = (
+        _vars if (_vars := JobVariables.get()) else {}
+    )
+    new_initial_config = InitialConfig(
+        jobs=params.jobs,
+        variables=curr_variables,
+        submitter=params.submit_config,
+        host=params.host_config,
     )
 
     start(new_initial_config)

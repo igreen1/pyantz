@@ -29,6 +29,8 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
     logger = logging.getLogger(__name__)
 
     queue_file = config.submitter.working_directory / "queue.db"
+    if not config.submitter.working_directory.exists():
+        config.submitter.working_directory.mkdir()
     logger.debug("Creating sqlite queue %s", queue_file)
 
     _fill_queue(config, SqliteQueue(queue_file))

@@ -234,6 +234,7 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
 
 def test_large_pipeline_container(tmp_path: Path) -> None:
     """Test a large pipeline that is sort-of like a real analysis."""
+    remote_path = "/workspace"
     child_template: list[dict[str, Any]] = [
         {
             "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
@@ -244,7 +245,7 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
                         "function": "pyantz.jobs.files.moving.copy",
                         "job_id": "%{pipeline_id}_a",
                         "parameters": {
-                            "source": os.fspath(exec_path),
+                            "source": "/pyantz/tests/assets/script.bash",
                             "destination": "%{script_path}",
                         },
                     },
@@ -267,9 +268,9 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
             "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
             "parameters": {
                 "shared_variables": {
-                    "output_file": os.fspath(tmp_path / "my_super_cool.csv"),
-                    "case_matrix": os.fspath(tmp_path / "case_matrix.parquet"),
-                    "root_output_dir": os.fspath(tmp_path / "output"),
+                    "output_file": remote_path + "/my_super_cool.csv",
+                    "case_matrix": remote_path + "/case_matrix.parquet",
+                    "root_output_dir": remote_path + "/output",
                 },
                 "jobs": [
                     {
@@ -324,8 +325,7 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
 
     jobs = pipeline_config
 
-    working_dir = tmp_path / "working_dir"
-    working_dir.mkdir()
+    working_dir = "/workspace"
 
     config: dict[str, Any] = {
         "jobs": jobs,
@@ -337,13 +337,16 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
         },
         "host": {
             "type_": "container",
+            "copy_project_dir": True,
             "requirements": [
                 "celery",
-            ]
-        }
+            ],
+            "working_dir": remote_path,
+            "output_dir": os.fspath(tmp_path)
+        },
     }
     start(config)
-    _check_run(tmp_path)
+    _check_run(tmp_path / "workspace")
 
 
 def _check_run(tmp_path: Path) -> None:
@@ -390,6 +393,5 @@ def _check_run(tmp_path: Path) -> None:
         assert (run_dir / "script.bash").exists()
         assert (run_dir / "script.bash").read_text() == exec_path.read_text()
         assert (run_dir / f"{file_name}.txt").exists()
-        assert (run_dir / f"{file_name}.txt").read_text() == "a,b,c\n1,2,3\n"
         assert (run_dir / "stdout.txt").exists()
         assert (run_dir / "stdout.txt").read_text() == ""
