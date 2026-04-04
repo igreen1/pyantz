@@ -1,4 +1,4 @@
-#!~/.local/bin/uv run --script $0
+#!/usr/bin/env -S uv run --script
 # /// script
 # requires-python = ">=3.14"
 # dependencies = [
@@ -20,12 +20,16 @@ def main() -> None:
     write_file(output_file)
 
 
+
+
 def write_file(output_file: str) -> None:
     """Write a dataframe as "proof" that this ran."""
     print("Hello from some_exec.py!")
     pl.DataFrame(
         {
             "a": [1, 2, 3, 4, 5],
+            "b": [1, 2, 3, 4, 5],
+            "c": [1, 2, 3, 4, 5],
         }
     ).write_parquet(output_file)
 

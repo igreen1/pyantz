@@ -3,7 +3,7 @@
 import json
 import logging
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -16,6 +16,7 @@ from pydantic import (
     WithJsonSchema,
     field_serializer,
 )
+from ruamel.yaml import YAML
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 from pyantz.infrastructure.config.fn_utils import (
@@ -27,8 +28,8 @@ from pyantz.infrastructure.config.fn_utils import (
 BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
 
 
-class EditJsonParams(BaseModel):
-    """Parameters to edit json."""
+class _EditJsonLikeParams(BaseModel):
+    """Parameters to edit a JSON-like input file."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -43,15 +44,39 @@ class EditJsonParams(BaseModel):
     # but again, if the JSON object contains a field "a.[0]" that will be edited instead
     updates: Mapping[str, Any]
 
-    # what to do when the field provided points to a loction that doesn't exist in json
-    # for example, consider field = "a.b.c.d" being set to "goodbye!"
-    # but the object looks like {"a": "hello world"}
-    # what do we do?
-    # ignore: return the original if a path doesn't match. Return = {"a": "hello world"}
-    # overwrite: follow as much as possible, then overwrite the leaf.
-    #       Return = {"a": "goodbye!"}  # noqa: ERA001
-    # force_object: add the path. Return = {"a": {"b": {"c": {"d": "goodbye!"}}}}
-    extra_field: Literal["ignore", "overwrite", "force_object"]
+
+class EditJsonParams(_EditJsonLikeParams):
+    """Parameters to edit json."""
+
+
+class EditYamlParams(_EditJsonLikeParams):
+    """Parameters to edit a yaml file."""
+
+
+@add_parameters(EditYamlParams)
+@no_submit_fn
+def edit_yaml(params: EditYamlParams) -> bool:
+    """Edit a .yaml file in place."""
+    logger = logging.getLogger(__name__)
+
+    if not params.file.exists():
+        logger.error("No such file %s", params.file)
+        return False
+    if not params.file.is_file():
+        logger.error("Path is not a file. %s", params.file)
+        return False
+
+    yaml = YAML()
+
+    try:
+        contents = yaml.load(params.file)
+        updated_contents = _edit_jsonlike(params, contents)
+        yaml.dump(updated_contents, params.file)
+    except OSError as exc:
+        logger.exception("Error while writing file", exc_info=exc)
+        return False
+    else:
+        return True
 
 
 @add_parameters(EditJsonParams)
@@ -59,11 +84,6 @@ class EditJsonParams(BaseModel):
 def edit_json(params: EditJsonParams) -> bool:
     """Edit a .json file in place."""
     logger = logging.getLogger(__name__)
-
-    # create closures so they have access to the params
-    # while only currently used for `extra_field`
-    # it is likely future users will want more options for editing the json
-    # so placing in closures for future capabilities
 
     if not params.file.exists():
         logger.error("No such file %s", params.file)
@@ -79,19 +99,26 @@ def edit_json(params: EditJsonParams) -> bool:
         logger.exception("Unknown error", exc_info=exc)
         return False
 
-    edit_jsonvalue = _json_editor_factory(extra_field=params.extra_field)
-
-    for field, value in params.updates.items():
-        contents = edit_jsonvalue(contents, field, value)
+    updated_contents = _edit_jsonlike(params, contents)
 
     try:
         with params.file.open("w", encoding="utf-8") as fh:
-            json.dump(contents, fh)
+            json.dump(updated_contents, fh)
     except OSError as exc:
         logger.exception("Error while writing file", exc_info=exc)
         return False
     else:
         return True
+
+
+def _edit_jsonlike(params: _EditJsonLikeParams, contents: JsonValue) -> JsonValue:
+    """Edit a JSON like value and return the contents."""
+    edit_jsonvalue = _json_editor_factory()
+
+    for field, value in params.updates.items():
+        contents = edit_jsonvalue(contents, field, value)
+
+    return contents
 
 
 class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
@@ -170,7 +197,7 @@ def edit_external_method(params: EditExternalParams) -> bool:
         )
         return False
 
-    update_fn = _json_editor_factory(extra_field=params.extra_field)
+    update_fn = _json_editor_factory()
 
     try:
         contents = extract_result
@@ -194,8 +221,6 @@ def edit_external_method(params: EditExternalParams) -> bool:
 
 
 def _json_editor_factory(  # noqa: C901
-    *,
-    extra_field: Literal["ignore", "overwrite", "force_object"],
 ) -> Callable[[JsonValue, str, JsonValue], JsonValue]:
     """Create a callable to edit a JsonValue recursively.
 
@@ -207,98 +232,93 @@ def _json_editor_factory(  # noqa: C901
 
     """
 
-    def _edit_any(val: JsonValue, field: str, new_value: JsonValue) -> JsonValue:
-        if field == "":
-            return new_value
-        if isinstance(val, dict):
-            return _edit_map(val, field, new_value)
-        if isinstance(val, (list)):
-            return _edit_list(val, field, new_value)
-
-        # the user has specified a "field"
-        # but the object is a simple primitive... this is a weird mismatch
-        # there are a few ways to handle this but none of them are great
-        # so we expose the options to the user
-        if extra_field == "ignore":
-            return val
-        if extra_field == "overwrite":
-            return new_value
-
-        # "force_object" option selected
+    def split_components(field: str) -> list[str]:
+        """Split on `.` but allow escaping with backslash."""
         field_components = field.split(".")
-        curr_field = field_components[0]
-        next_field = ".".join(field_components[1:])
-        return {curr_field: _edit_any(val, next_field, new_value)}
+        # handle escape '.', which are not counted as splitting
+        prev: int | None = None
+        for i in reversed(range(len(field_components))):
+            if field_components[i][-1] == "\\":
+                prev_str = field_components.pop(prev) if prev is not None else ""
+                field_components[i] = field_components[i][:-1] + "." + prev_str
+            prev = i
+        return field_components
 
-    def _edit_map(
-        val: dict[str, JsonValue], field: str, new_value: JsonValue
-    ) -> dict[str, JsonValue]:
-        """Update a map based on the field."""
-        # first find the correct field substring
-        # because fields in a json may contain "." characters, which can be confusing
-        # so we must find the longest substring which is present in the dictionary
-        # and then pass the remaining components as the field to be edited
-        field_components = field.split(".")
-        split_idx = -1
-        key: str | None = None
-        for end_idx in range(len(field_components) - 1, 0, -1):
-            sub_field = ".".join(field_components[0:end_idx])
-            if sub_field in val:
-                key = sub_field
-                split_idx = end_idx
-                break
+    def edit_list(
+        val: JsonValue, curr_key: str, new_value: JsonValue, field_components: list[str]
+    ) -> list[JsonValue]:
+        """Edit the value as a list."""
+        curr_key = curr_key[1:-1]  # strip []
+        if not isinstance(val, Iterable):
+            return [
+                edit_any({}, field_components=field_components, new_value=new_value)
+            ]
+        val_as_list: list[JsonValue] = list(val)
+        if curr_key == "*":
+            return [
+                edit_any(item, field_components=field_components, new_value=new_value)
+                for item in val_as_list
+            ]
+        curr_idx = int(curr_key)
+        if curr_idx < 0:
+            return [
+                edit_any({}, field_components=field_components, new_value=new_value), # type: ignore  # noqa: PGH003
+                *val_as_list,
+            ]
+        if curr_idx >= len(val_as_list):
+            return [
+                *val_as_list,
+                edit_any({}, field_components=field_components, new_value=new_value), # type: ignore  # noqa: PGH003
+            ]
+        return [
+            *val_as_list[:curr_idx],
+            edit_any(val_as_list[curr_idx], field_components, new_value), # type: ignore  # noqa: PGH003
+            *val_as_list[curr_idx + 1 :],
+        ]
 
-        if key is None or split_idx < 0:
-            msg = "Cannot find %s in json"
-            raise RuntimeError(msg, field)
 
+    def edit_map(
+        val: JsonValue,
+        curr_key: str,
+        new_value: str,
+        field_components: list[str],
+    ) -> Mapping[str, Any]:
+        """Edit the map."""
+        if not isinstance(val, Mapping):
+            val = {}  # overwrite always
+        old_val = val.get(curr_key, {})
         return {
-            k: (
-                _edit_any(
-                    v, ".".join(field_components[split_idx:]), new_value=new_value
-                )
-                if k == key
-                else v  # no edits to be made
-            )
-            for k, v in val.items()
+            **{k: v for k, v in val.items() if k != curr_key},
+            curr_key: edit_any(  # type: ignore  # noqa: PGH003
+                old_val, field_components, new_value
+            ),
         }
 
-    def _edit_list(
-        val: list[JsonValue],
-        field: str,
-        new_value: JsonValue,
-    ) -> list[JsonValue]:
-        """Update a list.
+    def edit_any(
+        val: JsonValue, field_components: list[str], new_value: JsonValue
+    ) -> JsonValue:
+        """Edit any json value that comes our way."""
+        if len(field_components) == 0:
+            return new_value
+        curr_key = field_components[0]
+        if curr_key.startswith("[") and curr_key.endswith("]"):
+            fn = edit_list
+        else:
+            fn = edit_map  # type: ignore # noqa: PGH003
 
-        Few different possibilities:
-        1. Field = "[i]..." - edit ith element
-        2. Field = "abc" - edit all elements, with this field passed to them
-        3. Field = "[*]" - replace eaceh element with value
+        return fn(
+            val,
+            curr_key,
+            new_value,  # type: ignore  # noqa: PGH003
+            field_components=field_components[1:],
+        )
 
-        """
-        if match := BRACKET_PATTERN.match(field):
-            # user has used [] notation to mark specific elements for updates
+        return None
 
-            # convenience variables for clarity
-            idx: str | int = match.group(1)
-            remaining_field = field[3:]
-            if idx != "*":
-                idx = int(idx)
+    def edit_any_wrapper(val: JsonValue, field: str, new_value: JsonValue) -> JsonValue:
+        """Edit any but accept a user style field string that is then split."""
+        return edit_any(
+            val=val, field_components=split_components(field), new_value=new_value
+        )
 
-            def idx_match(curr_idx: int) -> bool:
-                """Return if this index of the list is marked for edits."""
-                return idx in {"*", curr_idx}
-
-            return [
-                _edit_any(item, remaining_field, new_value)
-                if idx_match(item_idx)
-                else item
-                for item_idx, item in enumerate(val)
-            ]
-
-        # possibility (2) from the docstring
-        # user did not specify how to edit the elements
-        # so we assume they want each element to be edited as the field/value specify
-        return [_edit_any(item, field, new_value) for item in val]
-
-    return _edit_any
+    return edit_any_wrapper
