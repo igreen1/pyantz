@@ -1,7 +1,5 @@
 """Configuration of a single job to be run."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Mapping
 from typing import Annotated, Any, Literal, Self, cast
 
@@ -24,18 +22,14 @@ from .parameters.compile_check import check_config
 from .variables import resolve_var_any
 from .virtual import VirtualJobConfig
 
-"""Jobs can use the passed function to create children jobs.
-Args:
-    job (JobWithContext): the job to submit to be run
-"""
-type SubmissionFnType = Callable[[JobConfig], None]
-"""Jobs are given paramters by the user."""
-type ParametersType = Mapping[str, Any]
+type SubmissionFnType = Callable[[JobConfig], None]  # pylint: disable=E0601
+"""Function a "user" function receives to submit jobs."""
 
-"""Jobs accept parameters to be completed, as filled in by the user
-They return True if they were successful; False otherwise.
-"""
+type ParametersType = Mapping[str, Any]
+"""Jobs are given paramters by the user."""
+
 type JobFunctionType = Callable[[ParametersType, SubmissionFnType], bool]
+"""Function that performs the job expected."""
 
 
 class JobConfig(AbstractJobConfig):

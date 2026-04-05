@@ -1,7 +1,5 @@
 """Evaluate a conditional and submit a job depending on the result."""
 
-from __future__ import annotations
-
 import operator
 from typing import TYPE_CHECKING, Literal
 

@@ -262,20 +262,19 @@ def _json_editor_factory(  # noqa: C901
         curr_idx = int(curr_key)
         if curr_idx < 0:
             return [
-                edit_any({}, field_components=field_components, new_value=new_value), # type: ignore  # noqa: PGH003
+                edit_any({}, field_components=field_components, new_value=new_value),  # type: ignore  # noqa: PGH003
                 *val_as_list,
             ]
         if curr_idx >= len(val_as_list):
             return [
                 *val_as_list,
-                edit_any({}, field_components=field_components, new_value=new_value), # type: ignore  # noqa: PGH003
+                edit_any({}, field_components=field_components, new_value=new_value),  # type: ignore  # noqa: PGH003
             ]
         return [
             *val_as_list[:curr_idx],
-            edit_any(val_as_list[curr_idx], field_components, new_value), # type: ignore  # noqa: PGH003
+            edit_any(val_as_list[curr_idx], field_components, new_value),  # type: ignore  # noqa: PGH003
             *val_as_list[curr_idx + 1 :],
         ]
-
 
     def edit_map(
         val: JsonValue,

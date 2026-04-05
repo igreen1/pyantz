@@ -1,7 +1,5 @@
 """Utilities for (de)serializing functions."""
 
-from __future__ import annotations
-
 import importlib
 from typing import TYPE_CHECKING
 

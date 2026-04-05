@@ -1,7 +1,5 @@
 """Perform the check at 'compile_time` aka when the config is loaded."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, ValidationError

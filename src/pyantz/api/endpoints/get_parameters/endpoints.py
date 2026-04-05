@@ -1,7 +1,5 @@
 """Get parameters to help the user setup their function."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, cast
 
 from fastapi import APIRouter, HTTPException

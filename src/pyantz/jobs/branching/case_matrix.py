@@ -123,7 +123,7 @@ def pipeline_expansion_with_output_dir(
     else:
         parent_pipelines = {}
     new_variables = {
-        "parent_"+pipeline_id_name: pipeline_id_val
+        "parent_" + pipeline_id_name: pipeline_id_val
         for pipeline_id_name, pipeline_id_val in parent_pipelines.items()
     }
 
@@ -257,6 +257,7 @@ def _pipeline_factory_factory(
         child_pipeline = string_pipeline(child_pipeline)
         # now add our variables to the child pipeline
         child_pipeline = add_variables(child_pipeline, pipeline_vars)
+
         # not make our closure
         def submit_pipeline(submit_fn: SubmissionFnType) -> None:
             for job in child_pipeline:

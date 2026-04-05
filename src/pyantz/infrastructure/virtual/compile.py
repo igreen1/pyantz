@@ -1,7 +1,5 @@
 """Compile virtual jobs to 'real' jobs."""
 
-from __future__ import annotations
-
 import graphlib
 from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING, Any, TypeAliasType, cast, get_args, get_origin
@@ -82,8 +80,7 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
 
 def _compile_parameters(jobs: list[RealJobConfig]) -> list[RealJobConfig]:
     """Compile the parameters for each job if they are joblike."""
-    result = [_compile_parameters_singular(job) for job in jobs]
-    return result
+    return [_compile_parameters_singular(job) for job in jobs]
 
 
 def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
@@ -126,9 +123,13 @@ def _try_to_validate_job(
 ) -> AnyJobConfig | None:
     """Try to validate the job if possible, otherwise return None."""
     # import locally to avoid circular imports
-    from pyantz.infrastructure.config import JobConfig as _RealJobConfig
-    from pyantz.infrastructure.config import VirtualJobConfig as _VirtualJobConfig
-    from pyantz.infrastructure.config.job import make_job
+    from pyantz.infrastructure.config import (  # noqa: PLC0415
+        JobConfig as _RealJobConfig,
+    )
+    from pyantz.infrastructure.config import (  # noqa: PLC0415
+        VirtualJobConfig as _VirtualJobConfig,
+    )
+    from pyantz.infrastructure.config.job import make_job  # noqa: PLC0415
 
     if isinstance(possible_job, (_RealJobConfig, _VirtualJobConfig)):
         return possible_job
@@ -172,7 +173,7 @@ def _compile_singular(
     ]
 
 
-def _find_joblike_parameters_with_model(
+def _find_joblike_parameters_with_model(  # noqa: C901
     job: RealJobConfig,
 ) -> tuple[Iterable[str], Iterable[str]] | None:
     """Find parameters which appear to be a job.
@@ -207,7 +208,7 @@ def _find_joblike_parameters_with_model(
         if type_ is None or not isinstance(type_, (type, TypeAliasType)):  # pyright: ignore[reportUnnecessaryIsInstance]
             continue
 
-        if isinstance(type_, TypeAliasType):
+        if isinstance(type_, TypeAliasType):  # pyright: ignore[reportUnnecessaryIsInstance]
             if type_ is JobPipeline:
                 iterable_job_fields.add(field)
             continue
@@ -216,7 +217,7 @@ def _find_joblike_parameters_with_model(
         if (
             get_origin(type_) is not None
             and isinstance(get_origin(type_), type)
-            and issubclass(get_origin(type_), Iterable)
+            and issubclass(get_origin(type_), Iterable)  # type: ignore  # noqa: PGH003
             and any(
                 issubclass(type_arg, AbstractJobConfig) for type_arg in get_args(type_)
             )

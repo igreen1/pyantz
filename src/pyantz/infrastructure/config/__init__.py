@@ -1,7 +1,5 @@
 """Configuration passed by the user to run a pipeline."""
 
-from __future__ import annotations
-
 from .fn_utils import import_module_item_by_name
 from .host_config import ContainerConfig, LocalConfig, SshConfig
 from .initial import AnyRunner, InitialConfig

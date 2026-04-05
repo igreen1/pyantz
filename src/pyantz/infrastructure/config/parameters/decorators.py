@@ -1,7 +1,5 @@
 """Decorate functions and strongly enforce parameter types."""
 
-from __future__ import annotations
-
 import logging
 import uuid
 from functools import wraps
@@ -154,6 +152,7 @@ def update_deps[T: BaseModel](
         return fn(job_params, deps)
 
     return scramble_deps
+
 
 def mark_virtual[T](fn: T) -> T:
     """Add a parameter marking the function as a virtual job."""
