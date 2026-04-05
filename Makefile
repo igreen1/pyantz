@@ -9,4 +9,5 @@ doc:
 
 build:
 	rm -rf dist
+	uvx bumpver update --patch
 	uv build
