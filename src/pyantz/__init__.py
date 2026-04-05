@@ -9,3 +9,5 @@ from pyantz.infrastructure.runner.starter import start
 __all__ = [
     "start",
 ]
+
+__version__ = "1.0.1"

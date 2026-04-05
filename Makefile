@@ -6,3 +6,7 @@ test:
 
 doc:
 	cd docs && uv run make html
+
+build:
+	rm -rf dist
+	uv build

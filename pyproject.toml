@@ -1,6 +1,6 @@
 [project]
 name = "pyantz"
-version = "1.0.1"
+dynamic = ["version"]
 description = "Job runner for small projects"
 readme = "README.md"
 authors = [
@@ -26,15 +26,8 @@ pyantz-prod = "pyantz.api.backend:start_prod_server"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[tool.ruff.lint]
-select = ["ALL"]
-ignore = ["D203", "D213", "COM812"]
-
-[tool.pylint.main]
-ignore-paths = ["^tests/*"]
-
-[tool.pylint."MESSAGES CONTROL"]
-disable = ["E0601", "E0602"]
+[tool.hatch.version]
+path = "src/pyantz/__init__.py"
 
 [dependency-groups]
 api = [
@@ -63,3 +56,38 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 [tool.ruff.lint.per-file-ignores]
 # Ignore S101 (assert statements) in the "tests" directory and all subdirectories
 "tests/**/*.py" = ["S101", "S607", "S603"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["D203", "D213", "COM812"]
+
+[tool.pylint.main]
+ignore-paths = ["^tests/*"]
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = ["E0601", "E0602"]
+
+[tool.bumpver]
+current_version = "1.0.1"
+version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
+commit_message = "bump version {old_version} -> {new_version}"
+tag_message = "{new_version}"
+tag_scope = "default"
+pre_commit_hook = ""
+post_commit_hook = ""
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+]
+"src/pyantz/__init__.py" = [
+    '^__version__ = "{version}"$',
+]
+"README.md" = [
+    "{version}",
+    "{pep440_version}",
+]
+
