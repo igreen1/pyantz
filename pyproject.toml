@@ -68,7 +68,7 @@ ignore-paths = ["^tests/*"]
 disable = ["E0601", "E0602"]
 
 [tool.bumpver]
-current_version = "1.0.1"
+current_version = "1.0.3"
 version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 commit_message = "bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
