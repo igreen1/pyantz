@@ -2,7 +2,7 @@
 
 import tarfile
 import tempfile
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import docker
 
@@ -17,10 +17,13 @@ def run_container(config: InitialConfig[Any]) -> None:
     if not config.host.type_ == "container":
         raise RuntimeError
 
-    host_config: ContainerConfig = config.host
+    host_config: ContainerConfig = cast("ContainerConfig", config.host)
 
     client = docker.from_env()
-    cmd = get_cmd(host_config)
+    addl_req = []
+    if host_config.copy_project_dir:
+        addl_req = ["--with", "/pyantz"]
+    cmd = get_cmd(host_config, addl_req)
     container = client.containers.create(
         image=host_config.image,
         name=host_config.name,
@@ -32,7 +35,7 @@ def run_container(config: InitialConfig[Any]) -> None:
     try:
         _copy_success = container.put_archive(  # pyright: ignore[reportUnknownMemberType]
             f"{host_config.working_dir}/",
-            get_setup_tar(host_config),
+            get_setup_tar(config, host_config),
         )
         if host_config.copy_project_dir:
             _copy_success = container.put_archive(  # pyright: ignore[reportUnknownMemberType]

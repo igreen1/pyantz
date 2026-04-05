@@ -1,7 +1,7 @@
 """Configuration of the analysis overall."""
 
 from collections.abc import Mapping
-from typing import Annotated, Any
+from typing import Annotated, Any, Self
 
 from pydantic import BaseModel, BeforeValidator, Field
 
@@ -33,3 +33,9 @@ class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
     variables: Mapping[str, Any] = Field(default_factory=dict)
 
     host: HostConfig = LocalConfig()
+
+    def with_new_host(self, new_host: HostConfig) -> Self:
+        """Return this configuration with a new host setup."""
+        return self.model_copy(update={
+            "host": new_host
+        })

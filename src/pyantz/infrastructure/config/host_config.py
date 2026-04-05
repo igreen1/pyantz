@@ -6,10 +6,11 @@ So, while the submitter configuration tells the program how to submit new jobs
 the host config tells the program how to start itself.
 """
 
+import getpass
 from collections.abc import Mapping
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class LocalConfig(BaseModel):
@@ -31,7 +32,7 @@ class RemoteConfig(BaseModel):
     # if set, read in a file of environment variables
     environment_variables_file: str | None = None
 
-    # if set, the working directory from the container
+    # if set, the working directory from the remote
     # will be copied to this directory
     output_dir: str | None = None
 
@@ -47,7 +48,7 @@ class RemoteConfig(BaseModel):
     copy_project_dir: bool = False
 
     # after connecting to the remote, what host to use there
-    subsequent_config: ContainerConfig | HostConfig | LocalConfig = LocalConfig()
+    subsequent_host: ContainerConfig | HostConfig | LocalConfig = LocalConfig()
 
     # pass a list of environment variables to be set in the container
     environment_variables: Mapping[str, str] = Field(default_factory=dict)
@@ -65,6 +66,27 @@ class SshConfig(RemoteConfig):
 
     # port to use for ssh (default is 22)
     remote_port: int = 22
+
+    remote_user: str = getpass.getuser()
+
+    # if set to true, will not wait for the command to finish to terminate
+    # the ssh terminal
+    run_async: bool = True
+
+    # sync data back after running?
+    # if set to a truthy value, will rsync data from remote working dir to this location
+    sync_data_at_end: bool = False
+
+    @model_validator(mode="after")
+    def check_syncs(self) -> Self:
+        """Check that sync settings make sense."""
+        if self.sync_data_at_end and self.run_async:
+            msg = "Cannot run async and sync data at the end of ssh runs."
+            raise ValueError(msg)
+        if self.sync_data_at_end and not self.output_dir:
+            msg = "Must set output dir if syncing data at the end."
+            raise ValueError(msg)
+        return self
 
 
 class ContainerConfig(RemoteConfig):

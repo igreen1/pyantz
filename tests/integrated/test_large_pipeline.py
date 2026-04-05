@@ -1,4 +1,5 @@
 """A large pipeline of jobs to be run."""
+import uuid
 
 import os
 from pathlib import Path
@@ -232,6 +233,129 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
     _check_run(tmp_path)
 
 
+def test_large_pipeline_ssh(tmp_path: Path) -> None:
+    """Test a large pipeline that is sort-of like a real analysis."""
+    test_folder_dir = str(uuid.uuid4())
+    remote_path = f"/home/julius/Documents/workspace/{test_folder_dir}"
+    child_template: list[dict[str, Any]] = [
+        {
+            "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
+            "parameters": {
+                "shared_variables": {"script_path": "%{output_dir}/script.bash"},
+                "jobs": [
+                    {
+                        "function": "pyantz.jobs.files.moving.copy",
+                        "job_id": "%{pipeline_id}_a",
+                        "parameters": {
+                            "source": f"{remote_path}/pyantz/tests/assets/script.bash",
+                            "destination": "%{script_path}",
+                        },
+                    },
+                    {
+                        "job_id": "%{pipeline_id}_b",
+                        "function": "pyantz.jobs.subproc.dispatch.dispatch",
+                        "depends_on": ["%{pipeline_id}_a"],
+                        "parameters": {
+                            "cmd": ("%{script_path}", "%{output_dir}/%{file}.txt"),
+                            "stdout_file": "%{output_dir}/stdout.txt",
+                        },
+                    },
+                ],
+            },
+        },
+    ]
+
+    pipeline_config: list[dict[str, Any]] = [
+        {
+            "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
+            "parameters": {
+                "shared_variables": {
+                    "output_file": remote_path + "/my_super_cool.csv",
+                    "case_matrix": remote_path + "/case_matrix.parquet",
+                    "root_output_dir": remote_path + "/output",
+                },
+                "jobs": [
+                    {
+                        "job_id": "matrix_creation",
+                        "function": "pyantz.jobs.branching.case_matrix.create_case_matrix",
+                        "parameters": {
+                            "save_file": "%{case_matrix}",
+                            "variables": {
+                                "columnA": {
+                                    "range": {
+                                        "possible_values": (
+                                            10,
+                                            12,
+                                            14,
+                                        ),
+                                    },
+                                },
+                                "file": {
+                                    "range": {
+                                        "possible_values": (
+                                            "fileA",
+                                            "fileB",
+                                            "fileC",
+                                        ),
+                                    }
+                                },
+                            },
+                        },
+                    },
+                    {
+                        "job_id": "make_output_dir",
+                        "depends_on": ["matrix_creation"],
+                        "function": "pyantz.jobs.files.simple.mkdir",
+                        "parameters": {
+                            "dir_path": "%{root_output_dir}",
+                        },
+                    },
+                    {
+                        "job_id": "case matrix set",
+                        "depends_on": ["make_output_dir"],
+                        "function": "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir",
+                        "parameters": {
+                            "case_matrix_parquet": "%{case_matrix}",
+                            "output_dir": "%{root_output_dir}",
+                            "pipeline_template": child_template,
+                        },
+                    },
+                ],
+            },
+        },
+    ]
+
+    jobs = pipeline_config
+
+    working_dir = remote_path
+
+    config: dict[str, Any] = {
+        "jobs": jobs,
+        "submitter": {
+            "type_": "local_proc",
+            "working_directory": working_dir,
+            "use_same_proc": True,
+            "timeout": 1,
+        },
+        "host": {
+            "type_": "ssh",
+            "remote_host": "192.168.196.128",
+            "remote_user": "julius",
+            "copy_project_dir": True,
+            "requirements": [
+                "celery",
+            ],
+            "working_dir": remote_path,
+            "output_dir": os.fspath(tmp_path),
+            "run_async": False,
+            "sync_data_at_end": True,
+        },
+    }
+    start(config)
+    _check_run(tmp_path / "workspace")
+
+
+
 def test_large_pipeline_container(tmp_path: Path) -> None:
     """Test a large pipeline that is sort-of like a real analysis."""
     remote_path = "/workspace"
@@ -347,6 +471,7 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
     }
     start(config)
     _check_run(tmp_path / "workspace")
+
 
 
 def _check_run(tmp_path: Path) -> None:
