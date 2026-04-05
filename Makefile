@@ -12,5 +12,5 @@ build:
 	uvx bumpver update --patch
 	uv build
 
-dist:
+publish:
 	uvx twine upload dist/*

@@ -29,6 +29,13 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 path = "src/pyantz/__init__.py"
 
+[tool.hatch.build]
+exclude = [
+  "/frontend",
+  "/slurm_setup",
+  "/tests",           # Exclude a top-level directory
+]
+
 [dependency-groups]
 api = [
     "fastapi[standard]>=0.127.0",
