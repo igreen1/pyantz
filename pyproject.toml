@@ -10,6 +10,7 @@ requires-python = ">=3.14"
 dependencies = [
     "docker>=7.1.0",
     "fastapi[standard]>=0.127.0",
+    "paramiko>=4.0.0",
     "polars>=1.36.1",
     "pydantic>=2.11.7",
     "ruamel-yaml>=0.19.1",
@@ -28,6 +29,12 @@ build-backend = "hatchling.build"
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = ["D203", "D213", "COM812"]
+
+[tool.pylint.main]
+ignore-paths = ["^tests/*"]
+
+[tool.pylint."MESSAGES CONTROL"]
+disable = ["E0601", "E0602"]
 
 [dependency-groups]
 api = [
