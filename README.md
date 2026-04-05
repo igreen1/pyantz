@@ -4,7 +4,8 @@
 1. for jobs which submit other jobs (branch): improve frontend
 Useful jobs to do
 2. make case matrix a virtual job
-7. edit yaml
+3. edit json using external parser/unparser
+4. when ssh-ing, allow creating a tmp file (mkdtemp) and use it
 8. edit generic file using external function
 9. (maybe) edit file using custom function (python `exec`?)
 
