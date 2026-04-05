@@ -109,7 +109,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
         if host_config.output_dir is None:
             raise RuntimeError # checked by validation of model, just for type checking
         # run rsync to output directory
-        breakpoint()
         subprocess.run(  # noqa: S603
             [
                 "/usr/bin/rsync",

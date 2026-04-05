@@ -11,3 +11,6 @@ build:
 	rm -rf dist
 	uvx bumpver update --patch
 	uv build
+
+dist:
+	uvx twine upload dist/*
