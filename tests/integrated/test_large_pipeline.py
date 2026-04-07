@@ -352,7 +352,7 @@ def test_large_pipeline_ssh(tmp_path: Path) -> None:
         },
     }
     start(config)
-    _check_run(tmp_path / "workspace")
+    _check_run(tmp_path / test_folder_dir )
 
 
 
