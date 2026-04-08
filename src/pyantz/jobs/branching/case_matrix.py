@@ -1,6 +1,7 @@
 """Run pipelines from a case matrix."""
 
 import itertools
+import os
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -100,19 +101,19 @@ def pipeline_expansion_with_output_dir(
     submit_fn: SubmissionFnType,
 ) -> bool:
     """Add variables `output_dir` and `pipeline_id` for each child pipeline."""
-    id_counter = itertools.count()
     output_dir = Path(params.output_dir)
     output_dir.mkdir(exist_ok=True)
 
     def output_dir_submit(child_job: JobConfig) -> None:
         """Submit the job with an additional output_dir variable."""
-        id_ = next(id_counter)
-        run_dir = output_dir / f"run_{id_}"
-        run_dir.mkdir(exist_ok=True)
+        if hasattr(child_job, "variables") and "pipeline_id" in child_job.variables:  # type: ignore  # noqa: PGH003
+            pipeline_id: int = child_job.variables["pipeline_id"]  # type: ignore  # noqa: PGH003
+            run_dir = output_dir / f"run_{pipeline_id}"
+            run_dir.mkdir(exist_ok=True)
+
         wrapped_job = JobWithContext.from_config(child_job).inherit_context(
             {
-                "pipeline_id": id_,
-                "output_dir": run_dir,
+                "output_dir": os.fspath(output_dir / "run_%{pipeline_id}"),
             }
         )
         submit_fn(wrapped_job)
@@ -166,11 +167,9 @@ def pipeline_expansion(
     if params.cols_to_exclude:
         case_matrix = case_matrix.select(pl.exclude(*params.cols_to_exclude))
 
+    pipeline_submit_factory = _pipeline_factory_factory(params.pipeline_template)
     for sub_matrix in case_matrix.collect_batches():
         for row_entry in sub_matrix.iter_rows(named=True):
-            pipeline_submit_factory = _pipeline_factory_factory(
-                params.pipeline_template
-            )
             pipeline_submitter = pipeline_submit_factory(row_entry)
             pipeline_submitter(submit_fn)
 
@@ -209,7 +208,10 @@ def _pipeline_factory_factory(
             nonlocal prev
             updated = curr.model_copy(
                 update={
-                    "depends_on": [*(curr.depends_on or []), *([prev.job_id] if prev else [])]
+                    "depends_on": [
+                        *(curr.depends_on or []),
+                        *([prev.job_id] if prev else []),
+                    ]
                 }
             )
             prev = updated
@@ -227,12 +229,17 @@ def _pipeline_factory_factory(
             for job in pipeline
         ]
 
+    pipeline_id_counter = itertools.count()
+
     def create_pipeline(pipeline_vars: Mapping[str, Any]) -> PipelineSubmitter:
         # first, create a "clone" of our pipeline, which requires wiping the ids
         child_pipeline = [reset_job_template(job) for job in pipeline_template]
         # then string it together so the dependencies work right
         child_pipeline = string_pipeline(child_pipeline)
         # now add our variables to the child pipeline
+        # first, update our pipeline id!
+        pipeline_id = next(pipeline_id_counter)
+        pipeline_vars = {**pipeline_vars, "pipeline_id": pipeline_id}
         child_pipeline = add_variables(child_pipeline, pipeline_vars)
 
         # not make our closure
