@@ -83,13 +83,17 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
     s = v
 
     unmade_change = False
-    for match in VARIABLE_REGEX.finditer(s):
-        start = match.start()
-        end = match.end()
-        substr = s[start:end]
-        if substr[2:-1] in variables:
-            s = s.replace(substr, str(variables[substr[2:-1]]))
-        else:
-            unmade_change = True
+    variable_detected = True
+    while variable_detected:
+        variable_detected = False
+        for match in VARIABLE_REGEX.finditer(s):
+            start = match.start()
+            end = match.end()
+            substr = s[start:end]
+            if substr[2:-1] in variables:
+                variable_detected = True
+                s = s.replace(substr, str(variables[substr[2:-1]]))
+            else:
+                unmade_change = True
 
     return s, unmade_change
