@@ -1,5 +1,6 @@
 """Run on a remote machine."""
 
+import getpass
 import logging
 import os
 import subprocess
@@ -25,14 +26,25 @@ def run_ssh(config: InitialConfig[Any]) -> None:
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
 
-    # login
-    ssh.connect(
-        hostname=host_config.remote_host,
-        port=host_config.remote_port,
-        username=host_config.remote_user,
-        # password=getpass.getpass(f"Password ({host_config.remote_user}): "),
-    )
-    logger.debug("Connected to %s", host_config.remote_host)
+    try:
+        logger.debug("Connecting to %s, attempting ssh keys", host_config.remote_host)
+        # login
+        ssh.connect(
+            hostname=host_config.remote_host,
+            port=host_config.remote_port,
+            username=host_config.remote_user,
+        )
+        logger.debug("Connected to %s with ssh keys", host_config.remote_host)
+    except paramiko.AuthenticationException:
+        logger.debug("Failed to authenticate using keys, failing back to password.")
+        ssh.connect(
+            hostname=host_config.remote_host,
+            port=host_config.remote_port,
+            username=host_config.remote_user,
+            password=getpass.getpass(f"Password ({host_config.remote_user}): "),
+        )
+        logger.debug("Connected to %s with password", host_config.remote_host)
+
 
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
