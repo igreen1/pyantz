@@ -1,4 +1,9 @@
-"""Continuously run code until some condition is true."""
+"""Jobs for repeating a pipeline a fixed number of times.
+
+:func:`local_for_loop` runs a sequence of jobs synchronously N times in
+the current process.  All jobs in the inner pipeline share the same
+variable context from the enclosing scope.
+"""
 
 from typing import TYPE_CHECKING
 

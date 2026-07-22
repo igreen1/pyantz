@@ -1,0 +1,76 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_variables",
+    "number_processes": 2
+  },
+  "variables": {
+    "project": "my_analysis",
+    "base_dir": "/tmp/pyantz_variables",
+    "version": "v1"
+  },
+  "jobs": [
+    {
+      "job_id": "setup_project",
+      "name": "Create project directory structure",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "%{base_dir}/%{project}/%{version}"
+      }
+    },
+    {
+      "job_id": "write_global_vars",
+      "name": "Record global variables to a file",
+      "depends_on": ["setup_project"],
+      "function": "pyantz.jobs.files.simple.create",
+      "parameters": {
+        "path": "%{base_dir}/%{project}/%{version}/global_vars.txt",
+        "contents": "project=%{project} version=%{version}\n"
+      }
+    },
+    {
+      "job_id": "add_local_vars",
+      "name": "Add local variables for a sub-group of jobs",
+      "depends_on": ["setup_project"],
+      "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
+      "parameters": {
+        "shared_variables": {
+          "experiment": "baseline",
+          "seed": "42"
+        },
+        "jobs": [
+          {
+            "function": "pyantz.jobs.files.simple.create",
+            "parameters": {
+              "path": "%{base_dir}/%{project}/%{version}/experiment_%{experiment}_seed_%{seed}.txt",
+              "contents": "Experiment: %{experiment}\nSeed: %{seed}\nProject: %{project}\n"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "job_id": "add_variables_virtual",
+      "name": "Use the AddVariables virtual job to inject variables",
+      "function": "pyantz.virtual.add_variables.AddVariables",
+      "virtual": true,
+      "depends_on": ["write_global_vars"],
+      "parameters": {
+        "variables": {
+          "run_id": "run_001",
+          "output_file": "%{base_dir}/%{project}/%{version}/run_001_results.txt"
+        }
+      }
+    },
+    {
+      "job_id": "use_injected_vars",
+      "name": "Use the variables injected by AddVariables",
+      "depends_on": ["add_variables_virtual"],
+      "function": "pyantz.jobs.files.simple.create",
+      "parameters": {
+        "path": "%{output_file}",
+        "contents": "Results for %{run_id} in project %{project} version %{version}\n"
+      }
+    }
+  ]
+}

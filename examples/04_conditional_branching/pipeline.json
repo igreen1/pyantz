@@ -1,0 +1,64 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_branching",
+    "number_processes": 2
+  },
+  "variables": {
+    "environment": "production",
+    "threshold": "100",
+    "data_dir": "/tmp/pyantz_branching"
+  },
+  "jobs": [
+    {
+      "job_id": "setup",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "/tmp/pyantz_branching"
+      }
+    },
+    {
+      "job_id": "route_by_environment",
+      "name": "Choose config path based on environment",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.branching.if_else.if_else",
+      "parameters": {
+        "left_side": "%{environment}",
+        "right_side": "production",
+        "comparator": "==",
+        "if_true": {
+          "function": "pyantz.jobs.files.simple.create",
+          "parameters": {
+            "path": "/tmp/pyantz_branching/config_used.txt",
+            "contents": "Using PRODUCTION settings\n"
+          }
+        },
+        "if_false": {
+          "function": "pyantz.jobs.files.simple.create",
+          "parameters": {
+            "path": "/tmp/pyantz_branching/config_used.txt",
+            "contents": "Using DEVELOPMENT settings\n"
+          }
+        }
+      }
+    },
+    {
+      "job_id": "optional_heavy_step",
+      "name": "Only run expensive step when threshold met",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.branching.if_else.conditionally_execute",
+      "parameters": {
+        "left_side": "%{threshold}",
+        "right_side": "50",
+        "comparator": ">",
+        "if_true": {
+          "function": "pyantz.jobs.files.simple.create",
+          "parameters": {
+            "path": "/tmp/pyantz_branching/heavy_result.txt",
+            "contents": "Heavy computation ran (threshold exceeded)\n"
+          }
+        }
+      }
+    }
+  ]
+}

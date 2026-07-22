@@ -1,4 +1,10 @@
-"""Configuration of the analysis overall."""
+"""Top-level pipeline configuration.
+
+:class:`InitialConfig` is the root object that a user creates (in JSON or
+Python) to describe a complete pipeline run.  It ties together the job list,
+the submitter (local or SLURM), optional global variables, and the host
+on which the submitter should be started.
+"""
 
 from collections.abc import Mapping
 from typing import Annotated, Any, Self
@@ -15,7 +21,22 @@ type AnyRunner = LocalRunnerConfig | SlurmRunnerConfig
 
 
 def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
-    """Make jobs and compile them."""
+    """Validate raw job dicts and compile virtual jobs into concrete ones.
+
+    Used as the ``BeforeValidator`` for :attr:`InitialConfig.jobs`. First calls
+    :func:`~pyantz.infrastructure.config.job.make_job` on each element to
+    produce typed job configs, then passes the result through
+    :func:`~pyantz.infrastructure.virtual.compile.compile_virtual` to expand
+    any virtual jobs.
+
+    Args:
+        jobs: An iterable of raw job-config dicts or pre-validated job config
+            objects.
+
+    Returns:
+        Flat list of compiled :class:`~pyantz.infrastructure.config.job.JobConfig`
+        instances with all virtual jobs expanded.
+    """
     return compile_virtual(list(map(make_job, jobs)))
 
 

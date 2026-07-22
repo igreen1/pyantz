@@ -1,4 +1,14 @@
-"""Perform the check at 'compile_time` aka when the config is loaded."""
+"""Parameter validation performed when a config is first loaded.
+
+:func:`check_config` decides whether to validate a job's parameters
+against its registered Pydantic model at startup time (before any job
+runs).  This is distinct from runtime validation, which happens inside
+:func:`~pyantz.infrastructure.config.parameters.decorators.add_parameters`.
+
+Startup checking is disabled by default to allow template variables to be
+resolved at runtime; set ``strict: true`` on a job or
+``check_at_startup: true`` on its decorator to force early validation.
+"""
 
 from typing import TYPE_CHECKING, cast
 

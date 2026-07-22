@@ -1,4 +1,10 @@
-"""Utilities for (de)serializing functions."""
+"""Utilities for (de)serialising Python callables and class references.
+
+Functions are stored in configs as fully-qualified dotted import paths
+(e.g. ``"pyantz.jobs.files.simple.copy"``).  :func:`serialize_function`
+converts a callable back to that string, and :func:`import_module_item_by_name`
+dynamically imports it again at runtime.
+"""
 
 import importlib
 from typing import TYPE_CHECKING

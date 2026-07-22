@@ -1,4 +1,15 @@
-"""Object relational mapping for the queue database."""
+"""SQLAlchemy ORM models for the pyantz SQLite job queue.
+
+The queue is backed by four tables:
+
+* **job_queue** — ordered list of job IDs waiting to be dequeued.
+* **queue_items** — chunked JSON representations of each job config.
+* **dependencies** — directed edges of the job dependency graph.
+* **job_status** — current lifecycle state of every known job.
+
+Large job configs are split into ``CHUNKSIZE``-character chunks so that
+SQLite's per-column string limit is not exceeded.
+"""
 
 from typing import Final
 

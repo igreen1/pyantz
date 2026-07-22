@@ -1,4 +1,10 @@
-"""Code to tar up files we wish to transfer."""
+"""Utilities for packaging and transferring files to remote execution environments.
+
+:func:`get_setup_tar` bundles the resolved pipeline config and any extra
+Python requirements into an in-memory tar archive.  :func:`get_cmd` builds
+the ``uvx pyantz …`` invocation that the remote side runs after extracting
+the archive.
+"""
 
 import io
 import tarfile

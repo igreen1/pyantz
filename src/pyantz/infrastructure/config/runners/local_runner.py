@@ -1,4 +1,9 @@
-"""A local runner runs within the machine in multiple processes."""
+"""Configuration for the local multiprocessing runner.
+
+:class:`LocalRunnerConfig` describes how many worker processes to spawn, where
+to store the SQLite queue, how often to poll for new jobs, and an optional
+overall timeout.  It is the default runner for local development and testing.
+"""
 
 import os
 from pathlib import Path

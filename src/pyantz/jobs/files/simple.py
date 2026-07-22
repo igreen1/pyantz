@@ -1,4 +1,16 @@
-"""Simle file (CRUD) operations."""
+"""Basic file-system CRUD operations.
+
+Each function is decorated with :func:`~pyantz.infrastructure.config.add_parameters`
+so it integrates with PyAntz's type-checked parameter system.
+
+Available jobs:
+
+* :func:`copy` — copy a file or directory tree.
+* :func:`move` — rename/move a path.
+* :func:`delete` — delete a file or directory.
+* :func:`create` — create a file with optional contents.
+* :func:`mkdir` — create a directory (including parents).
+"""
 
 import shutil
 from pathlib import Path

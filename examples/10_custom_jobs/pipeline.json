@@ -1,0 +1,49 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_custom",
+    "number_processes": 2
+  },
+  "variables": {
+    "work_dir": "/tmp/pyantz_custom"
+  },
+  "jobs": [
+    {
+      "job_id": "setup",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "/tmp/pyantz_custom"
+      }
+    },
+    {
+      "job_id": "create_input",
+      "name": "Write a text file to count words in",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.files.simple.create",
+      "parameters": {
+        "path": "/tmp/pyantz_custom/input.txt",
+        "contents": "The quick brown fox jumps over the lazy dog\n"
+      }
+    },
+    {
+      "job_id": "count_words",
+      "name": "Count words using a custom job",
+      "depends_on": ["create_input"],
+      "function": "examples.10_custom_jobs.my_jobs.word_count",
+      "parameters": {
+        "input_file": "/tmp/pyantz_custom/input.txt",
+        "output_file": "/tmp/pyantz_custom/word_count.txt"
+      }
+    },
+    {
+      "job_id": "dynamic_fan_out",
+      "name": "Dynamically submit one job per item",
+      "depends_on": ["setup"],
+      "function": "examples.10_custom_jobs.my_jobs.fan_out",
+      "parameters": {
+        "items": ["alpha", "beta", "gamma", "delta"],
+        "output_dir": "/tmp/pyantz_custom/done_flags"
+      }
+    }
+  ]
+}
