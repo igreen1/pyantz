@@ -36,7 +36,7 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         return _compile_parameters([*real_job_lookup.values()])
 
     def get_uncompiled_job_config(job_id: str) -> AnyJobConfig:
-        """Get the job definition from its id."""
+        """Look up a job by id from either the real or virtual lookup tables."""
         lookup_val = real_job_lookup.get(job_id, virtual_job_lookup.get(job_id))
         if lookup_val is None:
             raise ValueError
@@ -47,7 +47,11 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     compiled_jobs: list[RealJobConfig] = []
 
     def get_and_consume_dependencies(job_id: str) -> list[RealJobConfig]:
-        """Get jobs and `consume` them by removing them from our compiled scope."""
+        """Return jobs that depend on *job_id* and remove them from compiled_jobs.
+
+        "Consuming" a dependency prevents it from being returned again by a
+        later iteration, which would duplicate it in the final list.
+        """
         nonlocal compiled_jobs
         direct_deps = [
             job for job in compiled_jobs if job_id in (job.depends_on or set())
@@ -79,12 +83,17 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
 
 
 def _compile_parameters(jobs: list[RealJobConfig]) -> list[RealJobConfig]:
-    """Compile the parameters for each job if they are joblike."""
+    """Apply parameter compilation to every job in the list."""
     return [_compile_parameters_singular(job) for job in jobs]
 
 
 def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
-    """Compile the parameters of one job if they are job-like."""
+    """Expand job-typed parameters within a single job config.
+
+    Some jobs (e.g. ``if_else``, ``pipeline_expansion``) hold other jobs as
+    parameters.  This function locates those nested job configs and ensures
+    virtual ones are compiled too.
+    """
     joblike_parms = _find_joblike_parameters_with_model(job)
     if joblike_parms is None:
         return job
@@ -121,7 +130,11 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
 def _try_to_validate_job(
     possible_job: Mapping[str, Any] | AnyJobConfig,
 ) -> AnyJobConfig | None:
-    """Try to validate the job if possible, otherwise return None."""
+    """Attempt to parse *possible_job* as a job config; return ``None`` on failure.
+
+    Used when scanning nested parameters: if validation fails the parameter
+    is not a job dict and should be left alone.
+    """
     # import locally to avoid circular imports
     from pyantz.infrastructure.config import (  # noqa: PLC0415
         JobConfig as _RealJobConfig,

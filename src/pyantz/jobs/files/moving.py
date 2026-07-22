@@ -1,4 +1,10 @@
-"""Operations for copying files and directories."""
+"""File and directory transfer operations.
+
+Provides :func:`rsync` (shell-based, ideal for remote or large trees) and
+pure-Python :func:`copy` / :func:`move` alternatives built on
+:mod:`shutil`.  All three log errors and return ``False`` on failure rather
+than raising exceptions.
+"""
 
 import logging
 import os

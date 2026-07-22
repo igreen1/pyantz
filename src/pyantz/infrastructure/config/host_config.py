@@ -1,9 +1,15 @@
-"""Configuration for the host execution location.
+"""Configuration for *where* the pipeline controller runs.
 
-Before the first submitter is started, the program will look
-to the host configuration to determine where to start the program.
-So, while the submitter configuration tells the program how to submit new jobs
-the host config tells the program how to start itself.
+The host config controls where pyantz starts its submitter process, which
+is distinct from *how* individual jobs are submitted (the runner config).
+
+* :class:`LocalConfig` — run the controller on this machine (default).
+* :class:`SshConfig` — SSH into a remote host, copy the config, and run
+  pyantz there.
+* :class:`ContainerConfig` — exec into a running Docker/Podman container.
+
+After reaching the remote host, the ``subsequent_host`` field lets you
+chain hops (e.g. SSH into a bastion, then exec into a container).
 """
 
 import getpass

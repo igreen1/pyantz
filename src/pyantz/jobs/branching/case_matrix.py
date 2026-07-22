@@ -1,4 +1,14 @@
-"""Run pipelines from a case matrix."""
+"""Jobs for running a pipeline over a grid of parameter combinations.
+
+:func:`create_case_matrix` produces a Parquet case-matrix file from a set
+of :class:`VariableDefinition` ranges, then :func:`pipeline_expansion`
+reads that file and submits one copy of a ``pipeline_template`` per row,
+with each row's columns injected as variables.
+
+:func:`pipeline_expansion_with_output_dir` is a convenience wrapper that
+also creates per-run output directories and injects ``output_dir`` and
+``pipeline_id`` variables.
+"""
 
 import itertools
 import os
@@ -128,7 +138,7 @@ def pipeline_expansion_with_output_dir(
     }
 
     def output_dir_submit(child_job: JobConfig) -> None:
-        """Submit the job with an additional output_dir variable."""
+        """Wrap submit_fn to inject output_dir into each child job."""
         if hasattr(child_job, "variables") and "pipeline_id" in child_job.variables:  # type: ignore  # noqa: PGH003
             pipeline_id: int = child_job.variables["pipeline_id"]  # type: ignore  # noqa: PGH003
             run_dir = output_dir / f"run_{pipeline_id}"
@@ -201,12 +211,26 @@ type PipelineSubmitter = Callable[[SubmissionFnType], None]
 def _pipeline_factory_factory(
     pipeline_template: list[JobConfig],
 ) -> Callable[[Mapping[str, Any]], PipelineSubmitter]:
-    """Create a factory which accepts variables and returns a job config."""
+    """Return a factory that clones a pipeline template for a set of variables.
+
+    Each call to the returned factory produces a fresh copy of
+    ``pipeline_template`` with new UUIDs, chained dependencies, and the
+    supplied variable mapping injected into every job.
+
+    Args:
+        pipeline_template: The list of :class:`~pyantz.infrastructure.config.job.JobConfig`
+            objects to clone for each case.
+
+    Returns:
+        A callable that accepts a variable mapping and returns a
+        ``PipelineSubmitter`` closure.  Calling that closure with a
+        ``SubmissionFnType`` enqueues the cloned pipeline.
+    """
     # get the original ids to erase them
     ids_in_pipeline = {job.job_id for job in pipeline_template}
 
     def reset_job_template(job: JobConfig) -> JobConfig:
-        """Reset the job id and dependencies."""
+        """Give the job a fresh UUID and drop any intra-template dependency ids."""
         return job.model_copy(
             update={
                 "job_id": str(uuid.uuid4()),
@@ -219,10 +243,11 @@ def _pipeline_factory_factory(
         )
 
     def string_pipeline(pipeline: list[JobConfig]) -> list[JobConfig]:
-        """Add dependencies in the pipeline so they execute in order."""
+        """Add sequential dependencies so jobs execute in list order."""
         prev: None | JobConfig = None
 
         def transform(curr: JobConfig) -> JobConfig:
+            """Chain curr to depend on prev and advance the prev pointer."""
             nonlocal prev
             updated = curr.model_copy(
                 update={
@@ -241,7 +266,7 @@ def _pipeline_factory_factory(
         pipeline: list[JobConfig],
         variables: Mapping[str, Any],
     ) -> list[JobConfig]:
-        """Add the inherited variables."""
+        """Inject *variables* into every job as inherited context."""
         return [
             JobWithContext.from_config(job).inherit_context(variables)
             for job in pipeline
@@ -250,6 +275,7 @@ def _pipeline_factory_factory(
     pipeline_id_counter = itertools.count()
 
     def create_pipeline(pipeline_vars: Mapping[str, Any]) -> PipelineSubmitter:
+        """Clone the template, wire it up, and bind the given variable row."""
         # first, create a "clone" of our pipeline, which requires wiping the ids
         child_pipeline = [reset_job_template(job) for job in pipeline_template]
         # then string it together so the dependencies work right
@@ -262,6 +288,7 @@ def _pipeline_factory_factory(
 
         # not make our closure
         def submit_pipeline(submit_fn: SubmissionFnType) -> None:
+            """Enqueue all cloned jobs in order."""
             for job in child_pipeline:
                 submit_fn(job)
 

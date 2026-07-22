@@ -1,4 +1,9 @@
-"""Check files and their contents.."""
+"""Jobs for asserting conditions about files.
+
+:func:`file_exists` checks that a path exists; :func:`file_contains` uses
+memory-mapped I/O to efficiently search for a substring anywhere in a file.
+Both return ``False`` (signalling job failure) when the condition is not met.
+"""
 
 import mmap
 from pathlib import Path

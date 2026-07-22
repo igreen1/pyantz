@@ -1,4 +1,16 @@
-"""Edit files in place."""
+"""In-place editing of JSON and YAML files.
+
+Fields are addressed with dot-separated paths (e.g. ``"server.port"``)
+and array indices in bracket notation (e.g. ``"items.[0]"``).  Escape a
+literal ``.`` with a backslash: ``"a\\.b"`` refers to the key ``a.b``.
+
+Available jobs:
+
+* :func:`edit_json` — edit a ``.json`` file.
+* :func:`edit_yaml` — edit a ``.yaml`` / ``.yml`` file.
+* :func:`edit_external_method` — edit any format via user-supplied
+  extract/save callables.
+"""
 
 import json
 import logging

@@ -1,0 +1,82 @@
+{
+  "submitter": {
+    "type_": "slurm_sbatch",
+    "working_dir": "/scratch/myuser/pyantz_slurm",
+    "max_job_time_seconds": 3600,
+    "inherit_dependencies": true,
+    "slurm_args": [
+      "--partition=compute",
+      "--cpus-per-task=4",
+      "--mem=8G"
+    ]
+  },
+  "variables": {
+    "data_dir": "/scratch/myuser/data",
+    "output_dir": "/scratch/myuser/results"
+  },
+  "jobs": [
+    {
+      "job_id": "setup",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "%{output_dir}"
+      }
+    },
+    {
+      "job_id": "preprocess_a",
+      "name": "Preprocess dataset A",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": [
+          "python", "/scratch/myuser/scripts/preprocess.py",
+          "--input", "%{data_dir}/dataset_a.csv",
+          "--output", "%{output_dir}/processed_a.parquet"
+        ],
+        "stdout_file": "%{output_dir}/preprocess_a.log"
+      }
+    },
+    {
+      "job_id": "preprocess_b",
+      "name": "Preprocess dataset B",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": [
+          "python", "/scratch/myuser/scripts/preprocess.py",
+          "--input", "%{data_dir}/dataset_b.csv",
+          "--output", "%{output_dir}/processed_b.parquet"
+        ],
+        "stdout_file": "%{output_dir}/preprocess_b.log"
+      }
+    },
+    {
+      "job_id": "merge",
+      "name": "Merge processed datasets",
+      "depends_on": ["preprocess_a", "preprocess_b"],
+      "function": "pyantz.jobs.analysis.simple.join_parquets",
+      "parameters": {
+        "left_parquet": "%{output_dir}/processed_a.parquet",
+        "right_parquet": "%{output_dir}/processed_b.parquet",
+        "how": "inner",
+        "output_parquet": "%{output_dir}/merged.parquet",
+        "on_": "sample_id"
+      }
+    },
+    {
+      "job_id": "train_model",
+      "name": "Train model on merged data",
+      "depends_on": ["merge"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": [
+          "python", "/scratch/myuser/scripts/train.py",
+          "--data", "%{output_dir}/merged.parquet",
+          "--model-dir", "%{output_dir}/model"
+        ],
+        "stdout_file": "%{output_dir}/train.log",
+        "stderr_file": "%{output_dir}/train_err.log"
+      }
+    }
+  ]
+}

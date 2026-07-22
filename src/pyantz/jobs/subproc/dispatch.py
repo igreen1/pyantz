@@ -1,4 +1,10 @@
-"""Run an executable file in a subprocess."""
+"""Run arbitrary executables as subprocesses.
+
+:func:`dispatch` wraps Python's :func:`subprocess.run` with optional
+stdout/stderr capture to files, environment variable overrides, a working
+directory, and a timeout.  It returns ``True`` on success (exit code 0)
+and ``False`` on :exc:`subprocess.CalledProcessError` or timeout.
+"""
 
 import logging
 import subprocess

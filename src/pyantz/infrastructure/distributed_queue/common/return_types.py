@@ -1,4 +1,16 @@
-"""Objects shared between different types of queues."""
+"""Return types used by queue implementations.
+
+:class:`GetJobReturn` is the discriminated union returned by
+:meth:`~pyantz.infrastructure.distributed_queue.common.interface.QueueInterface.get_job`.
+It wraps one of three payload types:
+
+* :class:`JobReturn` — a job is ready to run.
+* :class:`PendingReturn` — nothing is ready now, but the queue is not empty.
+* :class:`CompleteReturn` — the queue is empty; the worker should exit.
+
+:class:`JobsReport` is a snapshot of job counts by status, used for
+debugging and progress monitoring.
+"""
 
 import uuid
 from enum import IntEnum

@@ -1,4 +1,14 @@
-"""Evaluate a conditional and submit a job depending on the result."""
+"""Conditional job execution based on a comparison between two values.
+
+:func:`if_else` submits one of two jobs depending on whether
+``left_side <comparator> right_side`` is true.
+
+:func:`conditionally_execute` is a simpler variant that only executes a
+job when the condition is true; it does nothing on the false branch.
+
+Both jobs support template variables in ``left_side`` and ``right_side``,
+making them useful for dynamic branching based on runtime state.
+"""
 
 import operator
 from typing import TYPE_CHECKING, Literal

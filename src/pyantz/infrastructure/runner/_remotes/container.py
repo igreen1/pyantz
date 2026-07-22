@@ -1,4 +1,9 @@
-"""Run remotely in a container."""
+"""Execute a pyantz pipeline inside a Docker/Podman container.
+
+:func:`run_container` creates a container from the configured image,
+copies the setup tarball into it, starts it, waits for completion, and
+optionally copies results back to the host.
+"""
 
 import tarfile
 import tempfile

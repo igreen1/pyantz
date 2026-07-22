@@ -56,7 +56,7 @@ def _initial_submit(config: InitialConfig[SlurmRunnerConfig]) -> None:
     sbatch = _create_sbatch(config.submitter)
 
     def _submit(job: JobConfig, job_to_slurm_id_map: dict[str, str]) -> str:
-        """Wrap a job in the parent context and return its slurm id."""
+        """Resolve context, compute dependencies, and call sbatch for one job."""
         with_context: JobWithContext = JobWithContext.from_config(job)
         with_context = with_context.model_copy(
             update={
@@ -114,7 +114,7 @@ def _create_job_submitter(config: SlurmRunnerConfig) -> SubmissionFnType:
     sbatch = _create_sbatch(config)
 
     def submit_fn(job: JobConfig) -> None:
-        """Submit the job to the grid."""
+        """Submit a new job to slurm, inheriting dependencies from the current node."""
         # submit our job
         new_job_id = sbatch(job, None)
         if config.inherit_dependencies:
@@ -127,6 +127,7 @@ def _add_dependency(new_job_id: str, job_deps_to_update: dict[str, list[str]]) -
     """Add new job id as a dep to the job deps listed."""
 
     def _create_sctrl(parent_job: str, prev_child_jobs: list[str]) -> list[str]:
+        """Build an scontrol command that adds *new_job_id* to the dependency list."""
         # maybe todo: for now, we assume all deps are `afterok`... maybe we want others
         deps = ",".join([f"afterok:{i}" for i in (*prev_child_jobs, new_job_id)])
         return ["scontrol", "update", f"JobId={parent_job}", f"Dependency={deps}"]
@@ -174,6 +175,7 @@ def _create_sbatch(
         job: JobConfig,
         dependencies: list[str] | None = None,
     ) -> str:
+        """Serialise the job config, call sbatch, and return the new SLURM job id."""
         # save our config to a common location
         unique_job_file_name = str(uuid.uuid4()) + ".json"
         file_path = config.working_dir / unique_job_file_name
@@ -329,6 +331,7 @@ def _run_on_node() -> None:
         # which we grab from the current environment
         _parent_id: str | uuid.UUID | None = None,
     ) -> None:
+        """Adapter that ignores the parent_id, using the SLURM env var instead."""
         submit_fn(job_to_submit)
 
     run_job(job_config=job_config, submitter_fn=wrapped_submitter)

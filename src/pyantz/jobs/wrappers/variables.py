@@ -62,6 +62,7 @@ def set_variables(params: SetVariables, submit_fn: SubmissionFnType) -> bool:
     new_variables: dict[str, Any] = {}
 
     def set_var(key: str, value: Any) -> None:  # noqa: ANN401
+        """Store *value* under *key* in the enclosing ``new_variables`` dict."""
         nonlocal new_variables
         new_variables[key] = value
 
@@ -131,7 +132,7 @@ class TemporaryDirectoryParams(BaseModel):
 
     @model_validator(mode="after")
     def validate_submit_and_dir(self) -> TemporaryDirectoryParams:
-        """Validate that a user submitting remotely has set the shared working dir."""
+        """Ensure that remote mode has a concrete shared working directory."""
         if self.submit_type == "remote" and not self.shared_working_dir.exists():
             raise ValueError
         return self
@@ -214,9 +215,5 @@ def _run_jobs_temp_dir_local(
 
 
 def _generate_random_string(length: int) -> str:
-    """Generate a semirandom string for the directory names."""
-    # NOTE: AI SLOP BELOW
-    # Combine lowercase letters, uppercase letters, and digits
-    characters = string.ascii_letters
-    # Use random.choices to select 'k' characters with replacement
-    return "".join(random.choices(characters, k=length))  # noqa: S311
+    """Return a random alphabetic string of the given length."""
+    return "".join(random.choices(string.ascii_letters, k=length))  # noqa: S311

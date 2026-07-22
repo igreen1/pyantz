@@ -1,0 +1,63 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_subprocess",
+    "number_processes": 2
+  },
+  "variables": {
+    "work_dir": "/tmp/pyantz_subprocess"
+  },
+  "jobs": [
+    {
+      "job_id": "setup",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "/tmp/pyantz_subprocess"
+      }
+    },
+    {
+      "job_id": "list_tmp",
+      "name": "List /tmp contents",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": ["ls", "-la", "/tmp"],
+        "stdout_file": "/tmp/pyantz_subprocess/ls_output.txt",
+        "stderr_file": "/tmp/pyantz_subprocess/ls_errors.txt"
+      }
+    },
+    {
+      "job_id": "count_files",
+      "name": "Count files in /tmp",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": ["bash", "-c", "find /tmp -maxdepth 1 -type f | wc -l"],
+        "stdout_file": "/tmp/pyantz_subprocess/count_output.txt"
+      }
+    },
+    {
+      "job_id": "python_script",
+      "name": "Run a Python one-liner",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": [
+          "python3", "-c",
+          "import sys, datetime; print(f'Ran at {datetime.datetime.now()}')"
+        ],
+        "stdout_file": "/tmp/pyantz_subprocess/python_output.txt",
+        "timeout": 30.0
+      }
+    },
+    {
+      "job_id": "check_list_output",
+      "name": "Verify listing succeeded",
+      "depends_on": ["list_tmp"],
+      "function": "pyantz.jobs.files.check.file_exists",
+      "parameters": {
+        "file": "/tmp/pyantz_subprocess/ls_output.txt"
+      }
+    }
+  ]
+}

@@ -1,10 +1,11 @@
-"""Jobs to run a set of jobs locally without worrying about submitters.
+"""Run a sequence of jobs synchronously within the current process.
 
-This is a bit of a workaround to the pyantz "normal" way of doing things,
-but it can be more efficient for a series of very small jobs.
+:func:`run_pipeline` executes jobs one after another, short-circuiting on
+the first failure.  It does *not* submit jobs to the queue — all execution
+happens inline, which is more efficient for very small, fast steps.
 
-It can also be useful for passing data around without using a file system
-as it will create and manage a local store of data.
+Use this when you want to avoid queue overhead for a tight inner loop, or
+when you need to share in-memory state between steps without a file system.
 """
 
 from typing import TYPE_CHECKING, Any, Final
@@ -44,6 +45,7 @@ def run_pipeline(params: LocalPipelineParameters) -> bool:
     )
 
     def submit_fn(job: JobConfig, parent: Any) -> None:  # noqa: ANN401
+        """Raise immediately — submitting jobs from a local pipeline is not supported."""
         del job, parent  # just to say we "used" them
         msg = "Cannot submit jobs from within a local pipeline."
         raise RuntimeError(msg)
