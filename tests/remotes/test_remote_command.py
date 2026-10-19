@@ -1,6 +1,6 @@
 """Test the command run on remote hosts."""
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -14,7 +14,7 @@ def _cmd(
     addl_requirements: list[str] | None = None,
 ) -> list[str]:
     """Call get_cmd (which takes the working dir explicitly in newer versions)."""
-    function: Any = get_cmd
+    function = cast("Any", get_cmd)
     arguments = function.__code__.co_varnames[: function.__code__.co_argcount]
     if "working_dir" in arguments:
         return function(host, "/workspace", addl_requirements)
