@@ -50,6 +50,10 @@ class SlurmRunnerConfig(BaseModel):
     # max time a job can be running before slurm timeouts
     max_job_time_seconds: int = DEFAULT_JOB_TIMEOUT
 
+    # extra arguments for every sbatch call. Unless they include
+    # `--kill-on-invalid-dep`, jobs are submitted with `--kill-on-invalid-dep=yes`
+    # so that when a job fails, the jobs waiting on it are cancelled instead of
+    # staying pending forever
     slurm_args: list[str] = Field(default_factory=list)
 
     working_dir: DirectoryPath
