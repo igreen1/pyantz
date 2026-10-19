@@ -4,6 +4,7 @@ Pass a path to the configuration file.
 """
 
 import argparse as _argparse
+import sys as _sys
 from pathlib import Path as _Path
 from typing import Any
 
@@ -28,7 +29,9 @@ def main() -> None:
     # load config
     config_text = config_location.read_text(encoding="utf-8")
     config: _InitialConfig[Any] = _InitialConfig.model_validate_json(config_text)  # pyright: ignore[reportUnknownVariableType]
-    _start(config)
+    report = _start(config)
+    if report is not None and not report.all_succeeded:
+        _sys.exit(1)
 
 
 if __name__ == "__main__":

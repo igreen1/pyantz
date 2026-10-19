@@ -13,6 +13,7 @@ from pyantz.infrastructure.config import (
 from pyantz.infrastructure.distributed_queue.common.return_types import (
     CompleteReturn,
     JobReturn,
+    JobsReport,
     JobStatus,
     PendingReturn,
 )
@@ -24,8 +25,8 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def start(config: InitialConfig[LocalRunnerConfig]) -> None:
-    """Start the lcoal runner processes."""
+def start(config: InitialConfig[LocalRunnerConfig]) -> JobsReport:
+    """Start the local runner processes and return the final report of the jobs."""
     logger = logging.getLogger(__name__)
 
     queue_file = config.submitter.working_directory / "queue.db"
@@ -33,11 +34,22 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
         config.submitter.working_directory.mkdir()
     logger.debug("Creating sqlite queue %s", queue_file)
 
-    _fill_queue(config, SqliteQueue(queue_file))
+    queue = SqliteQueue(queue_file)
+    _fill_queue(config, queue)
     if config.submitter.use_same_proc:
         _run_within_same_proc(config, queue_file)
     else:
         _start_pool(config, queue_file)
+
+    report = queue.get_jobs_report()
+    logger.info(
+        "Run finished: %d total, %d succeeded, %d errored, %d unfinished",
+        report.total,
+        report.success,
+        report.error,
+        report.total - report.success - report.error,
+    )
+    return report
 
 
 def _run_within_same_proc(

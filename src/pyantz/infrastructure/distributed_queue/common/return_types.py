@@ -72,6 +72,16 @@ class JobsReport(BaseModel):
     # num jobs currently being run by a worker
     running: int = Field(ge=0)
 
+    @property
+    def all_succeeded(self) -> bool:
+        """True if no job errored and none is left unfinished."""
+        return (
+            self.error == 0
+            and self.pending == 0
+            and self.ready == 0
+            and self.running == 0
+        )
+
 
 class PendingReturn(BaseModel):
     """Indicates that the queue returned nothing but may return something later."""
