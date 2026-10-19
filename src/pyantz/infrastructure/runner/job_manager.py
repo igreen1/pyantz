@@ -29,7 +29,6 @@ def run_job(
 ) -> bool:
     """Run the provided job and resolve variables in its parameters."""
     logger = logging.getLogger(__name__)
-    logger.debug("Starting running %s", job_config)
 
     def _wrapped_submitter(to_submit: JobConfig) -> None:
         """Submit the job.
@@ -66,7 +65,12 @@ def run_job_no_parent_wrapper(
     job_config: JobWithContext,
     wrapped_submit_fn: SubmissionFnType,
 ) -> bool:
-    """Run the provided job and resolve variables in its parameters."""
+    """Run the provided job and resolve variables in its parameters.
+
+    A job function reports failure by returning False or by raising an exception.
+    Returning None (as plain python functions often do) counts as success, and any
+    other non-bool result is judged by its truthiness; both log a warning.
+    """
     logger = logging.getLogger(__name__)
     logger.debug("Starting running %s", job_config)
 
@@ -92,7 +96,7 @@ def run_job_no_parent_wrapper(
         # mypy hasn't updated properly to 3.14
         with JobVariables.set(job_config.variables):  # type: ignore[attr-defined]
             result = job_config.function(parameters, wrapped_submit_fn)
-        logger.debug("Job (%s) returned result %s", result, job_config.job_id)
+        logger.debug("Job (%s) returned result %s", job_config.job_id, result)
     except Exception as exc:
         logger.exception(
             "Unexpected error while running job: %s",
@@ -100,4 +104,16 @@ def run_job_no_parent_wrapper(
             exc_info=exc,
         )
         return False
-    return result
+    if result is None:
+        logger.warning(
+            "Job %s returned None instead of a bool; treating it as success",
+            job_config.job_id,
+        )
+        return True
+    if not isinstance(result, bool):
+        logger.warning(
+            "Job %s returned %r instead of a bool; using its truthiness",
+            job_config.job_id,
+            result,
+        )
+    return bool(result)
