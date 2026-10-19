@@ -20,6 +20,41 @@ if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
 
 
+def _run_checked(ssh: paramiko.SSHClient, cmd: str, description: str) -> str:
+    """Run a command on the remote and raise if it fails.
+
+    Args:
+        ssh: connected client
+        cmd: shell command to run
+        description: what the command does, used in the error message
+
+    Returns:
+        str: what the command wrote to stdout
+
+    Raises:
+        RuntimeError: if the exit status is not zero; the message has its stderr
+
+    """
+    logger = logging.getLogger(__name__)
+    _, stdout, stderr = ssh.exec_command(cmd)
+    out = stdout.read().decode()
+    err = stderr.read().decode()
+    exit_code = stdout.channel.recv_exit_status()
+    logger.debug(
+        "%s: exit code %s\n\tstdout=%s\n\tstderr=%s",
+        description,
+        exit_code,
+        out,
+        err,
+    )
+    if exit_code != 0:
+        msg = (
+            f"{description} failed on the remote (exit code {exit_code}): {err.strip()}"
+        )
+        raise RuntimeError(msg)
+    return out
+
+
 def run_ssh(config: InitialConfig[Any]) -> None:
     """Copy our files to a remote and run."""
     logger = logging.getLogger(__name__)
@@ -49,7 +84,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
-
 
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
@@ -85,22 +119,16 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 remote_pyantz_file,
             )
     # perform our setup by untaring
-    _stdin, stdout, stderr = ssh.exec_command(
-        f"tar -xvzf {remote_setup_tar_path} -C {host_config.working_dir}"
-    )
-    logger.debug(
-        "Untar setup files,\n\tstdout=%s\n\tstderr=%s",
-        stdout.read().decode(),
-        stderr.read().decode(),
+    _run_checked(
+        ssh,
+        f"tar -xvzf {remote_setup_tar_path} -C {host_config.working_dir}",
+        "Extracting the setup files",
     )
     if host_config.copy_project_dir:
-        _, stdout, stderr = ssh.exec_command(
-            f"tar -xzvf {remote_pyantz_file} -C {host_config.working_dir}"
-        )
-        logger.debug(
-            "Untar project files,\n\tstdout=%s\n\tstderr=%s",
-            stdout.read().decode(),
-            stderr.read().decode(),
+        _run_checked(
+            ssh,
+            f"tar -xzvf {remote_pyantz_file} -C {host_config.working_dir}",
+            "Extracting the project files",
         )
     logger.debug("Starting remote command")
     # actually run our command to run pyantz!
@@ -114,17 +142,13 @@ def run_ssh(config: InitialConfig[Any]) -> None:
     cd_cmd = ["cd", host_config.working_dir]
     cmd = [*cd_cmd, "&&", *cmd]
     logger.debug("Will run the following on %s: cmd=%s", host_config.remote_host, cmd)
-    _, stdout, stderr = ssh.exec_command(" ".join(cmd))
-    logger.debug(
-        "Output from command:\n\tstdout=%s\n\tstderr=%s",
-        stdout.read().decode(),
-        stderr.read().decode(),
-    )
+    # for a background run, this only checks that the command was launched
+    _run_checked(ssh, " ".join(cmd), "Running pyantz")
     logger.debug("Finished submission, exiting submitter on local machine.")
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            raise RuntimeError  # checked by validation of model, just for type checking
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
@@ -133,5 +157,5 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )
