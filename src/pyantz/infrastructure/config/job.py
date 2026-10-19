@@ -63,7 +63,11 @@ class JobConfig(AbstractJobConfig):
     @model_validator(mode="after")
     def validate_fn(self) -> Self:
         """Check the parameters for the function."""
-        if not check_config(self, strict=self.strict, check_at_startup=True):
+        if not check_config(
+            self,
+            strict=self.strict,
+            check_at_startup=self.strict,
+        ):
             msg = "Bad function definition"
             raise ValueError(msg)
         return self
