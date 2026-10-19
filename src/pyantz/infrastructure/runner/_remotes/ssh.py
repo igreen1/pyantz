@@ -8,6 +8,7 @@ setup tarball via SFTP, extracts it, and runs ``uvx pyantz config.json``
 import getpass
 import logging
 import os
+import shlex
 import subprocess
 import tempfile
 from typing import TYPE_CHECKING, Any, cast
@@ -18,6 +19,22 @@ from ._transfers import get_cmd, get_project_dir, get_setup_tar
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
+
+
+def _make_remote_dir(ssh: paramiko.SSHClient, path: str) -> None:
+    """Create the directory (and any missing parents) on the remote.
+
+    Unlike ``sftp.mkdir`` this doesn't fail when the directory already exists
+    (for example when re-running) or when parent directories are missing.
+    """
+    _, stdout, stderr = ssh.exec_command(f"mkdir -p {shlex.quote(path)}")
+    exit_code = stdout.channel.recv_exit_status()
+    if exit_code != 0:
+        msg = (
+            f"Could not create directory {path!r} on the remote "
+            f"(exit code {exit_code}): {stderr.read().decode().strip()}"
+        )
+        raise RuntimeError(msg)
 
 
 def run_ssh(config: InitialConfig[Any]) -> None:
@@ -50,9 +67,8 @@ def run_ssh(config: InitialConfig[Any]) -> None:
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
 
-
     sftp = ssh.open_sftp()
-    sftp.mkdir(host_config.working_dir)
+    _make_remote_dir(ssh, host_config.working_dir)
     logger.debug("Made working dir %s", host_config.working_dir)
 
     setup_tar_filename = "setup.tar.gz"
@@ -124,7 +140,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            raise RuntimeError  # checked by validation of model, just for type checking
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
@@ -133,5 +149,5 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )
