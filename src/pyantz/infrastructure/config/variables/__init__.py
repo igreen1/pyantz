@@ -73,13 +73,23 @@ def resolve_var_any[T](
     return some_val, False
 
 
-def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
+def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[Any, bool]:
     """Resolve the string by replacing variables.
+
+    If the whole string is exactly one reference (``"%{n}"``) to a non-string
+    variable, the variable's value is returned as is, preserving its type.
+    Otherwise, values are converted to strings and interpolated.
 
     Returns the string with variables interleaved
         AND a boolean. If the boolean is true, then a variable substring was found
         but could not be replaced because the variable isn't set.
     """
+    whole_reference = VARIABLE_REGEX.fullmatch(v)
+    if whole_reference is not None:
+        name = whole_reference.group(1)[2:-1]
+        if name in variables and not isinstance(variables[name], str):
+            return variables[name], False
+
     s = v
 
     unmade_change = False
