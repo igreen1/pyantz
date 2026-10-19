@@ -214,7 +214,8 @@ def external_analysis(params: ExternalAnalysisParams) -> bool:
                 logger.error(
                     "User must register %s with a lazy or eager loader", variable_name
                 )
-                raise RuntimeError
+                msg = f"No lazy or eager loader registered for {variable_name!r}"
+                raise RuntimeError(msg)
         else:
             return_type = params.lazy_or_eager
         return _mapping[return_type]

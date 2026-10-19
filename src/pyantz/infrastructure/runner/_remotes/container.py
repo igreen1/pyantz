@@ -19,8 +19,9 @@ if TYPE_CHECKING:
 
 def run_container(config: InitialConfig[Any]) -> None:
     """Copy our files to the container and run!."""
-    if not config.host.type_ == "container":
-        raise RuntimeError
+    if config.host.type_ != "container":
+        msg = f"run_container needs a 'container' host, got {config.host.type_!r}"
+        raise RuntimeError(msg)
 
     host_config: ContainerConfig = cast("ContainerConfig", config.host)
 

@@ -23,8 +23,9 @@ if TYPE_CHECKING:
 def run_ssh(config: InitialConfig[Any]) -> None:
     """Copy our files to a remote and run."""
     logger = logging.getLogger(__name__)
-    if not config.host.type_ == "ssh":
-        raise RuntimeError
+    if config.host.type_ != "ssh":
+        msg = f"run_ssh needs an 'ssh' host, got {config.host.type_!r}"
+        raise RuntimeError(msg)
 
     host_config: SshConfig = cast("SshConfig", config.host)
 
@@ -49,7 +50,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
-
 
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
@@ -124,7 +124,9 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            # the model validates this, the check is for the type checker
+            msg = "output_dir must be set when sync_data_at_end is true"
+            raise RuntimeError(msg)
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
@@ -133,5 +135,5 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )
