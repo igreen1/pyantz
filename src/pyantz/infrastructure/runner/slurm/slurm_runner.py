@@ -140,30 +140,39 @@ def _add_dependency(new_job_id: str, job_deps_to_update: dict[str, list[str]]) -
 
 
 def _add_dependency_to_sbatch(args: list[str], dependencies: list[str]) -> list[str]:
-    """Add the listed dependencies to the job submission."""
-    dep_arg_idx = -1
-    for i, arg in enumerate(args):
-        if "--dependency" in arg:
-            dep_arg_idx = i
+    """Add the listed dependencies to the job submission.
 
-    former_deps: str | None
-    # if dependency and the list are in two consecutive arguments
-    if dep_arg_idx != -1 and args[dep_arg_idx] == "--dependency":
-        if len(args) - 1 == dep_arg_idx:
-            raise ValueError  # last element is just a danling --dependency??
-        former_deps = args.pop(dep_arg_idx) + args.pop(dep_arg_idx)
-    elif dep_arg_idx != -1:
-        former_deps = args.pop(dep_arg_idx)
-    else:
-        former_deps = None
+    Any dependency the user gave (``--dependency=X``, ``--dependency X``, ``-d X`` or
+    ``-dX``) is merged with the new ones into a single ``--dependency=X,afterok:..``
+    argument added at the end. The other arguments are left as they were.
+    """
+    remaining: list[str] = []
+    former_deps: str | None = None
+    arg_iter = iter(args)
+    for arg in arg_iter:
+        if arg in {"--dependency", "-d"}:
+            former_deps = next(arg_iter, None)
+            if former_deps is None:
+                msg = f"{arg} was given without a value"
+                raise ValueError(msg)
+        elif arg.startswith("--dependency="):
+            former_deps = arg.removeprefix("--dependency=")
+        elif arg.startswith("-d") and not arg.startswith("--"):
+            former_deps = arg.removeprefix("-d")
+        else:
+            remaining.append(arg)
+
+    if former_deps is not None and "?" in former_deps:
+        msg = (
+            f"Cannot combine the dependency {former_deps!r} (it uses '?' for OR) "
+            "with the dependencies on other pyantz jobs"
+        )
+        raise ValueError(msg)
 
     new_deps = ",".join([f"afterok:{i}" for i in dependencies])
+    combined_deps = f"{former_deps},{new_deps}" if former_deps else new_deps
 
-    combined_deps = (
-        former_deps + "," + new_deps if former_deps else f"--dependency={new_deps}"
-    )
-
-    return [*args, combined_deps]
+    return [*remaining, f"--dependency={combined_deps}"]
 
 
 def _create_sbatch(
