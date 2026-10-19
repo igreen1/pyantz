@@ -8,6 +8,7 @@ setup tarball via SFTP, extracts it, and runs ``uvx pyantz config.json``
 import getpass
 import logging
 import os
+import shutil
 import subprocess
 import tempfile
 from typing import TYPE_CHECKING, Any, cast
@@ -49,7 +50,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
-
 
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
@@ -124,14 +124,24 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            raise RuntimeError  # checked by validation of model, just for type checking
+        rsync = shutil.which("rsync")
+        if rsync is None:
+            msg = (
+                "rsync was not found on this machine, which is needed to copy the "
+                "results back (sync_data_at_end); install it or set "
+                "sync_data_at_end to false"
+            )
+            raise RuntimeError(msg)
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
-                "/usr/bin/rsync",
+                rsync,
                 "-avz",
+                "-e",
+                f"ssh -p {host_config.remote_port}",
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )
