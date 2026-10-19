@@ -3,6 +3,7 @@
 import argparse
 import io
 import logging
+import math
 import os
 import subprocess
 import uuid
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
 
 ENTRY_BASH_FILE_PATH = Path(__file__).parent / "run.sh"
 CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_DIR"
+SECONDS_PER_MINUTE = 60
 
 
 def start(config: InitialConfig[SlurmRunnerConfig]) -> None:
@@ -166,6 +168,16 @@ def _add_dependency_to_sbatch(args: list[str], dependencies: list[str]) -> list[
     return [*args, combined_deps]
 
 
+def _has_time_limit(slurm_args: list[str]) -> bool:
+    """Check whether the sbatch arguments already set a time limit."""
+    return any(
+        arg in {"--time", "-t"}
+        or arg.startswith("--time=")
+        or (arg.startswith("-t") and not arg.startswith("--"))
+        for arg in slurm_args
+    )
+
+
 def _create_sbatch(
     config: SlurmRunnerConfig,
 ) -> Callable[[JobConfig, list[str] | None], str]:
@@ -196,6 +208,11 @@ def _create_sbatch(
 
         if dependencies is not None:
             slurm_args = _add_dependency_to_sbatch(slurm_args, dependencies)
+
+        # limit how long slurm lets the job run, unless the user chose a limit
+        if not _has_time_limit(slurm_args):
+            minutes = math.ceil(config.max_job_time_seconds / SECONDS_PER_MINUTE)
+            slurm_args.append(f"--time={minutes}")
 
         # now, we have the file path to be run
         cmd: list[str] = [
