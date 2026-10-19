@@ -1,6 +1,5 @@
 """Queue running with sql."""
 
-import contextlib
 import os
 import sqlite3
 from itertools import batched
@@ -45,11 +44,13 @@ class SqliteQueue(QueueInterface):
         self.database_file = database_file
         self._engine = self._create_engine(self.database_file)
 
-        with contextlib.suppress(
-            sqlite3.OperationalError,
-            sqlalchemy.exc.OperationalError,
-        ):
+        try:
             Base.metadata.create_all(self._engine)
+        except (sqlite3.OperationalError, sqlalchemy.exc.OperationalError) as exc:
+            # several processes may create the tables at the same time, and that is
+            # fine. Anything else (unwritable directory, full disk, ...) is real
+            if "already exists" not in str(exc):
+                raise
 
     def _create_engine(self, database_file: Path) -> sa.Engine:
         """Create the engine and return it."""
