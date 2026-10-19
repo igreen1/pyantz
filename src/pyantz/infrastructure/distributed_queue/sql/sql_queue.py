@@ -1,6 +1,7 @@
 """Queue running with sql."""
 
 import contextlib
+import logging
 import os
 import sqlite3
 from itertools import batched
@@ -361,11 +362,37 @@ class SqliteQueue(QueueInterface):
 
         Returns:
             bool: True if successfully added; False if unable to add
+                (for example, a job with the same id already exists)
 
         """
         # not required but polite to call whenever accessing
         self._update_job_statuses()
 
+        try:
+            self._insert_job(job_config, parent_job_id)
+        except sqlalchemy.exc.IntegrityError:
+            # the session is rolled back on exit, so the queue is unchanged
+            logging.getLogger(__name__).error(  # noqa: TRY400
+                "Cannot add job %s: a job with this id is already in the queue",
+                job_config.job_id,
+            )
+            return False
+
+        # not required but polite
+        self._update_job_statuses()
+        return True
+
+    def _insert_job(
+        self,
+        job_config: JobWithContext,
+        parent_job_id: str | uuid.UUID | None,
+    ) -> None:
+        """Insert all rows for a job in one transaction.
+
+        Raises:
+            sqlalchemy.exc.IntegrityError: if the job id is already present
+
+        """
         with Session(self._engine) as sesh:
             # first, chunk up the job
             jobs_json = job_config.model_dump_json()
@@ -422,10 +449,6 @@ class SqliteQueue(QueueInterface):
             sesh.add(queue_item)
 
             sesh.commit()
-
-        # not required but polite
-        self._update_job_statuses()
-        return True
 
     def change_config_in_place(self, job_config: JobWithContext) -> None:
         """Change the config of a job.
