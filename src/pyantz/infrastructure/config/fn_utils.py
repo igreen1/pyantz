@@ -36,6 +36,17 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
     name_components = key.split(".")
     mod_name = ".".join(name_components[:-1])
     fn_name = name_components[-1]
+    if not mod_name or not fn_name:
+        msg = f"Cannot import '{key}': expected 'package.module.name'"
+        raise ValueError(msg)
 
-    mod = importlib.import_module(mod_name)
-    return getattr(mod, fn_name)
+    try:
+        mod = importlib.import_module(mod_name)
+    except ImportError as exc:
+        msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({exc})"
+        raise ValueError(msg) from exc
+    try:
+        return getattr(mod, fn_name)
+    except AttributeError as exc:
+        msg = f"Cannot import '{key}': Module '{mod_name}' has no attribute '{fn_name}'"
+        raise ValueError(msg) from exc
