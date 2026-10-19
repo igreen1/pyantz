@@ -73,6 +73,10 @@ class DeleteParams(BaseModel):
 
     missing_ok: bool = True
 
+    # if true, directories are deleted with everything inside them
+    # (otherwise only empty directories can be deleted)
+    recursive: bool = False
+
 
 @add_parameters(DeleteParams)
 @no_submit_fn
@@ -83,6 +87,8 @@ def delete(params: DeleteParams) -> bool:
 
     if params.path.is_file():
         params.path.unlink()
+    elif params.recursive:
+        shutil.rmtree(params.path)
     else:
         params.path.rmdir()
 
