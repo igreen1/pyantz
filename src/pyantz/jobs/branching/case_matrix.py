@@ -114,7 +114,7 @@ def pipeline_expansion_with_output_dir(
 ) -> bool:
     """Add variables `output_dir` and `pipeline_id` for each child pipeline."""
     output_dir = Path(params.output_dir)
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # if a pipeline runs in a pipeline running in a pipeline
     # we want it to have pipeline_id, its parent pipeline id, and its "grand parent" id
@@ -142,10 +142,12 @@ def pipeline_expansion_with_output_dir(
         if hasattr(child_job, "variables") and "pipeline_id" in child_job.variables:  # type: ignore  # noqa: PGH003
             pipeline_id: int = child_job.variables["pipeline_id"]  # type: ignore  # noqa: PGH003
             run_dir = output_dir / f"run_{pipeline_id}"
-            run_dir.mkdir(exist_ok=True)
+            run_dir.mkdir(parents=True, exist_ok=True)
 
         wrapped_job = JobWithContext.from_config(child_job).inherit_context(
             {
+                # the job's own variables (like its pipeline_id) still take priority
+                **new_variables,
                 "output_dir": os.fspath(output_dir / "run_%{pipeline_id}"),
             }
         )
