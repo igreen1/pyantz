@@ -142,21 +142,16 @@ def make_job(
     if isinstance(config, (AbstractJobConfig)):
         return config  # type: ignore[return-value] # pyright: ignore[reportReturnType]
     if not isinstance(config, Mapping):
-        raise TypeError
+        msg = f"Job config must be a mapping, got {type(config).__name__}"
+        raise TypeError(msg)
     config = cast("Mapping[str, Any]", config)
     if "function" not in config:
-        raise ValueError
-    use_virtual = cast(
-        "bool",
-        config.get(
-            "virtual",
-            is_virtual(
-                import_module_item_by_name(
-                    config["function"],
-                ),
-            ),
-        ),
-    )
+        msg = "Job config is missing required key 'function'"
+        raise ValueError(msg)
+    if "virtual" in config:
+        use_virtual = bool(config["virtual"])
+    else:
+        use_virtual = is_virtual(import_module_item_by_name(config["function"]))
 
     if use_virtual:
         return VirtualJobConfig.model_validate(config)
