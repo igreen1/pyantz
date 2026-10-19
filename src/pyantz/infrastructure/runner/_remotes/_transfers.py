@@ -1,4 +1,10 @@
-"""Code to tar up files we wish to transfer."""
+"""Utilities for packaging and transferring files to remote execution environments.
+
+:func:`get_setup_tar` bundles the resolved pipeline config and any extra
+Python requirements into an in-memory tar archive.  :func:`get_cmd` builds
+the ``uvx pyantz …`` invocation that the remote side runs after extracting
+the archive.
+"""
 
 import io
 import tarfile
@@ -38,7 +44,7 @@ def get_project_dir() -> io.BytesIO:
 def get_setup_tar(
     config: InitialConfig[Any], host_config: ContainerConfig | SshConfig
 ) -> io.BytesIO:
-    """Get a byte stream of a tar-file with the config.json and re2quirements file."""
+    """Get a byte stream of a tar-file with the config.json and requirements file."""
     next_conf = config.with_new_host(host_config.subsequent_host)
     requirements = host_config.requirements
 

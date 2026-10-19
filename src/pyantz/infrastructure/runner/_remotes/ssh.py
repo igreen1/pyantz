@@ -1,4 +1,9 @@
-"""Run on a remote machine."""
+"""Execute a pyantz pipeline on a remote host via SSH.
+
+:func:`run_ssh` connects to the remote machine with Paramiko, copies the
+setup tarball via SFTP, extracts it, and runs ``uvx pyantz config.json``
+— either synchronously or as a background process (``nohup … &``).
+"""
 
 import getpass
 import logging

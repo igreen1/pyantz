@@ -1,4 +1,13 @@
-"""Call a separate python function to munge data and save the results."""
+"""Jobs that call user-defined Python functions for data extraction and analysis.
+
+:func:`save_from_external_extraction` calls a user function and saves the
+returned Polars DataFrame to a Parquet file.
+
+:func:`external_simple` calls a function and returns its boolean result.
+
+:func:`external_analysis` loads one or more Parquet files into Polars
+frames, then passes them as keyword arguments to a user function.
+"""
 
 import logging
 from collections.abc import Callable, Mapping
@@ -54,7 +63,7 @@ class ExternalExtractParams(BaseModel):
         self,
         fn: Callable[..., pl.DataFrame | pl.LazyFrame],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -122,7 +131,7 @@ class ExternalSimpleParams(BaseModel):
         self,
         fn: Callable[..., pl.DataFrame | pl.LazyFrame],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -183,7 +192,7 @@ class ExternalAnalysisParams(BaseModel):
         self,
         fn: Callable[..., Any],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 

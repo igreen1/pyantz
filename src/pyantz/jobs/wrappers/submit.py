@@ -1,4 +1,13 @@
-"""Wrap the job ina new submission type."""
+"""Jobs that wrap a sub-pipeline in a different submitter or host.
+
+:func:`submit` re-wraps a list of jobs under a new
+:class:`~pyantz.infrastructure.config.runners.LocalRunnerConfig` or
+:class:`~pyantz.infrastructure.config.runners.slurm_runner.SlurmRunnerConfig`,
+letting users switch execution backends mid-pipeline.
+
+:func:`new_host` additionally moves execution to a different host (SSH or
+container) before using the new submitter.
+"""
 
 from typing import TYPE_CHECKING
 
@@ -29,7 +38,7 @@ class SubmitParams[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # the wrapped configuration to submti
+    # the wrapped configuration to submit
     runner_config: S
 
     jobs: tuple[JobConfig, ...]

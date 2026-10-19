@@ -1,4 +1,11 @@
-"""Code shared by virtual and `real` jobs."""
+"""Shared base class for all job configuration types.
+
+:class:`AbstractJobConfig` is inherited by both
+:class:`~pyantz.infrastructure.config.job.JobConfig` (concrete jobs) and
+:class:`~pyantz.infrastructure.config.virtual.VirtualJobConfig` (compile-time
+jobs).  It provides the common ``job_id``, ``depends_on``, ``parameters``,
+and ``strict`` fields.
+"""
 
 import uuid
 from collections.abc import Mapping

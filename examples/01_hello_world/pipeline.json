@@ -1,0 +1,17 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_hello_world",
+    "number_processes": 1
+  },
+  "jobs": [
+    {
+      "job_id": "touch_hello",
+      "name": "Create hello.txt",
+      "function": "pyantz.jobs.testing.touch_file.touch_file",
+      "parameters": {
+        "path": "/tmp/pyantz_hello_world/hello.txt"
+      }
+    }
+  ]
+}

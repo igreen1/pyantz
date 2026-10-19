@@ -88,14 +88,14 @@ def add_parameters[T: BaseModel](
         param_cls: basemodel to use to validate
         check_at_startup: if True, will check the parameters class at startup.
             this disallows variables as those won't be set yet. Instead, prefer
-            setting this value in the configuration as part of the inital params.s
+            setting this value in the configuration as part of the initial params
 
     """
 
     def _decorate_fn_with_params(
         fn: Callable[[T, SubmissionFnType], bool],
     ) -> JobFunctionType:
-        """Wrap the function in a caster to cast params to the provided params model."""
+        """Wrap *fn* with a parameter-casting layer and register it globally."""
 
         @wraps(fn)
         @trace_fn
@@ -137,7 +137,7 @@ def update_deps[T: BaseModel](
     """
 
     def scramble_deps(job_params: T, deps: list[JobConfig]) -> list[JobConfig]:
-        """Scramble dependency ids while maintaining dependencies."""
+        """Re-map all job ids to fresh UUIDs while preserving the dependency graph."""
         old_ids_to_new_ids = {job.job_id: str(uuid.uuid4()) for job in deps}
 
         deps = [

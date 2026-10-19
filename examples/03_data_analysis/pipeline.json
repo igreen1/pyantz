@@ -1,0 +1,67 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_data",
+    "number_processes": 4
+  },
+  "variables": {
+    "data_dir": "/tmp/pyantz_data"
+  },
+  "jobs": [
+    {
+      "job_id": "setup_dirs",
+      "name": "Create output directories",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "%{data_dir}/output"
+      }
+    },
+    {
+      "job_id": "convert_sales",
+      "name": "Convert sales CSV to Parquet",
+      "depends_on": ["setup_dirs"],
+      "function": "pyantz.jobs.files.reformat.csv_to_parquet",
+      "parameters": {
+        "csv_file": "%{data_dir}/sales.csv",
+        "parquet_file": "%{data_dir}/output/sales.parquet"
+      }
+    },
+    {
+      "job_id": "convert_products",
+      "name": "Convert products CSV to Parquet",
+      "depends_on": ["setup_dirs"],
+      "function": "pyantz.jobs.files.reformat.csv_to_parquet",
+      "parameters": {
+        "csv_file": "%{data_dir}/products.csv",
+        "parquet_file": "%{data_dir}/output/products.parquet"
+      }
+    },
+    {
+      "job_id": "join_tables",
+      "name": "Join sales with product info",
+      "depends_on": ["convert_sales", "convert_products"],
+      "function": "pyantz.jobs.analysis.simple.join_parquets",
+      "parameters": {
+        "left_parquet": "%{data_dir}/output/sales.parquet",
+        "right_parquet": "%{data_dir}/output/products.parquet",
+        "how": "inner",
+        "output_parquet": "%{data_dir}/output/joined.parquet",
+        "on_": "product_id"
+      }
+    },
+    {
+      "job_id": "compute_revenue",
+      "name": "Compute revenue = quantity * price",
+      "depends_on": ["join_tables"],
+      "function": "pyantz.jobs.analysis.simple.columnar_operation",
+      "parameters": {
+        "source_parquet_file": "%{data_dir}/output/joined.parquet",
+        "result_parquet_file": "%{data_dir}/output/revenue.parquet",
+        "left_col": "quantity",
+        "right_col": "price",
+        "result_col": "revenue",
+        "operation": "*"
+      }
+    }
+  ]
+}

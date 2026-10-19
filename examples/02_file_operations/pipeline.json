@@ -1,0 +1,68 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_files",
+    "number_processes": 2
+  },
+  "jobs": [
+    {
+      "job_id": "make_work_dir",
+      "name": "Create working directory",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "/tmp/pyantz_files/work"
+      }
+    },
+    {
+      "job_id": "create_source",
+      "name": "Write a source file",
+      "depends_on": ["make_work_dir"],
+      "function": "pyantz.jobs.files.simple.create",
+      "parameters": {
+        "path": "/tmp/pyantz_files/work/source.txt",
+        "contents": "Hello from pyantz!\n",
+        "overwrite": true
+      }
+    },
+    {
+      "job_id": "copy_source",
+      "name": "Copy source to backup",
+      "depends_on": ["create_source"],
+      "function": "pyantz.jobs.files.simple.copy",
+      "parameters": {
+        "src": "/tmp/pyantz_files/work/source.txt",
+        "dst": "/tmp/pyantz_files/work/backup.txt"
+      }
+    },
+    {
+      "job_id": "check_backup",
+      "name": "Verify backup contains expected text",
+      "depends_on": ["copy_source"],
+      "function": "pyantz.jobs.files.check.file_contains",
+      "parameters": {
+        "file": "/tmp/pyantz_files/work/backup.txt",
+        "substring": "Hello from pyantz!"
+      }
+    },
+    {
+      "job_id": "move_backup",
+      "name": "Rename backup to final",
+      "depends_on": ["check_backup"],
+      "function": "pyantz.jobs.files.simple.move",
+      "parameters": {
+        "src": "/tmp/pyantz_files/work/backup.txt",
+        "dst": "/tmp/pyantz_files/work/final.txt"
+      }
+    },
+    {
+      "job_id": "delete_source",
+      "name": "Remove the original source file",
+      "depends_on": ["move_backup"],
+      "function": "pyantz.jobs.files.simple.delete",
+      "parameters": {
+        "path": "/tmp/pyantz_files/work/source.txt",
+        "missing_ok": false
+      }
+    }
+  ]
+}

@@ -1,4 +1,11 @@
-"""Simple operations."""
+"""Simple columnar operations on Parquet data files.
+
+:func:`columnar_operation` applies an arithmetic operation between two
+columns and stores the result in a new column.
+
+:func:`join_parquets` performs a Polars join between two Parquet files and
+writes the output to a third file.
+"""
 
 import logging
 from pathlib import Path

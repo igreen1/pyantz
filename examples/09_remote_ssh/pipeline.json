@@ -1,0 +1,49 @@
+{
+  "host": {
+    "type_": "ssh",
+    "remote_host": "remote.example.com",
+    "remote_port": 22,
+    "remote_user": "myuser",
+    "working_dir": "/tmp/pyantz_remote",
+    "run_async": false,
+    "sync_data_at_end": false,
+    "subsequent_host": {"type_": "local"}
+  },
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_remote/queue",
+    "number_processes": 2
+  },
+  "variables": {
+    "output_dir": "/tmp/pyantz_remote/output"
+  },
+  "jobs": [
+    {
+      "job_id": "setup",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "%{output_dir}"
+      }
+    },
+    {
+      "job_id": "hostname",
+      "name": "Record which host is running",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": ["hostname", "-f"],
+        "stdout_file": "%{output_dir}/hostname.txt"
+      }
+    },
+    {
+      "job_id": "disk_info",
+      "name": "Check available disk space",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.subproc.dispatch.dispatch",
+      "parameters": {
+        "cmd": ["df", "-h", "/tmp"],
+        "stdout_file": "%{output_dir}/disk_info.txt"
+      }
+    }
+  ]
+}
