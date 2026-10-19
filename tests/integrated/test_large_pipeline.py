@@ -1,4 +1,5 @@
 """A large pipeline of jobs to be run."""
+
 import uuid
 
 import os
@@ -352,8 +353,7 @@ def test_large_pipeline_ssh(tmp_path: Path) -> None:
         },
     }
     start(config)
-    _check_run(tmp_path / test_folder_dir )
-
+    _check_run(tmp_path / test_folder_dir)
 
 
 def test_large_pipeline_container(tmp_path: Path) -> None:
@@ -466,12 +466,11 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
                 "celery",
             ],
             "working_dir": remote_path,
-            "output_dir": os.fspath(tmp_path)
+            "output_dir": os.fspath(tmp_path),
         },
     }
     start(config)
-    _check_run(tmp_path / "workspace")
-
+    _check_run(tmp_path)
 
 
 def _check_run(tmp_path: Path) -> None:
