@@ -19,6 +19,11 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+def _current_user() -> str:
+    """Get the name of the user running pyantz."""
+    return getpass.getuser()
+
+
 class LocalConfig(BaseModel):
     """Execute the submitter locally."""
 
@@ -73,7 +78,8 @@ class SshConfig(RemoteConfig):
     # port to use for ssh (default is 22)
     remote_port: int = 22
 
-    remote_user: str = getpass.getuser()
+    # defaults to the current user, looked up when the config is created
+    remote_user: str = Field(default_factory=_current_user)
 
     # if set to true, will not wait for the command to finish to terminate
     # the ssh terminal
