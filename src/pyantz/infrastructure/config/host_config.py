@@ -75,6 +75,18 @@ class SshConfig(RemoteConfig):
 
     remote_user: str = getpass.getuser()
 
+    # seconds to wait when connecting before giving up
+    connect_timeout: float = 30
+
+    # private key file to authenticate with; if not set, paramiko tries the
+    # ssh agent and the usual keys in ~/.ssh
+    key_filename: str | None = None
+
+    # what to do with a host that is not in the known hosts:
+    # "reject" refuses to connect, "warn" connects and logs a warning,
+    # "auto_add" trusts and remembers it (unsafe on untrusted networks)
+    known_hosts_policy: Literal["reject", "warn", "auto_add"] = "reject"
+
     # if set to true, will not wait for the command to finish to terminate
     # the ssh terminal
     run_async: bool = True
