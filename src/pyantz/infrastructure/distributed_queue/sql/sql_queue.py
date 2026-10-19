@@ -288,8 +288,6 @@ class SqliteQueue(QueueInterface):
                 eg., may be the error message for debugging.
 
         """
-        self._update_job_statuses()
-
         with Session(self._engine) as sesh:
             update_query = (
                 sa.update(
@@ -325,9 +323,6 @@ class SqliteQueue(QueueInterface):
             bool: True if successfully added; False if unable to add
 
         """
-        # not required but polite to call whenever accessing
-        self._update_job_statuses()
-
         with Session(self._engine) as sesh:
             # first, chunk up the job
             jobs_json = job_config.model_dump_json()
