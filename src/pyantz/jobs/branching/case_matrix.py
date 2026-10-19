@@ -121,7 +121,7 @@ def pipeline_expansion_with_output_dir(
     # to do this, we look at our current context
     # if, in our current context, we are in a pipeline
     # we create variables like "parent_pipeline_id"
-    # rather than "grandparent", we just keep pre-pending parent for simplicity
+    # rather than "grandparent", we just keep prepending parent for simplicity
     # so great-grand-parent pipeline id = parent_parent_parent_pipeline_id
     parent_variables = JobVariables.get()
     if parent_variables:
@@ -204,7 +204,7 @@ def pipeline_expansion(
     return True
 
 
-# Function which acceps a submit function and submits a pipeline.
+# Function which accepts a submit function and submits a pipeline.
 type PipelineSubmitter = Callable[[SubmissionFnType], None]
 
 

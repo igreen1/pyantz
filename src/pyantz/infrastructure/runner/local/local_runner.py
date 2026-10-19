@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 def start(config: InitialConfig[LocalRunnerConfig]) -> None:
-    """Start the lcoal runner processes."""
+    """Start the local runner processes."""
     logger = logging.getLogger(__name__)
 
     queue_file = config.submitter.working_directory / "queue.db"

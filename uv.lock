@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.14"
 resolution-markers = [
     "sys_platform == 'win32'",
@@ -388,6 +388,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/27/fb/576f067976d320f5f0114a8d9fa1215425441bb35627b1993e5afd8111e5/cloudpickle-3.1.2.tar.gz", hash = "sha256:7fda9eb655c9c230dab534f1983763de5835249750e85fbcef43aaa30a9a2414", size = 22330, upload-time = "2025-11-03T09:25:26.604Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/88/39/799be3f2f0f38cc727ee3b4f1445fe6d5e4133064ec2e4115069418a5bb6/cloudpickle-3.1.2-py3-none-any.whl", hash = "sha256:9acb47f6afd73f60dc1df93bb801b472f05ff42fa6c84167d25cb206be1fbf4a", size = 22228, upload-time = "2025-11-03T09:25:25.534Z" },
+]
+
+[[package]]
+name = "codespell"
+version = "2.4.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/80/19/45e941380f69c042b43423513d201e6592346f992394347f5e7174c31407/codespell-2.4.3.tar.gz", hash = "sha256:cbe085e331227b37bb86ef8bddd08dc768c704ee9a07ca869852c093fa2793e2", size = 352773, upload-time = "2026-07-15T11:51:54.159Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/bf/bdb951d34eb169140b546f44be9ec4525d1acefb9eb5572071f5492b19fc/codespell-2.4.3-py3-none-any.whl", hash = "sha256:af2505b335e8573dbd2d384d1c4ef498f4006f4ba2d6fceca01e55b91f52628a", size = 340736, upload-time = "2026-07-15T11:51:52.925Z" },
 ]
 
 [[package]]
@@ -837,6 +846,7 @@ dependencies = [
     { name = "zope-event" },
     { name = "zope-interface" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/20/27/1062fa31333dc3428a1f5f33cd6598b0552165ba679ca3ba116de42c9e8e/gevent-26.4.0.tar.gz", hash = "sha256:288d03addfccf0d1c67268358b6759b04392bf3bc35d26f3d9a45c82899c292d", size = 6242440, upload-time = "2026-04-09T12:08:19.482Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7e/f3/64638a941988f09aa1816e2674eb1efb215b6fa64a97edef6e25177b0845/gevent-26.4.0-cp314-cp314-macosx_11_0_universal2.whl", hash = "sha256:7ab0f183a6fd2369eef619832eef14f1f2f69c605163c3f2dc41deb799af4a71", size = 2967206, upload-time = "2026-04-08T21:25:44.73Z" },
     { url = "https://files.pythonhosted.org/packages/f6/70/a86be65a51d3ebb92c82a70adc9c5c32b1a9d9579120d0be1db7cf534ce0/gevent-26.4.0-cp314-cp314-manylinux_2_28_aarch64.whl", hash = "sha256:7e5906860e632bf965e1966c57e6bfc19dcb79dc262f04fdb0a9d7c12147bf69", size = 1792916, upload-time = "2026-04-08T22:23:22.006Z" },
@@ -1559,6 +1569,7 @@ api = [
 dev = [
     { name = "autodoc-pydantic" },
     { name = "bandit" },
+    { name = "codespell" },
     { name = "hypothesis" },
     { name = "mypy" },
     { name = "polars", extra = ["all"] },
@@ -1590,6 +1601,7 @@ api = [{ name = "fastapi", extras = ["standard"], specifier = ">=0.127.0" }]
 dev = [
     { name = "autodoc-pydantic", specifier = ">=2.2.0" },
     { name = "bandit", specifier = ">=1.9.4" },
+    { name = "codespell", specifier = ">=2.4.1" },
     { name = "hypothesis", specifier = ">=6.151.10" },
     { name = "mypy", specifier = ">=1.17.1" },
     { name = "polars", extras = ["all"], specifier = ">=1.39.3" },

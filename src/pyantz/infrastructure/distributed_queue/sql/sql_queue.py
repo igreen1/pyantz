@@ -144,7 +144,7 @@ class SqliteQueue(QueueInterface):
         if jobs_report.running > 0:
             return GetJobReturn(payload=PendingReturn(jobs_report=jobs_report))
         if jobs_report.pending > 0:
-            # hmm, unlikley to be able to recover
+            # hmm, unlikely to be able to recover
             # but the worker is in charge of crashing / killing itself
             # by analyzing the jobs report
             return GetJobReturn(payload=PendingReturn(jobs_report=jobs_report))
@@ -216,7 +216,7 @@ class SqliteQueue(QueueInterface):
         )
 
     def _update_job_statuses(self) -> None:
-        """Update statuses of all the josb in the queue.
+        """Update statuses of all the jobs in the queue.
 
         Propagates errors and successes down the dependency chain.
 
@@ -314,7 +314,7 @@ class SqliteQueue(QueueInterface):
         Args:
             job_config (JobWithContext): job to enqueue
             parent_job_id (str | uuid.UUID | None): jobs added inherit their parent
-                dependency "responsbilities". So a job submitting new jobs should pass
+                dependency "responsibilities". So a job submitting new jobs should pass
                 its own id to the function.
                 For example if B depends on A and A adds C then B will depend on C.
                 If, however, the user DOESN'T want that (B should run parallel to C),
@@ -414,7 +414,7 @@ class SqliteQueue(QueueInterface):
                 for chunk_as_tuple in batched(jobs_json, CHUNKSIZE, strict=False)
             )
 
-            # then, add it to the job config defintion table
+            # then, add it to the job config definition table
             job_configs = [
                 JobConfigTable(
                     job_id=job_config.job_id,

@@ -36,7 +36,7 @@ from pyantz.infrastructure.config.fn_utils import (
     serialize_function,
 )
 
-# pattern to find backets with an integer in them
+# pattern to find brackets with an integer in them
 BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
 
 
@@ -158,14 +158,14 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
         self,
         fn: T,
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
 class EditExternalParams(BaseModel):
     """Edit a file using an external function to extract and to save off."""
 
-    # will accept the args/kwargs provded
+    # will accept the args/kwargs provided
     # MUST return a JsonValue to be edited
     extract_function: _FunctionDefinition[Callable[..., JsonValue]]
 
@@ -182,7 +182,7 @@ class EditExternalParams(BaseModel):
     # but again, if the JSON object contains a field "a.[0]" that will be edited instead
     updates: Mapping[str, Any]
 
-    # what to do when the field provided points to a loction that doesn't exist in json
+    # what to do when the field provided points to a location that doesn't exist in json
     # for example, consider field = "a.b.c.d" being set to "goodbye!"
     # but the object looks like {"a": "hello world"}
     # what do we do?
@@ -217,7 +217,7 @@ def edit_external_method(params: EditExternalParams) -> bool:
             contents = update_fn(contents, field, value)
     except Exception as exc:
         logger.exception(
-            "Error while updateing JsonValue - check that is a properly formed json",
+            "Error while updating JsonValue - check that is a properly formed json",
             exc_info=exc,
         )
         return False

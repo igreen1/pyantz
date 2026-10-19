@@ -25,7 +25,7 @@ For example, consider the same pipeline but imagine that C was submitting jobs.
 It doesn't matter than C will spawn "dependency-less" children, it is the last job.
 So any execution order is find for the spawned chains to execute.
 
-SOmething like the below is possible, which fits many use cases.
+Something like the below is possible, which fits many use cases.
               C1
             /
 A -> B -> C
@@ -56,7 +56,7 @@ class SlurmRunnerConfig(BaseModel):
 
     # if some job A depends on job P and job P submits jobs
     # P1 and P2, if inherit_dependencies then A depends on P1 and P2
-    # if not inherit depenedencies, then A depends only on P and
+    # if not inherit dependencies, then A depends only on P and
     # may run before P1 and p2
     # requires using sctrl to modify running jobs
     inherit_dependencies: bool = True
