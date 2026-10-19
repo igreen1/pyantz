@@ -89,9 +89,11 @@ def run_job_no_parent_wrapper(
     try:
         _validate_job()
         logger.info("Running job %s", job_config.job_id)
-        # mypy hasn't updated properly to 3.14
-        with JobVariables.set(job_config.variables):  # type: ignore[attr-defined]
+        token = JobVariables.set(job_config.variables)
+        try:
             result = job_config.function(parameters, wrapped_submit_fn)
+        finally:
+            JobVariables.reset(token)
         logger.debug("Job (%s) returned result %s", result, job_config.job_id)
     except Exception as exc:
         logger.exception(
