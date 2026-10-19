@@ -4,9 +4,8 @@ A user may wish to declare some variables locally for a few common jobs.
 """
 
 import logging
-import random
-import string
 import tempfile
+import uuid
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Annotated, Any, Final, Literal
 
@@ -153,8 +152,7 @@ def _run_jobs_temp_dir_remote(
     params: TemporaryDirectoryParams, submit_fn: SubmissionFnType
 ) -> bool:
     """Submit the jobs to be run after creating a working dir for them."""
-    dir_name_length = random.randint(5, 20)  # noqa: S311
-    dir_name = f"tempdir_{_generate_random_string(dir_name_length)}"
+    dir_name = f"tempdir_{uuid.uuid4().hex}"
     dir_path = params.shared_working_dir / dir_name
 
     # create the working directory in a separate job
@@ -212,8 +210,3 @@ def _run_jobs_temp_dir_local(
                 break
 
     return success
-
-
-def _generate_random_string(length: int) -> str:
-    """Return a random alphabetic string of the given length."""
-    return "".join(random.choices(string.ascii_letters, k=length))  # noqa: S311
