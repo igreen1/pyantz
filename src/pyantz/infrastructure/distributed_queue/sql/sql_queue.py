@@ -426,4 +426,11 @@ class SqliteQueue(QueueInterface):
             sesh.execute(delete_query)
             sesh.add_all(job_configs)
             sesh.flush()
+
+            # a job that was already handed to a worker is no longer in the queue
+            in_queue = sesh.execute(
+                sa.select(JobQueue.q_index).where(JobQueue.job_id == job_config.job_id),
+            ).first()
+            if in_queue is None:
+                sesh.add(JobQueue(job_id=job_config.job_id))
             sesh.commit()

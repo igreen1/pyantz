@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal, Self, cast
 from pydantic import (
     BeforeValidator,
     ConfigDict,
+    Field,
     WithJsonSchema,
     field_serializer,
     model_validator,
@@ -55,6 +56,11 @@ class JobConfig(AbstractJobConfig):
     # when error recovering a job should hold how many times its been
     # retried so the runner can decide whether to try to restart it
     num_attempted_runs: int = 0
+
+    # how many times a failed job is run again before it is given up on.
+    # Retried jobs run again from the start, so jobs which submit other jobs
+    # should not be retried (the children would be submitted twice)
+    max_retries: int = Field(default=0, ge=0)
 
     # denotes that this a concrete job
     # makes introspection easier/faster at runtime.
