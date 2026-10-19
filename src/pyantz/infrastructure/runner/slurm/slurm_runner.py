@@ -1,16 +1,14 @@
 """Submit jobs to a slurm HPC grid."""
 
 import argparse
-import io
 import logging
 import os
+import re
 import subprocess
 import uuid
 from graphlib import TopologicalSorter
 from pathlib import Path
 from typing import TYPE_CHECKING
-
-import polars as pl
 
 from pyantz.infrastructure.config import (
     InitialConfig,
@@ -217,14 +215,23 @@ def _create_sbatch(
 
 
 def _get_dependent_jobs(curr_job_id: str) -> dict[str, list[str]]:
-    """Get slurm job ids of jobs which depend on the job in which this is run."""
+    """Get slurm job ids of jobs which depend on the job in which this is run.
+
+    Returns:
+        dict[str, list[str]]: pending jobs which wait on *curr_job_id*, mapped to
+            the ids of all the jobs they wait on (including *curr_job_id*)
+
+    """
     logger = logging.getLogger(__name__)
 
     cmd = [
         "squeue",
         "--me",  # simplify output by looking only at current user
-        "-t PD",  # only look at pending jobs
-        '--format="%i %E"',  # job_id,depends
+        "-h",  # no header
+        "-t",
+        "PD",  # only look at pending jobs
+        "-o",
+        "%i|%E",  # job_id|dependencies
     ]
     logger.debug("Running command: %s", cmd)
     result = subprocess.run(  # noqa: S603
@@ -235,19 +242,17 @@ def _get_dependent_jobs(curr_job_id: str) -> dict[str, list[str]]:
     logger.debug("Resultant stderr: %s", result.stderr)
     logger.debug("Resultant stdout: %s", result.stdout)
 
-    stdout = io.StringIO(result.stdout.decode())
-    job_results = pl.read_csv(stdout, separator=" ")
-    dep_jobs = (
-        job_results.with_columns(  # pyright: ignore[reportUnknownMemberType]
-            pl.col("DEPENDENCY").str.extract_all(r"\d+").alias("deps"),
-        )
-        .filter(
-            pl.col("deps").list.contains(curr_job_id),  # pyright: ignore[reportUnknownMemberType]
-        )
-        .to_dicts()
-    )
+    dependent_jobs: dict[str, list[str]] = {}
+    for line in result.stdout.decode().splitlines():
+        job_id, separator, dependency = line.strip().partition("|")
+        if not separator:
+            continue
+        # dependencies look like `afterok:100(unfulfilled),afterok:101` or `(null)`
+        dependency_ids = re.findall(r"\d+(?:_\d+)?", dependency)
+        if curr_job_id in dependency_ids:
+            dependent_jobs[job_id.strip()] = dependency_ids
 
-    return {entry["JOBID"]: entry["deps"] for entry in dep_jobs}
+    return dependent_jobs
 
 
 def _get_slurm_env_variables() -> dict[str, str | None]:
