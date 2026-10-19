@@ -82,14 +82,17 @@ def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> N
         p.start()
         logger.debug("Starting process %d", p.pid)
 
-    _wait_for_workers(procs, queue_file)
+    _wait_for_workers(procs, queue_file, runner_config.progress_interval)
+    logger.debug("Local runner complete, shutting down.")
     for p in procs:
         logger.debug("Joined %d", p.pid)
 
-    logger.debug("Local runner complete, shutting down.")
 
-
-def _wait_for_workers(procs: list[mp.Process], queue_file: Path) -> None:
+def _wait_for_workers(
+    procs: list[mp.Process],
+    queue_file: Path,
+    progress_interval: float | None = None,
+) -> None:
     """Wait for all the workers, failing the jobs of those which die abnormally.
 
     A worker killed while running a job (out of memory, a crash in a C extension)
@@ -99,7 +102,14 @@ def _wait_for_workers(procs: list[mp.Process], queue_file: Path) -> None:
     logger = logging.getLogger(__name__)
     queue = SqliteQueue(queue_file)
     handled: set[int] = set()
+    last_report = time.monotonic()
     while any(p.is_alive() for p in procs):
+        if (
+            progress_interval is not None
+            and time.monotonic() - last_report >= progress_interval
+        ):
+            last_report = time.monotonic()
+            _log_progress(queue)
         for p in procs:
             if p.pid is None or p.pid in handled or p.is_alive():
                 continue
@@ -117,6 +127,22 @@ def _wait_for_workers(procs: list[mp.Process], queue_file: Path) -> None:
         p.join()
         if p.pid is not None and p.pid not in handled and p.exitcode != 0:
             queue.fail_jobs_of_worker(p.pid)
+
+
+def _log_progress(queue: SqliteQueue) -> None:
+    """Log a one-line progress report of the queue."""
+    report = queue.get_jobs_report()
+    logging.getLogger(__name__).info(
+        "Progress: %d of %d jobs done (%d succeeded, %d failed); "
+        "%d running, %d ready, %d waiting",
+        report.success + report.error,
+        report.total,
+        report.success,
+        report.error,
+        report.running,
+        report.ready,
+        report.pending,
+    )
 
 
 def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:

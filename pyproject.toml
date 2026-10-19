@@ -19,6 +19,7 @@ dependencies = [
 
 [project.scripts]
 pyantz = "pyantz.__main__:main"
+pyantz-status = "pyantz.status:main"
 pyantz-dev = "pyantz.api.dev_server:start_dev_server"
 pyantz-prod = "pyantz.api.backend:start_prod_server"
 
