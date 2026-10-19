@@ -10,6 +10,7 @@ Both jobs support template variables in ``left_side`` and ``right_side``,
 making them useful for dynamic branching based on runtime state.
 """
 
+import math
 import operator
 from typing import TYPE_CHECKING, Literal
 
@@ -19,6 +20,9 @@ from pyantz.infrastructure.config import JobConfig, SubmissionFnType, add_parame
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+# default relative tolerance of "~=": values within one part per million are equal
+DEFAULT_REL_TOL = 1e-6
 
 type ValidOperators = Literal[
     "=",
@@ -43,6 +47,10 @@ class IfElseParams(BaseModel):
 
     comparator: ValidOperators
 
+    # tolerances for the "~=" (approximately equal) comparator, see `math.isclose`
+    rel_tol: float = DEFAULT_REL_TOL
+    abs_tol: float = 0.0
+
     # the "if" part of the job
     if_true: JobConfig
 
@@ -54,9 +62,7 @@ class IfElseParams(BaseModel):
 def if_else(params: IfElseParams, submit_fn: SubmissionFnType) -> bool:
     """Submit a job based on a conditional value."""
     # first compare which one we want to do
-    op = op_mapping[params.comparator]
-
-    if op(params.left_side, params.right_side):
+    if _compare(params):
         submit_fn(
             params.if_true,
         )
@@ -79,6 +85,10 @@ class ConditionalExecution(BaseModel):
 
     comparator: ValidOperators
 
+    # tolerances for the "~=" (approximately equal) comparator, see `math.isclose`
+    rel_tol: float = DEFAULT_REL_TOL
+    abs_tol: float = 0.0
+
     if_true: JobConfig
 
 
@@ -87,16 +97,35 @@ def conditionally_execute(
     params: ConditionalExecution, submit_fn: SubmissionFnType
 ) -> bool:
     """Execute a job iff a condition is true."""
-    op = op_mapping[params.comparator]
-
-    if op(params.left_side, params.right_side):
+    if _compare(params):
         submit_fn(
             params.if_true,
         )
     return True
 
 
-op_mapping: dict[ValidOperators, Callable[..., bool]] = {
+def _compare(params: IfElseParams | ConditionalExecution) -> bool:
+    """Evaluate ``left <comparator> right``.
+
+    ``~=`` means approximately equal: both sides are read as numbers and compared
+    with :func:`math.isclose` using the ``rel_tol`` and ``abs_tol`` parameters.
+    """
+    if params.comparator == "~=":
+        try:
+            return math.isclose(
+                float(params.left_side),
+                float(params.right_side),
+                rel_tol=params.rel_tol,
+                abs_tol=params.abs_tol,
+            )
+        except ValueError:
+            return False  # not numbers, so they cannot be close
+    return op_mapping[params.comparator](params.left_side, params.right_side)
+
+
+op_mapping: dict[
+    ValidOperators, Callable[..., bool]
+] = {  # `~=` is handled in `_compare`
     "=": operator.eq,
     "==": operator.eq,
     "<": operator.lt,
@@ -104,5 +133,4 @@ op_mapping: dict[ValidOperators, Callable[..., bool]] = {
     ">": operator.gt,
     ">=": operator.ge,
     "!=": operator.ne,
-    "~=": operator.ne,
 }
