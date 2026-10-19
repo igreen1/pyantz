@@ -22,7 +22,8 @@ if TYPE_CHECKING:
         SubmissionFnType,
     )
 
-PYANTZ_REGISTERED_FUNCTION: Final[list[JobFunctionType]] = []
+# keyed by name, so registering a function again (a module reload) replaces it
+PYANTZ_REGISTERED_FUNCTION: Final[dict[str, JobFunctionType]] = {}
 
 VIRTUAL_MARKER: Final[str] = "__PYANTZ_VIRTUAL__"
 
@@ -41,10 +42,13 @@ def no_submit_fn[T: (BaseModel | ParametersType)](
 
 
 def get_registered_functions(fn_name: str | None = None) -> list[JobFunctionType]:
-    """Get all the functions which have used the `add_parameters` decorator."""
+    """Get all the functions which have used the `add_parameters` decorator.
+
+    A new list is returned each time, so callers can't change the registry.
+    """
     if fn_name is None:
-        return PYANTZ_REGISTERED_FUNCTION
-    for fn in PYANTZ_REGISTERED_FUNCTION:
+        return list(PYANTZ_REGISTERED_FUNCTION.values())
+    for fn in list(PYANTZ_REGISTERED_FUNCTION.values()):
         registered_name = fn.PYANTZ_NAME  # type: ignore[attr-defined]   # ty:ignore[unresolved-attribute]
         if registered_name.endswith(fn_name):
             return [fn]
@@ -112,7 +116,7 @@ def add_parameters[T: BaseModel](
         _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
         _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker)  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 
-        PYANTZ_REGISTERED_FUNCTION.append(_fn_with_checker)
+        PYANTZ_REGISTERED_FUNCTION[_fn_with_checker.PYANTZ_NAME] = _fn_with_checker  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 
         return _fn_with_checker
 
