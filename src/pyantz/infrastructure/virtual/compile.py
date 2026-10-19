@@ -2,13 +2,22 @@
 
 import graphlib
 from collections.abc import Iterable, Mapping
-from typing import TYPE_CHECKING, Any, TypeAliasType, cast, get_args, get_origin
+from types import UnionType
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    TypeAliasType,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from pydantic import BaseModel, ValidationError
 
 from pyantz.infrastructure.config.abtrast_job import AbstractJobConfig
 from pyantz.infrastructure.config.parameters.decorators import get_parameters
-from pyantz.infrastructure.config.pipeline import JobPipeline
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import (
@@ -100,7 +109,9 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
     singular_job_params, iterable_job_params = joblike_parms
 
     for parm_job_field in singular_job_params:
-        sub_job = job.parameters[parm_job_field]
+        sub_job = job.parameters.get(parm_job_field)
+        if sub_job is None:
+            continue  # optional job parameter that wasn't provided
         sub_job_validated: AnyJobConfig | None = _try_to_validate_job(sub_job)
         if sub_job_validated is None:
             continue  # cannot help this parameter out
@@ -113,7 +124,9 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
             },
         )
     for multi_parm_job_field in iterable_job_params:
-        sub_jobs = job.parameters[multi_parm_job_field]
+        sub_jobs = job.parameters.get(multi_parm_job_field)
+        if sub_jobs is None:
+            continue  # optional job parameter that wasn't provided
         sub_jobs = type(sub_jobs)([_try_to_validate_job(j) for j in sub_jobs])
         job = job.model_copy(
             update={
@@ -186,7 +199,7 @@ def _compile_singular(
     ]
 
 
-def _find_joblike_parameters_with_model(  # noqa: C901
+def _find_joblike_parameters_with_model(
     job: RealJobConfig,
 ) -> tuple[Iterable[str], Iterable[str]] | None:
     """Find parameters which appear to be a job.
@@ -198,11 +211,12 @@ def _find_joblike_parameters_with_model(  # noqa: C901
     single_job_fields: set[str] = set()
     iterable_job_fields: set[str] = set()
     if isinstance(job.parameters, BaseModel):
-        # if parameters have been turned into instance, check types directly
-        for field, value in job.parameters.model_dump().items():
+        # if parameters have been turned into instance, check the values directly
+        for field in type(job.parameters).model_fields:
+            value = getattr(job.parameters, field)
             if isinstance(value, AbstractJobConfig):
                 single_job_fields.add(field)
-            if isinstance(value, Iterable) and all(
+            elif _is_non_empty_iterable(value) and all(
                 isinstance(subval, AbstractJobConfig)
                 for subval in value  # pyright: ignore[reportUnknownVariableType]
             ):
@@ -217,27 +231,61 @@ def _find_joblike_parameters_with_model(  # noqa: C901
         return None
 
     for field, field_type in param_model.model_fields.items():
-        type_ = field_type.annotation
-        if type_ is None or not isinstance(type_, (type, TypeAliasType)):  # pyright: ignore[reportUnnecessaryIsInstance]
-            continue
-
-        if isinstance(type_, TypeAliasType):  # pyright: ignore[reportUnnecessaryIsInstance]
-            if type_ is JobPipeline:
-                iterable_job_fields.add(field)
-            continue
-        if issubclass(type_, (AbstractJobConfig,)):
+        is_single, is_iterable = _classify_job_annotation(field_type.annotation)
+        if is_single:
             single_job_fields.add(field)
-        if (
-            get_origin(type_) is not None
-            and isinstance(get_origin(type_), type)
-            and issubclass(get_origin(type_), Iterable)  # type: ignore  # noqa: PGH003
-            and any(
-                issubclass(type_arg, AbstractJobConfig) for type_arg in get_args(type_)
-            )
-        ):
+        if is_iterable:
             iterable_job_fields.add(field)
 
     return (
         single_job_fields,
         iterable_job_fields,
     )
+
+
+def _is_non_empty_iterable(value: object) -> bool:
+    """Return True for non-empty iterables which aren't strings or mappings."""
+    return (
+        isinstance(value, Iterable)
+        and not isinstance(value, (str, bytes, Mapping))
+        and bool(value)  # pyright: ignore[reportUnknownArgumentType]
+    )
+
+
+def _classify_job_annotation(annotation: Any) -> tuple[bool, bool]:  # noqa: ANN401
+    """Decide whether a type annotation holds a single job or an iterable of jobs.
+
+    Looks through ``Annotated``, type aliases (like ``JobPipeline``), and unions.
+
+    Returns:
+        tuple[bool, bool]: (holds a single job, holds an iterable of jobs)
+
+    """
+    if isinstance(annotation, TypeAliasType):
+        return _classify_job_annotation(annotation.__value__)
+
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+
+    if origin is Annotated:
+        return _classify_job_annotation(args[0])
+    if origin is Union or origin is UnionType:
+        classified = [_classify_job_annotation(arg) for arg in args]
+        return (
+            any(single for single, _ in classified),
+            any(iterable for _, iterable in classified),
+        )
+    if origin is None:
+        is_job = isinstance(annotation, type) and issubclass(
+            annotation, AbstractJobConfig
+        )
+        return is_job, False
+    if (
+        isinstance(origin, type)
+        and issubclass(origin, Iterable)
+        and not issubclass(origin, (str, bytes, Mapping))
+    ):
+        return False, any(
+            _classify_job_annotation(arg)[0] for arg in args if arg is not Ellipsis
+        )
+    return False, False
