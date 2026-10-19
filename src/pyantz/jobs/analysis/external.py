@@ -63,7 +63,7 @@ class ExternalExtractParams(BaseModel):
         self,
         fn: Callable[..., pl.DataFrame | pl.LazyFrame],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -131,7 +131,7 @@ class ExternalSimpleParams(BaseModel):
         self,
         fn: Callable[..., pl.DataFrame | pl.LazyFrame],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -192,7 +192,7 @@ class ExternalAnalysisParams(BaseModel):
         self,
         fn: Callable[..., Any],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 

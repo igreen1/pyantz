@@ -18,7 +18,7 @@ def resolve_parameters(
 
     Args:
         job_parameters (Mapping[str, Any]): parameters to be passed to the function
-        variables (Mapping[str, Any]): variables to put in the paramters
+        variables (Mapping[str, Any]): variables to put in the parameters
 
     Returns:
         Mapping[str, Any]: parameters with the variables eagerly replaced

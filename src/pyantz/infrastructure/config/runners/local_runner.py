@@ -17,13 +17,13 @@ class LocalRunnerConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # used to find out which config is being used for serialiation
+    # used to find out which config is being used for serialization
     type_: Literal["local_proc"] = "local_proc"
 
     # location to save temporary files and the queue
     working_directory: Path
 
-    # how long to wait between each check of the qeue
+    # how long to wait between each check of the queue
     # used while actively pending
     poll_timeout: float = 1.0
 
