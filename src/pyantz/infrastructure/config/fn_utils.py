@@ -17,10 +17,24 @@ if TYPE_CHECKING:
 
 
 def serialize_function(fn: Callable[..., Any]) -> str:
-    """Serialize the function so that others can import it dynamically."""
+    """Serialize the function so that others can import it dynamically.
+
+    Raises:
+        ValueError: if the function can't be imported by name (lambdas and
+            functions defined inside other functions)
+
+    """
     mod_name: str = fn.__module__ if hasattr(fn, "__module__") else "anonymous"
-    fn_name: str = str(fn.__name__) if hasattr(fn, "__name__") else "some_fn"
-    return mod_name + "." + fn_name
+    qualified_name: str = str(
+        getattr(fn, "__qualname__", getattr(fn, "__name__", "some_fn")),
+    )
+    if "<lambda>" in qualified_name or "<locals>" in qualified_name:
+        msg = (
+            f"Function {mod_name}.{qualified_name} is not importable; "
+            "define it at module level"
+        )
+        raise ValueError(msg)
+    return mod_name + "." + qualified_name
 
 
 def import_function_by_name(fn_path: Any) -> JobFunctionType:  # noqa: ANN401
@@ -34,8 +48,18 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
         return key
 
     name_components = key.split(".")
-    mod_name = ".".join(name_components[:-1])
-    fn_name = name_components[-1]
+    # import the longest prefix that is a module and look the rest up on it,
+    # which allows names like `package.module.Class.method`
+    for split in range(len(name_components) - 1, 0, -1):
+        mod_name = ".".join(name_components[:split])
+        try:
+            item: Any = importlib.import_module(mod_name)
+        except ModuleNotFoundError as exc:
+            if exc.name is not None and mod_name.startswith(exc.name):
+                continue  # this prefix isn't a module, so try a shorter one
+            raise
+        for attribute in name_components[split:]:
+            item = getattr(item, attribute)
+        return item
 
-    mod = importlib.import_module(mod_name)
-    return getattr(mod, fn_name)
+    return importlib.import_module(".".join(name_components[:-1]))

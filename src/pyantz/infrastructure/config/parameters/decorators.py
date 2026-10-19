@@ -110,7 +110,14 @@ def add_parameters[T: BaseModel](
         _fn_with_checker.PYANTZ_CHECKED = True  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
         _fn_with_checker.PYANTZ_CHECK_AT_STARTUP = check_at_startup  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
         _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
-        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker)  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+        try:
+            name = serialize_function(_fn_with_checker)
+        except ValueError:
+            # not importable by name (e.g., defined inside a function), so it can
+            # still run in-process but can't be sent to other processes
+            module = getattr(fn, "__module__", "anonymous")
+            name = f"{module}.{getattr(fn, '__qualname__', 'some_fn')}"
+        _fn_with_checker.PYANTZ_NAME = name  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 
         PYANTZ_REGISTERED_FUNCTION.append(_fn_with_checker)
 
