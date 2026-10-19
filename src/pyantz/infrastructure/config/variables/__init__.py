@@ -43,6 +43,15 @@ def resolve_var_any[T](
         a variable was detected but left unchanged.
     """
     if isinstance(some_val, str):
+        # If the entire string is exactly one variable reference, return the raw value
+        # (preserving type) instead of stringifying it.
+        full_match = VARIABLE_REGEX.fullmatch(some_val)
+        if full_match is not None:
+            var_name = full_match.group(1)[2:-1]  # strip %{ and }
+            if var_name in variables:
+                return cast("T", variables[var_name]), False  # type: ignore[return-value]
+            # variable referenced but not present
+            return cast("T", some_val), True  # type: ignore[return-value]
         return cast("tuple[T, bool]", _resolve_var_str(some_val, variables))  # type: ignore[return-value]
     if isinstance(some_val, Mapping):
         resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
