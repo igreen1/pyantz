@@ -33,9 +33,10 @@ A -> B -> C
 
 """
 
+from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, DirectoryPath, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 DEFAULT_JOB_TIMEOUT: int = 10_000  # 2-ish hours
 
@@ -52,7 +53,10 @@ class SlurmRunnerConfig(BaseModel):
 
     slurm_args: list[str] = Field(default_factory=list)
 
-    working_dir: DirectoryPath
+    # directory shared between the submitting node and the compute nodes.
+    # not checked when the config is parsed: with a remote host it only exists there
+    # (it is checked when the slurm runner starts)
+    working_dir: Path
 
     # if some job A depends on job P and job P submits jobs
     # P1 and P2, if inherit_dependencies then A depends on P1 and P2

@@ -33,6 +33,11 @@ def start(config: InitialConfig[SlurmRunnerConfig]) -> None:
     logger = logging.getLogger(__name__)
     logger.debug("Starting slurm with config %s", config)
 
+    working_dir = config.submitter.working_dir
+    if not working_dir.is_dir():
+        msg = f"Slurm working_dir {working_dir} is not an existing directory"
+        raise NotADirectoryError(msg)
+
     # store our global configuration in an environment variable
     _save_slurm_config(config)
     _initial_submit(config)
