@@ -5,6 +5,7 @@ import io
 import logging
 import os
 import subprocess
+import sys
 import uuid
 from graphlib import TopologicalSorter
 from pathlib import Path
@@ -25,6 +26,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 ENTRY_BASH_FILE_PATH = Path(__file__).parent / "run.sh"
+# (not `__name__`, which is `__main__` when this module is run as a script)
+ENTRY_MODULE_NAME = "pyantz.infrastructure.runner.slurm.slurm_runner"
 CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_DIR"
 
 
@@ -202,7 +205,9 @@ def _create_sbatch(
             "sbatch",
             *slurm_args,
             os.fspath(ENTRY_BASH_FILE_PATH),
-            os.fspath(__file__),  # this job is the main entry point!
+            sys.executable,
+            "-m",
+            ENTRY_MODULE_NAME,  # this module is the main entry point of the job!
             "-c",
             os.fspath(file_path),
         ]
