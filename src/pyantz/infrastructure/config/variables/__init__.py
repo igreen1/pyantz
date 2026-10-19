@@ -7,6 +7,9 @@ from typing import Any, cast
 
 VARIABLE_REGEX = re.compile(r"(%{[^%{}]+})")
 
+# maximum nesting of variables referring to other variables
+MAX_RESOLUTION_DEPTH = 32
+
 
 def resolve_parameters(
     job_parameters: Mapping[str, Any],
@@ -84,7 +87,12 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
 
     unmade_change = False
     variable_detected = True
+    passes = 0
     while variable_detected:
+        passes += 1
+        if passes > MAX_RESOLUTION_DEPTH:
+            msg = f"Recursive variable reference while resolving {v!r}"
+            raise ValueError(msg)
         variable_detected = False
         for match in VARIABLE_REGEX.finditer(s):
             start = match.start()
