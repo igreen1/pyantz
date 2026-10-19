@@ -14,8 +14,8 @@ Available jobs:
 
 import json
 import logging
-import re
-from collections.abc import Callable, Iterable, Mapping
+import tempfile
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -29,6 +29,7 @@ from pydantic import (
     field_serializer,
 )
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
 from pyantz.infrastructure.config.fn_utils import (
@@ -36,8 +37,8 @@ from pyantz.infrastructure.config.fn_utils import (
     serialize_function,
 )
 
-# pattern to find backets with an integer in them
-BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
+# indentation of the json files which are written
+JSON_INDENT = 2
 
 
 class _EditJsonLikeParams(BaseModel):
@@ -83,9 +84,9 @@ def edit_yaml(params: EditYamlParams) -> bool:
     try:
         contents = yaml.load(params.file)
         updated_contents = _edit_jsonlike(params, contents)
-        yaml.dump(updated_contents, params.file)
-    except OSError as exc:
-        logger.exception("Error while writing file", exc_info=exc)
+        _write_atomically(params.file, lambda fh: yaml.dump(updated_contents, fh))
+    except (OSError, YAMLError, ValueError) as exc:
+        logger.exception("Error while editing %s", params.file, exc_info=exc)
         return False
     else:
         return True
@@ -107,20 +108,35 @@ def edit_json(params: EditJsonParams) -> bool:
     try:
         with params.file.open("r", encoding="utf-8") as fh:
             contents = json.load(fh)
-    except OSError as exc:
-        logger.exception("Unknown error", exc_info=exc)
-        return False
-
-    updated_contents = _edit_jsonlike(params, contents)
-
-    try:
-        with params.file.open("w", encoding="utf-8") as fh:
-            json.dump(updated_contents, fh)
-    except OSError as exc:
-        logger.exception("Error while writing file", exc_info=exc)
+        updated_contents = _edit_jsonlike(params, contents)
+        _write_atomically(
+            params.file,
+            lambda fh: json.dump(updated_contents, fh, indent=JSON_INDENT),
+        )
+    except (OSError, ValueError, TypeError) as exc:  # ValueError: bad json or field
+        logger.exception("Error while editing %s", params.file, exc_info=exc)
         return False
     else:
         return True
+
+
+def _write_atomically(path: Path, write: Callable[[Any], object]) -> None:
+    """Write via a temporary file so that a failure leaves the original intact."""
+    with tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        dir=path.parent,
+        prefix=path.name,
+        suffix=".tmp",
+        delete=False,
+    ) as tmp:
+        try:
+            write(tmp)
+        except BaseException:
+            tmp.close()
+            Path(tmp.name).unlink(missing_ok=True)
+            raise
+    Path(tmp.name).replace(path)
 
 
 def _edit_jsonlike(params: _EditJsonLikeParams, contents: JsonValue) -> JsonValue:
@@ -250,10 +266,13 @@ def _json_editor_factory(  # noqa: C901
         # handle escape '.', which are not counted as splitting
         prev: int | None = None
         for i in reversed(range(len(field_components))):
-            if field_components[i][-1] == "\\":
+            if field_components[i].endswith("\\"):
                 prev_str = field_components.pop(prev) if prev is not None else ""
                 field_components[i] = field_components[i][:-1] + "." + prev_str
             prev = i
+        if not all(field_components):
+            msg = f"Invalid field {field!r}: it has an empty part (check the dots)"
+            raise ValueError(msg)
         return field_components
 
     def edit_list(
@@ -261,7 +280,7 @@ def _json_editor_factory(  # noqa: C901
     ) -> list[JsonValue]:
         """Edit the value as a list."""
         curr_key = curr_key[1:-1]  # strip []
-        if not isinstance(val, Iterable):
+        if not isinstance(val, list):
             return [
                 edit_any({}, field_components=field_components, new_value=new_value)
             ]
@@ -274,17 +293,17 @@ def _json_editor_factory(  # noqa: C901
         curr_idx = int(curr_key)
         if curr_idx < 0:
             return [
-                edit_any({}, field_components=field_components, new_value=new_value),  # type: ignore  # noqa: PGH003
+                edit_any({}, field_components=field_components, new_value=new_value),
                 *val_as_list,
             ]
         if curr_idx >= len(val_as_list):
             return [
                 *val_as_list,
-                edit_any({}, field_components=field_components, new_value=new_value),  # type: ignore  # noqa: PGH003
+                edit_any({}, field_components=field_components, new_value=new_value),
             ]
         return [
             *val_as_list[:curr_idx],
-            edit_any(val_as_list[curr_idx], field_components, new_value),  # type: ignore  # noqa: PGH003
+            edit_any(val_as_list[curr_idx], field_components, new_value),
             *val_as_list[curr_idx + 1 :],
         ]
 
@@ -295,15 +314,13 @@ def _json_editor_factory(  # noqa: C901
         field_components: list[str],
     ) -> Mapping[str, Any]:
         """Edit the map."""
-        if not isinstance(val, Mapping):
-            val = {}  # overwrite always
-        old_val = val.get(curr_key, {})
-        return {
-            **{k: v for k, v in val.items() if k != curr_key},
-            curr_key: edit_any(  # type: ignore  # noqa: PGH003
-                old_val, field_components, new_value
-            ),
-        }
+        current: Mapping[str, Any] = val if isinstance(val, Mapping) else {}
+        edited = edit_any(current.get(curr_key, {}), field_components, new_value)  # type: ignore  # noqa: PGH003
+        if isinstance(current, MutableMapping):
+            # edit in place: keeps the order of the keys and, for yaml, the comments
+            current[curr_key] = edited
+            return current
+        return {**current, curr_key: edited}
 
     def edit_any(
         val: JsonValue, field_components: list[str], new_value: JsonValue
