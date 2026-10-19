@@ -57,7 +57,8 @@ def run_container(config: InitialConfig[Any]) -> None:
                     fh.write(chunk)
                 fh.seek(0)
                 with tarfile.open(fileobj=fh, mode="r:*") as tf:
-                    tf.extractall(host_config.output_dir)  # noqa: S202
+                    # the "data" filter refuses paths outside of the output directory
+                    tf.extractall(host_config.output_dir, filter="data")
 
     finally:
         container.remove()
