@@ -166,8 +166,15 @@ def excel_to_csv(params: FromExcelToCsvParameters) -> bool:
         pl.read_excel(params.excel_file, sheet_name=params.sheet_name).write_csv(
             params.csv_file
         )
+    except ImportError as exc:
+        logger.exception(
+            "Reading excel files needs the 'fastexcel' package: "
+            "install it with `pip install pyantz[excel]`",
+            exc_info=exc,
+        )
+        return False
     except Exception as exc:
-        logger.exception("Error in CSV->PARQUET", exc_info=exc)
+        logger.exception("Error in Excel->CSV", exc_info=exc)
         return False
     else:
         return True
