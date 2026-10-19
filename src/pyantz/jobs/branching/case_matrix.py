@@ -11,14 +11,15 @@ also creates per-run output directories and injects ``output_dir`` and
 """
 
 import itertools
+import math
 import os
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from pyantz.infrastructure.config import (
     JobConfig,
@@ -32,6 +33,9 @@ from pyantz.infrastructure.runner.job_manager import JobVariables
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+# values of float ranges are rounded to this many places to hide float noise
+FLOAT_DECIMALS = 12
 
 
 class CaseMatrixExpansionParams(BaseModel):
@@ -49,7 +53,7 @@ class CaseMatrixExpansionParams(BaseModel):
 
 
 class ContinuousRange[S: int | float](BaseModel):
-    """Range of values like numpy arange."""
+    """Range of values like numpy arange: ``min_value`` up to, excluding, the max."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -59,12 +63,25 @@ class ContinuousRange[S: int | float](BaseModel):
 
     step: S
 
+    @model_validator(mode="after")
+    def _check_step_is_positive(self) -> Self:
+        """Ensure that the range makes progress, instead of looping forever."""
+        if self.step <= 0:  # type: ignore[operator]
+            msg = f"step must be greater than 0, got {self.step}"
+            raise ValueError(msg)
+        return self
+
     def get_values(self) -> Generator[S]:
-        """Generate values from this range."""
-        curr_value: S = self.min_value
-        while curr_value < self.max_value:  # type: ignore[operator]
-            yield curr_value
-            curr_value += self.step  # type: ignore[assignment,operator] # ty: ignore[unsupported-operator]
+        """Generate values from this range.
+
+        Each value is computed as ``min_value + i * step`` (rather than by repeatedly
+        adding the step) so floating point errors don't build up.
+        """
+        # the epsilon stops 0.7/0.1-style rounding noise from including the max
+        count = math.ceil((self.max_value - self.min_value) / self.step - 1e-9)  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+        for index in range(max(count, 0)):
+            value = self.min_value + index * self.step  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+            yield round(value, FLOAT_DECIMALS) if isinstance(value, float) else value  # type: ignore[misc]  # ty: ignore[invalid-yield]
 
 
 class DiscreteRange[S](BaseModel):
@@ -72,7 +89,18 @@ class DiscreteRange[S](BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    possible_values: set[S]
+    # values are used in the order given, with repeated values removed
+    possible_values: list[S]
+
+    @field_validator("possible_values", mode="after")
+    @classmethod
+    def _remove_repeats(cls, values: list[S]) -> list[S]:
+        """Drop repeated values keeping the first of each (works for unhashable)."""
+        unique: list[S] = []
+        for value in values:
+            if value not in unique:
+                unique.append(value)
+        return unique
 
     def get_values(self) -> Generator[S]:
         """Generate values from the user defined range."""
@@ -94,7 +122,7 @@ class CaseMatrixCreator(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    variables: Mapping[str, VariableDefinition]
+    variables: Mapping[str, VariableDefinition] = Field(min_length=1)
 
     # parquet file to save to
     save_file: str
@@ -175,6 +203,7 @@ def create_case_matrix(
         left = left.join(
             right,
             how="cross",
+            maintain_order="left_right",
         )
 
     left.sink_parquet(params.save_file)
