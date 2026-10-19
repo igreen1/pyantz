@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING, Any, cast
 
 import docker
 
-from ._transfers import get_cmd, get_project_dir, get_setup_tar
+from ._transfers import (
+    DEFAULT_CONTAINER_WORKING_DIR,
+    get_cmd,
+    get_project_dir,
+    get_setup_tar,
+)
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import ContainerConfig, InitialConfig
@@ -24,22 +29,24 @@ def run_container(config: InitialConfig[Any]) -> None:
 
     host_config: ContainerConfig = cast("ContainerConfig", config.host)
 
+    working_dir = host_config.working_dir or DEFAULT_CONTAINER_WORKING_DIR
+
     client = docker.from_env()
     addl_req = []
     if host_config.copy_project_dir:
         addl_req = ["--with", "/pyantz"]
-    cmd = get_cmd(host_config, addl_req)
+    cmd = get_cmd(host_config, working_dir, addl_req)
     container = client.containers.create(
         image=host_config.image,
         name=host_config.name,
-        working_dir=host_config.working_dir,
+        working_dir=working_dir,
         detach=True,
         command=cmd,
     )
 
     try:
         _copy_success = container.put_archive(  # pyright: ignore[reportUnknownMemberType]
-            f"{host_config.working_dir}/",
+            f"{working_dir}/",
             get_setup_tar(config, host_config),
         )
         if host_config.copy_project_dir:
@@ -51,7 +58,7 @@ def run_container(config: InitialConfig[Any]) -> None:
         _result = container.wait()
 
         if host_config.output_dir:
-            bits, _stat = container.get_archive(host_config.working_dir + "/")
+            bits, _stat = container.get_archive(working_dir + "/")
             with tempfile.TemporaryFile(mode="wb+") as fh:
                 for chunk in bits:
                     fh.write(chunk)
