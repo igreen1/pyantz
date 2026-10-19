@@ -6,6 +6,7 @@ from typing import Annotated, Any, Literal, Self, cast
 from pydantic import (
     BeforeValidator,
     ConfigDict,
+    Field,
     WithJsonSchema,
     field_serializer,
     model_validator,
@@ -55,6 +56,10 @@ class JobConfig(AbstractJobConfig):
     # when error recovering a job should hold how many times its been
     # retried so the runner can decide whether to try to restart it
     num_attempted_runs: int = 0
+
+    # if set, the local runner stops the job (and marks it as failed) after it has
+    # been running this many seconds. The job then runs in its own process
+    timeout_seconds: float | None = Field(default=None, gt=0)
 
     # denotes that this a concrete job
     # makes introspection easier/faster at runtime.
