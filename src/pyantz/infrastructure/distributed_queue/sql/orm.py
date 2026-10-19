@@ -68,5 +68,8 @@ class StatusTable(Base):
     job_id: Mapped[str] = mapped_column(primary_key=True)
     job_status: Mapped[int]
 
+    # the worker (its process id) which is running the job, while it is RUNNING
+    worker_id: Mapped[int | None] = mapped_column(default=None)
+
 
 # pylint: enable=too-few-public-methods
