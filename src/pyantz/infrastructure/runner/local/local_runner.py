@@ -1,7 +1,10 @@
 """A local runner executes code on the device."""
 
+import contextlib
 import logging
 import multiprocessing as mp
+import signal
+import threading
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -19,8 +22,12 @@ from pyantz.infrastructure.distributed_queue.common.return_types import (
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
 from pyantz.infrastructure.runner.job_manager import run_job
 
+# seconds workers get to mark their job as failed before being killed
+WORKER_STOP_TIMEOUT = 10.0
+
 if TYPE_CHECKING:
     import uuid
+    from collections.abc import Generator
     from pathlib import Path
 
 
@@ -48,11 +55,12 @@ def _run_within_same_proc(
     Mostly used for testing.
     """
     runner_config = config.submitter
-    _worker(
-        queue_file=queue_file,
-        poll_time=runner_config.poll_timeout,
-        timeout=runner_config.timeout,
-    )
+    with _sigterm_as_keyboard_interrupt():
+        _worker(
+            queue_file=queue_file,
+            poll_time=runner_config.poll_timeout,
+            timeout=runner_config.timeout,
+        )
 
 
 def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> None:
@@ -63,7 +71,7 @@ def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> N
     logger.debug("Starting local runners")
     procs = [
         mp.Process(
-            target=_worker,
+            target=_worker_process,
             args=(
                 queue_file,
                 runner_config.poll_timeout,
@@ -78,11 +86,66 @@ def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> N
         p.start()
         logger.debug("Starting process %d", p.pid)
 
-    for p in procs:
-        p.join()
-        logger.debug("Joined %d", p.pid)
+    try:
+        with _sigterm_as_keyboard_interrupt():
+            for p in procs:
+                p.join()
+                logger.debug("Joined %d", p.pid)
+    except KeyboardInterrupt:
+        logger.warning("Interrupted, stopping %d worker processes", len(procs))
+        _stop_workers(procs)
+        raise
 
     logger.debug("Local runner complete, shutting down.")
+
+
+def _stop_workers(procs: list[mp.Process]) -> None:
+    """Ask the workers to stop (they mark their job as failed), then force them."""
+    for p in procs:
+        if p.is_alive():
+            p.terminate()
+    for p in procs:
+        p.join(timeout=WORKER_STOP_TIMEOUT)
+        if p.is_alive():
+            p.kill()
+            p.join()
+
+
+@contextlib.contextmanager
+def _sigterm_as_keyboard_interrupt() -> Generator[None]:
+    """Treat SIGTERM like Ctrl+C while inside the context (main thread only)."""
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _handler(_signum: int, _frame: object) -> None:
+        raise KeyboardInterrupt
+
+    previous = signal.signal(signal.SIGTERM, _handler)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, previous)
+
+
+class WorkerTerminatedError(BaseException):
+    """Raised inside a worker process when it is asked to terminate (SIGTERM).
+
+    Deliberately not an ``Exception`` so that job code cannot swallow it.
+    """
+
+
+def _worker_process(queue_file: Path, poll_time: float, timeout: float | None) -> None:
+    """Entry point of a worker process in the pool."""
+
+    def _handler(_signum: int, _frame: object) -> None:
+        raise WorkerTerminatedError
+
+    signal.signal(signal.SIGTERM, _handler)
+    try:
+        _worker(queue_file, poll_time, timeout)
+    except KeyboardInterrupt, WorkerTerminatedError:
+        logging.getLogger(__name__).warning("Worker process interrupted, exiting")
 
 
 def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:
@@ -139,6 +202,13 @@ def _worker(
                 except Exception as exc:
                     logger.exception("Unknown error in job!", exc_info=exc)
                     result = False
+                except KeyboardInterrupt, WorkerTerminatedError:
+                    # don't leave the job RUNNING forever
+                    logger.warning(
+                        "Interrupted while running job %s", job_config.job_id
+                    )
+                    queue.update_job_status(job_config.job_id, status=JobStatus.ERROR)
+                    raise
                 status = JobStatus.SUCCESS if result else JobStatus.ERROR
                 queue.update_job_status(job_config.job_id, status=status)
                 timeout_ctr = 0.0  # reset timer, we got and did a job :)
