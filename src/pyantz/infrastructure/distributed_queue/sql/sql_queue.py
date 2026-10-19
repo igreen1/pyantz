@@ -1,6 +1,7 @@
 """Queue running with sql."""
 
 import contextlib
+import logging
 import os
 import sqlite3
 from itertools import batched
@@ -68,6 +69,23 @@ class SqliteQueue(QueueInterface):
 
         """
         self._update_job_statuses()
+        while True:
+            result = self._try_dequeue()
+            # None means a job was dequeued but could not be loaded;
+            # it has been failed, so try again with the next job
+            if result is not None:
+                return result
+
+    def _try_dequeue(self) -> GetJobReturn | None:
+        """Dequeue the next READY job and mark it RUNNING in one transaction.
+
+        Returns:
+            GetJobReturn | None: the result of the dequeue, or None if the job
+                dequeued had a config which could not be loaded. That job is
+                marked ERROR rather than being lost.
+
+        """
+        logger = logging.getLogger(__name__)
         with Session(self._engine) as sesh:
             # get READY jobs
             ready_jobs_query = sa.select(StatusTable.job_id).where(
@@ -97,14 +115,24 @@ class SqliteQueue(QueueInterface):
                 .returning(JobQueue)
             )
             result = sesh.execute(stmt).first()
-            sesh.flush()
             job_id: str | None = result[0].job_id if result is not None else None
 
             if job_id is None:
                 return self._check_empty_type(sesh)
-            return GetJobReturn(
-                payload=self._get_job_config(sesh, job_id),
-            )
+
+            # the job is out of the queue, so it must not stay READY: a crash
+            # before the worker reports back would otherwise lose it silently
+            set_status = sa.update(StatusTable).where(StatusTable.job_id == job_id)
+            sesh.execute(set_status.values(job_status=JobStatus.RUNNING))
+            try:
+                payload = self._get_job_config(sesh, job_id)
+            except Exception:
+                logger.exception("Unable to load config of job %s", job_id)
+                sesh.execute(set_status.values(job_status=JobStatus.ERROR))
+                sesh.commit()
+                return None
+            sesh.commit()
+            return GetJobReturn(payload=payload)
 
     @staticmethod
     def _get_job_config(sesh: Session, job_id: str) -> JobReturn:
@@ -126,7 +154,6 @@ class SqliteQueue(QueueInterface):
             msg = f"Cannot get chunks for config {job_id}"
             raise RuntimeError(msg)
         contents = "".join(content_row)
-        sesh.commit()
 
         job_config = JobWithContext.model_validate_json(contents)
         return JobReturn(job=job_config)
