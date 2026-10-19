@@ -25,7 +25,10 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 ENTRY_BASH_FILE_PATH = Path(__file__).parent / "run.sh"
-CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_DIR"
+# holds the path of a *file* (the saved slurm runner config), not a directory.
+# It is only passed on to jobs through the environment (`--export=ALL`), so
+# prefer passing the path explicitly where possible
+CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_FILE"
 
 
 def start(config: InitialConfig[SlurmRunnerConfig]) -> None:
