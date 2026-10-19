@@ -19,6 +19,32 @@ from ._transfers import get_cmd, get_project_dir, get_setup_tar
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
 
+# where the output of a background run is written, in the remote working directory
+REMOTE_LOG_FILE = "pyantz.log"
+
+
+def _build_remote_command(host_config: SshConfig) -> list[str]:
+    """Build the command (as words) which runs pyantz on the remote."""
+    logger = logging.getLogger(__name__)
+    addl_requirements: list[str] = []
+    if host_config.copy_project_dir:
+        addl_requirements = ["--with", f"{host_config.working_dir}/pyantz"]
+    cmd = get_cmd(host_config, addl_requirements)
+    if host_config.run_async:
+        cmd.insert(0, "nohup")  # let our ssh client terminate
+        # without redirecting its output, the ssh channel stays open until the
+        # background process exits, which makes reading the output block
+        cmd.extend([">", REMOTE_LOG_FILE, "2>&1", "<", "/dev/null", "&"])
+        logger.info(
+            "Running in the background; output goes to %s/%s on %s",
+            host_config.working_dir,
+            REMOTE_LOG_FILE,
+            host_config.remote_host,
+        )
+    cmd = ["cd", host_config.working_dir, "&&", *cmd]
+    logger.debug("Will run the following on %s: cmd=%s", host_config.remote_host, cmd)
+    return cmd
+
 
 def run_ssh(config: InitialConfig[Any]) -> None:
     """Copy our files to a remote and run."""
@@ -49,7 +75,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
-
 
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
@@ -104,16 +129,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
         )
     logger.debug("Starting remote command")
     # actually run our command to run pyantz!
-    addl_requirements = []
-    if host_config.copy_project_dir:
-        addl_requirements = ["--with", f"{host_config.working_dir}/pyantz"]
-    cmd = get_cmd(host_config, addl_requirements)
-    if host_config.run_async:
-        cmd.insert(0, "nohup")  # let our ssh client terminate
-        cmd.append("&")
-    cd_cmd = ["cd", host_config.working_dir]
-    cmd = [*cd_cmd, "&&", *cmd]
-    logger.debug("Will run the following on %s: cmd=%s", host_config.remote_host, cmd)
+    cmd = _build_remote_command(host_config)
     _, stdout, stderr = ssh.exec_command(" ".join(cmd))
     logger.debug(
         "Output from command:\n\tstdout=%s\n\tstderr=%s",
@@ -124,7 +140,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            raise RuntimeError  # checked by validation of model, just for type checking
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
@@ -133,5 +149,5 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )
