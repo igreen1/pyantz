@@ -8,13 +8,14 @@ setup tarball via SFTP, extracts it, and runs ``uvx pyantz config.json``
 import getpass
 import logging
 import os
+import shlex
 import subprocess
 import tempfile
 from typing import TYPE_CHECKING, Any, cast
 
 import paramiko
 
-from ._transfers import get_cmd, get_project_dir, get_setup_tar
+from ._transfers import get_cmd, get_environment, get_project_dir, get_setup_tar
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
@@ -49,7 +50,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
-
 
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
@@ -108,6 +108,13 @@ def run_ssh(config: InitialConfig[Any]) -> None:
     if host_config.copy_project_dir:
         addl_requirements = ["--with", f"{host_config.working_dir}/pyantz"]
     cmd = get_cmd(host_config, addl_requirements)
+    environment = get_environment(host_config)
+    if environment:
+        cmd = [
+            "env",
+            *(shlex.quote(f"{name}={value}") for name, value in environment.items()),
+            *cmd,
+        ]
     if host_config.run_async:
         cmd.insert(0, "nohup")  # let our ssh client terminate
         cmd.append("&")
@@ -124,7 +131,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            raise RuntimeError  # checked by validation of model, just for type checking
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
@@ -133,5 +140,5 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )

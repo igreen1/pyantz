@@ -35,7 +35,9 @@ class RemoteConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # if set, read in a file of environment variables
+    # if set, a file on *this* machine with `KEY=VALUE` lines (blank lines and
+    # `#` comments are ignored) which is read and sent as environment variables
+    # of the remote command. Variables in `environment_variables` take precedence
     environment_variables_file: str | None = None
 
     # if set, the working directory from the remote
@@ -56,7 +58,8 @@ class RemoteConfig(BaseModel):
     # after connecting to the remote, what host to use there
     subsequent_host: ContainerConfig | HostConfig | LocalConfig = LocalConfig()
 
-    # pass a list of environment variables to be set in the container
+    # environment variables to set for the command run on the remote host
+    # (for containers, in the container)
     environment_variables: Mapping[str, str] = Field(default_factory=dict)
 
 

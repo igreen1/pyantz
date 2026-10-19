@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import docker
 
-from ._transfers import get_cmd, get_project_dir, get_setup_tar
+from ._transfers import get_cmd, get_environment, get_project_dir, get_setup_tar
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import ContainerConfig, InitialConfig
@@ -35,6 +35,7 @@ def run_container(config: InitialConfig[Any]) -> None:
         working_dir=host_config.working_dir,
         detach=True,
         command=cmd,
+        environment=get_environment(host_config),
     )
 
     try:
