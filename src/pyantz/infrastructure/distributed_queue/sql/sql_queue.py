@@ -247,31 +247,29 @@ class SqliteQueue(QueueInterface):
             sesh.execute(delete_jobs_from_queue_query)
             sesh.execute(job_statuses_that_depend_on_failed_job)
 
-            # update jobs to ready if depends on jobs with success
-            success_jobs: sa.Select[Any] = sa.Select(StatusTable.job_id).where(  # pyright: ignore[reportUnknownVariableType]
-                StatusTable.job_status == JobStatus.SUCCESS,
+            # a PENDING job becomes READY only once *every* dependency is SUCCESS.
+            # A dependency on an unknown job (NULL status) keeps the job pending.
+            jobs_with_unfinished_dep = (
+                sa.select(DependencyTable.job_id)
+                .join(
+                    StatusTable,
+                    StatusTable.job_id == DependencyTable.depends_on,
+                    isouter=True,
+                )
+                .where(
+                    sa.or_(
+                        StatusTable.job_status.is_(None),
+                        StatusTable.job_status != JobStatus.SUCCESS,
+                    ),
+                )
             )
-            jobs_depending_on_success = sa.select(DependencyTable.job_id).where(
-                DependencyTable.depends_on.in_(success_jobs),
-            )
-
-            update_pending_jobs_depending_on_success = (
-                sa.update(StatusTable)
-                .where(StatusTable.job_id.in_(jobs_depending_on_success))
-                .where(StatusTable.job_status == JobStatus.PENDING)
-                .values(job_status=JobStatus.READY)
-            )
-            sesh.execute(update_pending_jobs_depending_on_success)
-
-            # update jobs with no dependency
-            jobs_with_deps = sa.select(sa.func.distinct(DependencyTable.job_id))
-            update_query = (
+            promote_ready_jobs = (
                 sa.update(StatusTable)
                 .where(StatusTable.job_status == JobStatus.PENDING)
-                .where(StatusTable.job_id.not_in(jobs_with_deps))
+                .where(StatusTable.job_id.not_in(jobs_with_unfinished_dep))
                 .values(job_status=JobStatus.READY)
             )
-            sesh.execute(update_query)
+            sesh.execute(promote_ready_jobs)
             sesh.commit()
 
     def update_job_status(
