@@ -78,11 +78,37 @@ def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> N
         p.start()
         logger.debug("Starting process %d", p.pid)
 
+    _join_with_progress(procs, queue_file, runner_config.progress_interval)
+    logger.debug("Local runner complete, shutting down.")
+
+
+def _join_with_progress(
+    procs: list[mp.Process],
+    queue_file: Path,
+    interval: float | None,
+) -> None:
+    """Wait for the workers, logging a progress report every *interval* seconds."""
+    logger = logging.getLogger(__name__)
+    if interval is not None:
+        queue = SqliteQueue(queue_file)
+        while any(p.is_alive() for p in procs):
+            next(p for p in procs if p.is_alive()).join(timeout=interval)
+            if any(p.is_alive() for p in procs):
+                report = queue.get_jobs_report()
+                logger.info(
+                    "Progress: %d of %d jobs done (%d succeeded, %d failed); "
+                    "%d running, %d ready, %d waiting",
+                    report.success + report.error,
+                    report.total,
+                    report.success,
+                    report.error,
+                    report.running,
+                    report.ready,
+                    report.pending,
+                )
     for p in procs:
         p.join()
         logger.debug("Joined %d", p.pid)
-
-    logger.debug("Local runner complete, shutting down.")
 
 
 def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:

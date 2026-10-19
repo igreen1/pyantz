@@ -155,6 +155,16 @@ class SqliteQueue(QueueInterface):
         return GetJobReturn(payload=CompleteReturn(jobs_report=jobs_report))
         # all jobs are ERROR or SUCCESS
 
+    def get_job_ids_with_status(self, status: JobStatus) -> list[str]:
+        """Get the ids of the jobs which currently have the status, sorted."""
+        with Session(self._engine) as sesh:
+            rows = sesh.execute(
+                sa.select(StatusTable.job_id)
+                .where(StatusTable.job_status == status)
+                .order_by(StatusTable.job_id),
+            )
+            return [row[0] for row in rows]
+
     def get_jobs_report(self) -> JobsReport:
         """Get the jobs report.
 

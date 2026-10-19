@@ -34,6 +34,10 @@ class LocalRunnerConfig(BaseModel):
     # not received in a certain time
     timeout: float | None = None
 
+    # with several worker processes, log a progress report this often (in seconds);
+    # None turns the reports off
+    progress_interval: float | None = 30.0
+
     # if true, use this process rather than a pool
     # default to running locally for pytest (easier debugging and faster for small jobs)
     # run in a separate process for users
