@@ -95,3 +95,10 @@ push = true
 "src/pyantz/__init__.py" = [
     '^__version__ = "{version}"$',
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "docker: needs a docker daemon (skipped when there is none)",
+    "ssh: needs an ssh server (skipped when it can't be reached)",
+    "slow: takes more than a few seconds",
+]

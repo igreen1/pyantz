@@ -2,6 +2,7 @@
 
 import logging
 import multiprocessing as mp
+import os
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -19,13 +20,16 @@ from pyantz.infrastructure.distributed_queue.common.return_types import (
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
 from pyantz.infrastructure.runner.job_manager import run_job
 
+# how often the pool checks whether a worker died
+DEATH_CHECK_SECONDS = 0.2
+
 if TYPE_CHECKING:
     import uuid
     from pathlib import Path
 
 
 def start(config: InitialConfig[LocalRunnerConfig]) -> None:
-    """Start the lcoal runner processes."""
+    """Start the local runner processes."""
     logger = logging.getLogger(__name__)
 
     queue_file = config.submitter.working_directory / "queue.db"
@@ -78,37 +82,67 @@ def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> N
         p.start()
         logger.debug("Starting process %d", p.pid)
 
-    _join_with_progress(procs, queue_file, runner_config.progress_interval)
+    _wait_for_workers(procs, queue_file, runner_config.progress_interval)
     logger.debug("Local runner complete, shutting down.")
+    for p in procs:
+        logger.debug("Joined %d", p.pid)
 
 
-def _join_with_progress(
+def _wait_for_workers(
     procs: list[mp.Process],
     queue_file: Path,
-    interval: float | None,
+    progress_interval: float | None = None,
 ) -> None:
-    """Wait for the workers, logging a progress report every *interval* seconds."""
+    """Wait for all the workers, failing the jobs of those which die abnormally.
+
+    A worker killed while running a job (out of memory, a crash in a C extension)
+    can never report back, so its job would stay RUNNING and the other workers
+    would wait for it forever.
+    """
     logger = logging.getLogger(__name__)
-    if interval is not None:
-        queue = SqliteQueue(queue_file)
-        while any(p.is_alive() for p in procs):
-            next(p for p in procs if p.is_alive()).join(timeout=interval)
-            if any(p.is_alive() for p in procs):
-                report = queue.get_jobs_report()
-                logger.info(
-                    "Progress: %d of %d jobs done (%d succeeded, %d failed); "
-                    "%d running, %d ready, %d waiting",
-                    report.success + report.error,
-                    report.total,
-                    report.success,
-                    report.error,
-                    report.running,
-                    report.ready,
-                    report.pending,
+    queue = SqliteQueue(queue_file)
+    handled: set[int] = set()
+    last_report = time.monotonic()
+    while any(p.is_alive() for p in procs):
+        if (
+            progress_interval is not None
+            and time.monotonic() - last_report >= progress_interval
+        ):
+            last_report = time.monotonic()
+            _log_progress(queue)
+        for p in procs:
+            if p.pid is None or p.pid in handled or p.is_alive():
+                continue
+            handled.add(p.pid)
+            if p.exitcode != 0:
+                failed = queue.fail_jobs_of_worker(p.pid)
+                logger.error(
+                    "Worker %d died (exit code %s); failed its jobs: %s",
+                    p.pid,
+                    p.exitcode,
+                    failed,
                 )
+        time.sleep(DEATH_CHECK_SECONDS)
     for p in procs:
         p.join()
-        logger.debug("Joined %d", p.pid)
+        if p.pid is not None and p.pid not in handled and p.exitcode != 0:
+            queue.fail_jobs_of_worker(p.pid)
+
+
+def _log_progress(queue: SqliteQueue) -> None:
+    """Log a one-line progress report of the queue."""
+    report = queue.get_jobs_report()
+    logging.getLogger(__name__).info(
+        "Progress: %d of %d jobs done (%d succeeded, %d failed); "
+        "%d running, %d ready, %d waiting",
+        report.success + report.error,
+        report.total,
+        report.success,
+        report.error,
+        report.running,
+        report.ready,
+        report.pending,
+    )
 
 
 def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:
@@ -160,6 +194,7 @@ def _worker(
             case JobReturn(job=job_config):
                 # set job to running
                 queue.update_job_status(job_config.job_id, status=JobStatus.RUNNING)
+                queue.set_job_worker(job_config.job_id, os.getpid())
                 try:
                     result = run_job(job_config, submit_fn)
                 except Exception as exc:
