@@ -30,12 +30,59 @@ def add_to_tar_file(contents: str, name: str, tar: tarfile.TarFile) -> None:
     tar.addfile(content_info, io.BytesIO(content_encoded))
 
 
+# directories (at any depth) and file patterns which are never copied
+EXCLUDED_DIRECTORIES = frozenset(
+    {
+        ".git",
+        ".venv",
+        "node_modules",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "dist",
+        "build",
+    },
+)
+EXCLUDED_SUFFIXES = (".db", ".db-wal", ".db-shm", ".pyc")
+
+
+def find_project_root(start: Path) -> Path:
+    """Find the project root: the closest parent of *start* with a pyproject.toml.
+
+    Raises:
+        FileNotFoundError: if there is none (for example, when pyantz was installed
+            as a package rather than run from a source checkout)
+
+    """
+    for parent in (start, *start.parents):
+        if (parent / "pyproject.toml").is_file():
+            return parent
+    msg = (
+        f"Cannot copy the project directory: no pyproject.toml found in {start} "
+        "or its parents (copy_project_dir needs a source checkout of pyantz)"
+    )
+    raise FileNotFoundError(msg)
+
+
+def _exclude_unneeded(info: tarfile.TarInfo) -> tarfile.TarInfo | None:
+    """Skip version control, environments, caches, databases and build outputs."""
+    parts = info.name.split("/")
+    if EXCLUDED_DIRECTORIES.intersection(parts) or info.name.endswith(
+        EXCLUDED_SUFFIXES,
+    ):
+        return None
+    return info
+
+
 def get_project_dir() -> io.BytesIO:
-    """Copy the project directory in its entirety."""
+    """Copy the project directory, without environments, caches and VCS files."""
     out = io.BytesIO()
     with tarfile.open(fileobj=out, mode="w:gz") as tf:
         tf.add(
-            Path(__file__).parent.parent.parent.parent.parent.parent, arcname="pyantz"
+            find_project_root(Path(__file__).resolve().parent),
+            arcname="pyantz",
+            filter=_exclude_unneeded,
         )
     out.seek(0)
     return out
