@@ -13,6 +13,7 @@ from pydantic import BaseModel, BeforeValidator, Field
 
 from pyantz.infrastructure.virtual import compile_virtual
 
+from .graph_validation import find_graph_problems
 from .host_config import HostConfig, LocalConfig
 from .job import JobConfig, make_job
 from .runners import LocalRunnerConfig, SlurmRunnerConfig
@@ -37,7 +38,12 @@ def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
         Flat list of compiled :class:`~pyantz.infrastructure.config.job.JobConfig`
         instances with all virtual jobs expanded.
     """
-    return compile_virtual(list(map(make_job, jobs)))
+    job_configs = list(map(make_job, jobs))
+    problems = find_graph_problems(job_configs)
+    if problems:
+        msg = "Invalid jobs:\n- " + "\n- ".join(problems)
+        raise ValueError(msg)
+    return compile_virtual(job_configs)
 
 
 class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
@@ -57,6 +63,4 @@ class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
 
     def with_new_host(self, new_host: HostConfig) -> Self:
         """Return this configuration with a new host setup."""
-        return self.model_copy(update={
-            "host": new_host
-        })
+        return self.model_copy(update={"host": new_host})
