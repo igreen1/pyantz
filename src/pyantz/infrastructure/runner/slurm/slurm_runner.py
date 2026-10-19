@@ -5,6 +5,7 @@ import io
 import logging
 import os
 import subprocess
+import sys
 import uuid
 from graphlib import TopologicalSorter
 from pathlib import Path
@@ -318,8 +319,12 @@ def _load_job_config() -> JobWithContext:
     )
 
 
-def _run_on_node() -> None:
-    """Run the job on this node."""
+def _run_on_node() -> bool:
+    """Run the job on this node.
+
+    Returns:
+        bool: True if the job succeeded
+    """
     job_config = _load_job_config()
     slurm_config = _load_slurm_config()
 
@@ -334,9 +339,10 @@ def _run_on_node() -> None:
         """Adapter that ignores the parent_id, using the SLURM env var instead."""
         submit_fn(job_to_submit)
 
-    run_job(job_config=job_config, submitter_fn=wrapped_submitter)
+    return run_job(job_config=job_config, submitter_fn=wrapped_submitter)
 
 
 if __name__ == "__main__":
     # running a child job!!! neat
-    _run_on_node()
+    # a non-zero exit makes `afterok` dependents of a failed job never run
+    sys.exit(0 if _run_on_node() else 1)
