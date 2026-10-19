@@ -122,10 +122,12 @@ def _worker(
             "Adding job to queue with updated variables: %s",
             submitted_job.job_id,
         )
-        queue.add_job(
+        if not queue.add_job(
             submitted_job,
             parent_job_id=parent_job,
-        )
+        ):
+            msg = f"Could not add job {submitted_job.job_id} to the queue"
+            raise RuntimeError(msg)
 
     timeout_ctr = 0.0
     while True:
