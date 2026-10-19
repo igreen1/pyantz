@@ -139,7 +139,11 @@ def _add_dependency(new_job_id: str, job_deps_to_update: dict[str, list[str]]) -
     _results = [subprocess.run(cmd, check=True) for cmd in sctl_cmds]  # noqa: S603
 
 
-def _add_dependency_to_sbatch(args: list[str], dependencies: list[str]) -> list[str]:
+def _add_dependency_to_sbatch(
+    args: list[str],
+    dependencies: list[str],
+    dependency_type: str = "afterok",
+) -> list[str]:
     """Add the listed dependencies to the job submission."""
     dep_arg_idx = -1
     for i, arg in enumerate(args):
@@ -157,7 +161,7 @@ def _add_dependency_to_sbatch(args: list[str], dependencies: list[str]) -> list[
     else:
         former_deps = None
 
-    new_deps = ",".join([f"afterok:{i}" for i in dependencies])
+    new_deps = ",".join([f"{dependency_type}:{i}" for i in dependencies])
 
     combined_deps = (
         former_deps + "," + new_deps if former_deps else f"--dependency={new_deps}"
@@ -195,7 +199,11 @@ def _create_sbatch(
                 dependencies = [curr_job_id]
 
         if dependencies is not None:
-            slurm_args = _add_dependency_to_sbatch(slurm_args, dependencies)
+            slurm_args = _add_dependency_to_sbatch(
+                slurm_args,
+                dependencies,
+                job.dependency_type,
+            )
 
         # now, we have the file path to be run
         cmd: list[str] = [
