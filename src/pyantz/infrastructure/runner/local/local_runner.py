@@ -31,6 +31,7 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
     queue_file = config.submitter.working_directory / "queue.db"
     if not config.submitter.working_directory.exists():
         config.submitter.working_directory.mkdir()
+    _remove_stale_queue(queue_file)
     logger.debug("Creating sqlite queue %s", queue_file)
 
     _fill_queue(config, SqliteQueue(queue_file))
@@ -38,6 +39,23 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> None:
         _run_within_same_proc(config, queue_file)
     else:
         _start_pool(config, queue_file)
+
+
+def _remove_stale_queue(queue_file: Path) -> None:
+    """Delete the queue (and sqlite side files) left behind by a previous run.
+
+    Every run starts from an empty queue, otherwise old jobs and statuses would
+    mix with the new run and re-adding jobs with the same ids would fail.
+    """
+    logger = logging.getLogger(__name__)
+    stale = [
+        queue_file.with_name(queue_file.name + suffix)
+        for suffix in ("", "-wal", "-shm")
+    ]
+    if queue_file.exists():
+        logger.warning("Removing queue left over from a previous run: %s", queue_file)
+    for path in stale:
+        path.unlink(missing_ok=True)
 
 
 def _run_within_same_proc(
