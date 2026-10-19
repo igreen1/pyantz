@@ -81,26 +81,31 @@ class JobWithContext(JobConfig):
 
     variables: Mapping[str, Any] | None = None
 
-    @model_validator(mode="after")
-    def _update_ids_in_hyper_parameters(self) -> Self:
-        """Update ids in the "hyper params" (like id, depends_on)."""
-        try:
-            if not self.variables:
-                return self
-            updates: dict[str, Any] = {}
+    @model_validator(mode="before")
+    @classmethod
+    def _update_ids_in_hyper_parameters(cls, data: Any) -> Any:  # noqa: ANN401
+        """Update ids in the "hyper params" (like id, name, depends_on).
 
-            for field in ("job_id", "depends_on", "function"):
-                original_field = getattr(self, field)
-                new_field, _ = resolve_var_any(original_field, variables=self.variables)
-                if new_field != original_field:
-                    updates[field] = new_field
+        This happens before validation, so the resolved values are validated
+        like any value given directly.
+        """
+        if not isinstance(data, Mapping):
+            return data
+        data = cast("Mapping[str, Any]", data)
+        variables = data.get("variables")
+        if not variables:
+            return data
 
-            if updates:
-                return self.model_copy(update=updates)
-        except ValueError as exc:
-            msg = "Error modifying hyper-params with variables"
-            raise ValueError(msg) from exc
-        return self
+        updates: dict[str, Any] = {}
+        for field in ("job_id", "name", "depends_on"):
+            if field not in data:
+                continue
+            original_field = data[field]
+            new_field, _ = resolve_var_any(original_field, variables=variables)
+            if new_field != original_field:
+                updates[field] = new_field
+
+        return {**data, **updates} if updates else data
 
     @classmethod
     def from_config(
