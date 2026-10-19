@@ -94,3 +94,8 @@ push = true
 "src/pyantz/__init__.py" = [
     '^__version__ = "{version}"$',
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: takes more than a few seconds",
+]
