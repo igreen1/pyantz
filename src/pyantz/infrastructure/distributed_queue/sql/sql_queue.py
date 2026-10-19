@@ -155,6 +155,36 @@ class SqliteQueue(QueueInterface):
         return GetJobReturn(payload=CompleteReturn(jobs_report=jobs_report))
         # all jobs are ERROR or SUCCESS
 
+    def set_job_worker(self, job_id: str | uuid.UUID, worker_id: int) -> None:
+        """Record which worker is running the job."""
+        with Session(self._engine) as sesh:
+            sesh.execute(
+                sa.update(StatusTable)
+                .where(StatusTable.job_id == str(job_id))
+                .values(worker_id=worker_id),
+            )
+            sesh.commit()
+
+    def fail_jobs_of_worker(self, worker_id: int) -> list[str]:
+        """Mark the RUNNING jobs of a worker which died as ERROR.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
+
+        """
+        with Session(self._engine) as sesh:
+            rows = sesh.execute(
+                sa.update(StatusTable)
+                .where(StatusTable.worker_id == worker_id)
+                .where(StatusTable.job_status == JobStatus.RUNNING)
+                .values(job_status=JobStatus.ERROR)
+                .returning(StatusTable.job_id),
+            )
+            failed = [row[0] for row in rows]
+            sesh.commit()
+        self._update_job_statuses()  # their dependents fail too
+        return failed
+
     def get_jobs_report(self) -> JobsReport:
         """Get the jobs report.
 

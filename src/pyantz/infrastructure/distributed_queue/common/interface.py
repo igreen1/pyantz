@@ -96,6 +96,19 @@ class QueueInterface(Protocol):
         """
 
     @abstractmethod
+    def set_job_worker(self, job_id: str | uuid.UUID, worker_id: int) -> None:
+        """Record which worker is running the job."""
+
+    @abstractmethod
+    def fail_jobs_of_worker(self, worker_id: int) -> list[str]:
+        """Mark the RUNNING jobs of a worker which died as ERROR.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
+
+        """
+
+    @abstractmethod
     def get_jobs_report(self) -> JobsReport:
         """Get the jobs report.
 
