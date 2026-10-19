@@ -9,6 +9,7 @@ import getpass
 import logging
 import os
 import subprocess
+import sys
 import tempfile
 from typing import TYPE_CHECKING, Any, cast
 
@@ -40,8 +41,15 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             username=host_config.remote_user,
         )
         logger.debug("Connected to %s with ssh keys", host_config.remote_host)
-    except paramiko.AuthenticationException:
+    except paramiko.AuthenticationException as exc:
         logger.debug("Failed to authenticate using keys, failing back to password.")
+        if not sys.stdin.isatty():
+            msg = (
+                f"Could not authenticate to {host_config.remote_host} as "
+                f"{host_config.remote_user} with ssh keys, and there is no terminal "
+                "to ask for a password. Set up key based login (or an ssh agent)."
+            )
+            raise RuntimeError(msg) from exc
         ssh.connect(
             hostname=host_config.remote_host,
             port=host_config.remote_port,
@@ -49,7 +57,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
-
 
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
@@ -124,7 +131,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            raise RuntimeError  # checked by validation of model, just for type checking
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
@@ -133,5 +140,5 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )
