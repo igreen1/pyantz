@@ -2,7 +2,7 @@
 
 import logging
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any, cast
 
 VARIABLE_REGEX = re.compile(r"(%{[^%{}]+})")
@@ -45,32 +45,36 @@ def resolve_var_any[T](
     if isinstance(some_val, str):
         return cast("tuple[T, bool]", _resolve_var_str(some_val, variables))  # type: ignore[return-value]
     if isinstance(some_val, Mapping):
-        resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
+        resolved_items = {
             k: resolve_var_any(v, variables)  # pyright: ignore[reportUnknownArgumentType]
-            for k, v in cast("dict[str, Any]", some_val).items()  # pyright: ignore[reportUnknownVariableType]
+            for k, v in cast("Mapping[str, Any]", some_val).items()  # pyright: ignore[reportUnknownVariableType]
         }
-        resolved_variables = {
-            k: v[0] for k, v in resolved_variables_and_var_flag.items()
-        }
-        remaining_variable_flag = any(
-            v[1] for v in resolved_variables_and_var_flag.values()
+        return (
+            cast("T", {k: v[0] for k, v in resolved_items.items()}),
+            any(v[1] for v in resolved_items.values()),
         )
-        return cast("T", resolved_variables), remaining_variable_flag  # type: ignore[return-value]
-    if isinstance(some_val, Iterable):
-        iter_cls: type[T] = type(some_val)  # type: ignore[assignment] # pyright: ignore[reportUnknownVariableType]
-        result: list[tuple[Any, bool]] = [
+    if isinstance(some_val, _SEQUENCE_AND_SET_TYPES):
+        resolved_list = [
             resolve_var_any(i, variables) for i in cast("Iterable[Any]", some_val)
         ]
-
-        some_val_variables_resolved: Iterable[Any]
-        if not result:
-            some_val_variables_resolved = []
-            unmade_edits = [False]
-        else:
-            some_val_variables_resolved, unmade_edits = tuple(zip(*result, strict=True))
-        unresolved_variables = any(unmade_edits)
-        return iter_cls(some_val_variables_resolved), unresolved_variables  # type: ignore[return-value,call-arg]
+        items = [item for item, _ in resolved_list]
+        container = _rebuild(some_val, items)
+        return cast("T", container), any(unresolved for _, unresolved in resolved_list)
+    # anything else (numbers, bytes, paths, models, generators, ...) is left as is
     return some_val, False
+
+
+# containers whose items are searched for variables
+_SEQUENCE_AND_SET_TYPES = (list, tuple, set, frozenset)
+
+
+def _rebuild(original: Iterable[Any], items: list[Any]) -> Any:  # noqa: ANN401
+    """Make a container like *original* from *items*."""
+    base = next(base for base in _SEQUENCE_AND_SET_TYPES if isinstance(original, base))
+    try:
+        return cast("Callable[[list[Any]], Any]", type(original))(items)
+    except TypeError:  # for example, a namedtuple needs separate arguments
+        return base(items)
 
 
 def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
