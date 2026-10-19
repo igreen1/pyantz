@@ -324,6 +324,7 @@ def _run_on_node() -> bool:
 
     Returns:
         bool: True if the job succeeded
+
     """
     job_config = _load_job_config()
     slurm_config = _load_slurm_config()
