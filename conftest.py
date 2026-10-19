@@ -1,7 +1,5 @@
 """Common pytest code."""
 
-
-
 from typing import TYPE_CHECKING
 
 import pytest

@@ -57,6 +57,4 @@ class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
 
     def with_new_host(self, new_host: HostConfig) -> Self:
         """Return this configuration with a new host setup."""
-        return self.model_copy(update={
-            "host": new_host
-        })
+        return self.model_copy(update={"host": new_host})

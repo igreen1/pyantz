@@ -1,7 +1,5 @@
 """Test branching with an if statement."""
 
-
-
 import itertools
 import random
 from typing import TYPE_CHECKING
@@ -155,12 +153,7 @@ FALSE_INT_COMPARISONS: list[tuple[int, str, int]] = [
             SORTED_INTS,
             strict=False,
         )
-        for op in opposite_ops(
-            ">",
-            ">=",
-            "!=",
-            "~="
-        )
+        for op in opposite_ops(">", ">=", "!=", "~=")
     ],
 ]
 

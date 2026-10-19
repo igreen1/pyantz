@@ -19,9 +19,7 @@ def test_variable_variables() -> None:
 
     result, _ = resolve_parameters(parameters, variables=variables)
 
-    assert result == {
-        "run_dir": "output/run_1/hello"
-    }
+    assert result == {"run_dir": "output/run_1/hello"}
 
 
 def test_double_nested_variables() -> None:
@@ -29,13 +27,11 @@ def test_double_nested_variables() -> None:
     variables: dict[str, Any] = {
         "output_dir": "output/run_%{pipeline_id}",
         "pipeline_id": "a_%{run_id}",
-        "run_id": 10
+        "run_id": 10,
     }
 
     parameters = {"run_dir": "%{output_dir}/hello"}
 
     result, _ = resolve_parameters(parameters, variables=variables)
 
-    assert result == {
-        "run_dir": "output/run_a_10/hello"
-    }
+    assert result == {"run_dir": "output/run_a_10/hello"}
