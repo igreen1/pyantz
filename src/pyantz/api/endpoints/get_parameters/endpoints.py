@@ -39,8 +39,10 @@ def get_job_schema(fn_name: str) -> GetJsonSchemaResponse:
     if len(matching_fn) == 0:
         raise HTTPException(status_code=404, detail=f"No such job: {fn_name}") from None
     if len(matching_fn) > 1:
+        candidates = sorted(fn.PYANTZ_NAME for fn in matching_fn)  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute]
         raise HTTPException(
-            status_code=404, detail=f"Multiple matching jobs for: {fn_name}"
+            status_code=409,
+            detail=f"Multiple matching jobs for {fn_name}: {', '.join(candidates)}",
         ) from None
 
     fn = matching_fn[0]

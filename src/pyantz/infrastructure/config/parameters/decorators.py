@@ -41,14 +41,26 @@ def no_submit_fn[T: (BaseModel | ParametersType)](
 
 
 def get_registered_functions(fn_name: str | None = None) -> list[JobFunctionType]:
-    """Get all the functions which have used the `add_parameters` decorator."""
+    """Get the functions which have used the `add_parameters` decorator.
+
+    Args:
+        fn_name: if given, only the functions with this full dotted name, or whose
+            name ends with it at a `.` boundary (so `copy` finds `x.simple.copy` and
+            `y.moving.copy`, but `py` finds nothing). All matches are returned.
+
+    """
     if fn_name is None:
         return PYANTZ_REGISTERED_FUNCTION
-    for fn in PYANTZ_REGISTERED_FUNCTION:
-        registered_name = fn.PYANTZ_NAME  # type: ignore[attr-defined]   # ty:ignore[unresolved-attribute]
-        if registered_name.endswith(fn_name):
-            return [fn]
-    return []
+    return [
+        fn
+        for fn in PYANTZ_REGISTERED_FUNCTION
+        if _name_matches(fn.PYANTZ_NAME, fn_name)  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+    ]
+
+
+def _name_matches(registered_name: str, query: str) -> bool:
+    """Check if the query is the whole name or a trailing part split on dots."""
+    return registered_name == query or registered_name.endswith("." + query)
 
 
 def trace_fn[**P, T](fn: Callable[P, T]) -> Callable[P, T]:
