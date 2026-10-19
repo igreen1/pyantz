@@ -38,7 +38,7 @@ class SubmitParams[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # the wrapped configuration to submti
+    # the wrapped configuration to submit
     runner_config: S
 
     jobs: tuple[JobConfig, ...]
