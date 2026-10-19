@@ -17,7 +17,7 @@ from pyantz.infrastructure.distributed_queue.common.return_types import (
     PendingReturn,
 )
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
-from pyantz.infrastructure.runner.job_manager import run_job
+from pyantz.infrastructure.runner.job_manager import JobResult, run_job_with_details
 
 if TYPE_CHECKING:
     import uuid
@@ -135,12 +135,19 @@ def _worker(
                 # set job to running
                 queue.update_job_status(job_config.job_id, status=JobStatus.RUNNING)
                 try:
-                    result = run_job(job_config, submit_fn)
+                    result = run_job_with_details(job_config, submit_fn)
                 except Exception as exc:
                     logger.exception("Unknown error in job!", exc_info=exc)
-                    result = False
-                status = JobStatus.SUCCESS if result else JobStatus.ERROR
-                queue.update_job_status(job_config.job_id, status=status)
+                    result = JobResult(
+                        success=False,
+                        details=f"{type(exc).__name__}: {exc}",
+                    )
+                status = JobStatus.SUCCESS if result.success else JobStatus.ERROR
+                queue.update_job_status(
+                    job_config.job_id,
+                    status=status,
+                    details=result.details,
+                )
                 timeout_ctr = 0.0  # reset timer, we got and did a job :)
             case PendingReturn():
                 time.sleep(poll_time)
