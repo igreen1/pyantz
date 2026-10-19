@@ -38,7 +38,7 @@ class SqliteQueue(QueueInterface):
     ]
 
     database_file: Path
-    engine: sa.Engine
+    _engine: sa.Engine
 
     def __init__(self, database_file: Path) -> None:
         """Set the sqlalchemy engine for connections."""
