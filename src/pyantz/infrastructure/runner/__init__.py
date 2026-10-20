@@ -1,4 +1,4 @@
-"""Runners are the workers that actuaally perform the work of the jobs."""
+"""Runners are the workers that actually perform the work of the jobs."""
 
 from .local import start as start_local
 
