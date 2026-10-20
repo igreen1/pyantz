@@ -4,7 +4,7 @@ import logging
 import uuid
 from collections.abc import Callable, Mapping
 from contextvars import ContextVar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from pyantz.infrastructure.config import JobWithContext
 from pyantz.infrastructure.config.variables import resolve_parameters
@@ -23,11 +23,29 @@ type SubmissionFnWithParentType = Callable[
 JobVariables = ContextVar[None | Mapping[str, Any]]("JobVariables", default=None)
 
 
+class JobResult(NamedTuple):
+    """Outcome of running a job."""
+
+    # did the job succeed?
+    success: bool
+
+    # for failures, why (e.g., the exception raised)
+    details: str | None = None
+
+
 def run_job(
     job_config: JobWithContext,
     submitter_fn: SubmissionFnWithParentType,
 ) -> bool:
     """Run the provided job and resolve variables in its parameters."""
+    return run_job_with_details(job_config, submitter_fn).success
+
+
+def run_job_with_details(
+    job_config: JobWithContext,
+    submitter_fn: SubmissionFnWithParentType,
+) -> JobResult:
+    """Run the provided job, resolve its variables, and say why it failed if so."""
     logger = logging.getLogger(__name__)
     logger.debug("Starting running %s", job_config)
 
@@ -56,7 +74,7 @@ def run_job(
         # now, submit with parent id from caller job
         submitter_fn(to_submit_with_context, job_config.job_id)
 
-    return run_job_no_parent_wrapper(
+    return _run_job_no_parent_wrapper_with_details(
         job_config=job_config,
         wrapped_submit_fn=_wrapped_submitter,
     )
@@ -66,6 +84,17 @@ def run_job_no_parent_wrapper(
     job_config: JobWithContext,
     wrapped_submit_fn: SubmissionFnType,
 ) -> bool:
+    """Run the provided job and resolve variables in its parameters."""
+    return _run_job_no_parent_wrapper_with_details(
+        job_config,
+        wrapped_submit_fn,
+    ).success
+
+
+def _run_job_no_parent_wrapper_with_details(
+    job_config: JobWithContext,
+    wrapped_submit_fn: SubmissionFnType,
+) -> JobResult:
     """Run the provided job and resolve variables in its parameters."""
     logger = logging.getLogger(__name__)
     logger.debug("Starting running %s", job_config)
@@ -99,5 +128,7 @@ def run_job_no_parent_wrapper(
             job_config.job_id,
             exc_info=exc,
         )
-        return False
-    return result
+        return JobResult(success=False, details=f"{type(exc).__name__}: {exc}")
+    if not result:
+        return JobResult(success=False, details="Job returned a falsy result")
+    return JobResult(success=result)

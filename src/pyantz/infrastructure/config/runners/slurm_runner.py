@@ -25,7 +25,7 @@ For example, consider the same pipeline but imagine that C was submitting jobs.
 It doesn't matter than C will spawn "dependency-less" children, it is the last job.
 So any execution order is find for the spawned chains to execute.
 
-SOmething like the below is possible, which fits many use cases.
+something like the below is possible, which fits many use cases.
               C1
             /
 A -> B -> C
@@ -33,9 +33,10 @@ A -> B -> C
 
 """
 
+from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, DirectoryPath, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 DEFAULT_JOB_TIMEOUT: int = 10_000  # 2-ish hours
 
@@ -52,11 +53,14 @@ class SlurmRunnerConfig(BaseModel):
 
     slurm_args: list[str] = Field(default_factory=list)
 
-    working_dir: DirectoryPath
+    # directory shared between the submitting node and the compute nodes.
+    # not checked when the config is parsed: with a remote host it only exists there
+    # (it is checked when the slurm runner starts)
+    working_dir: Path
 
     # if some job A depends on job P and job P submits jobs
     # P1 and P2, if inherit_dependencies then A depends on P1 and P2
-    # if not inherit depenedencies, then A depends only on P and
+    # if not inherit dependencies, then A depends only on P and
     # may run before P1 and p2
     # requires using sctrl to modify running jobs
     inherit_dependencies: bool = True
