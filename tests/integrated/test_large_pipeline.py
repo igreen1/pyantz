@@ -1,4 +1,5 @@
 """A large pipeline of jobs to be run."""
+
 import uuid
 
 import os
@@ -8,7 +9,11 @@ from typing import TYPE_CHECKING, Any
 import polars as pl
 from polars.testing import assert_frame_equal
 
+import pytest
+
 from pyantz import start
+
+from .availability import docker_available, ssh_available
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,6 +26,13 @@ def set_variable(set_var: Callable[[str, Any], None], test_path: str) -> None:
     set_var("output_file", os.path.join(test_path, "my_super_cool.csv"))
     set_var("case_matrix", os.path.join(test_path, "case_matrix.parquet"))
     set_var("root_output_dir", os.path.join(test_path, "output"))
+
+
+# host with an ssh server for the ssh test; the test is skipped if it can't be reached
+SSH_TEST_HOST = "192.168.196.128"
+
+# image of the container test; the test is skipped if docker does not have it already
+CONTAINER_TEST_IMAGE = "ghcr.io/astral-sh/uv:alpine"
 
 
 def test_large_pipeline(tmp_path: Path) -> None:
@@ -233,6 +245,11 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
     _check_run(tmp_path)
 
 
+@pytest.mark.ssh
+@pytest.mark.skipif(
+    not ssh_available(SSH_TEST_HOST),
+    reason=f"no ssh server answers on {SSH_TEST_HOST}",
+)
 def test_large_pipeline_ssh(tmp_path: Path) -> None:
     """Test a large pipeline that is sort-of like a real analysis."""
     test_folder_dir = str(uuid.uuid4())
@@ -339,7 +356,7 @@ def test_large_pipeline_ssh(tmp_path: Path) -> None:
         },
         "host": {
             "type_": "ssh",
-            "remote_host": "192.168.196.128",
+            "remote_host": SSH_TEST_HOST,
             "remote_user": "julius",
             "copy_project_dir": True,
             "requirements": [
@@ -352,10 +369,14 @@ def test_large_pipeline_ssh(tmp_path: Path) -> None:
         },
     }
     start(config)
-    _check_run(tmp_path / test_folder_dir )
+    _check_run(tmp_path / test_folder_dir)
 
 
-
+@pytest.mark.docker
+@pytest.mark.skipif(
+    not docker_available(CONTAINER_TEST_IMAGE),
+    reason=f"no docker daemon with the image {CONTAINER_TEST_IMAGE} (not pulled)",
+)
 def test_large_pipeline_container(tmp_path: Path) -> None:
     """Test a large pipeline that is sort-of like a real analysis."""
     remote_path = "/workspace"
@@ -466,12 +487,11 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
                 "celery",
             ],
             "working_dir": remote_path,
-            "output_dir": os.fspath(tmp_path)
+            "output_dir": os.fspath(tmp_path),
         },
     }
     start(config)
-    _check_run(tmp_path / "workspace")
-
+    _check_run(tmp_path)
 
 
 def _check_run(tmp_path: Path) -> None:

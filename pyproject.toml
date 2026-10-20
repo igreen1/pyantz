@@ -17,8 +17,13 @@ dependencies = [
     "sqlalchemy>=2.0.42",
 ]
 
+[project.optional-dependencies]
+# reading excel files (pyantz.jobs.files.reformat.excel_to_csv)
+excel = ["fastexcel>=0.12.0"]
+
 [project.scripts]
 pyantz = "pyantz.__main__:main"
+pyantz-status = "pyantz.status:main"
 pyantz-dev = "pyantz.api.dev_server:start_dev_server"
 pyantz-prod = "pyantz.api.backend:start_prod_server"
 
@@ -43,6 +48,7 @@ api = [
 dev = [
     "autodoc-pydantic>=2.2.0",
     "bandit>=1.9.4",
+    "codespell>=2.4.1",
     "hypothesis>=6.151.10",
     "mypy>=1.17.1",
     "polars[all]>=1.39.3",
@@ -93,4 +99,11 @@ push = true
 ]
 "src/pyantz/__init__.py" = [
     '^__version__ = "{version}"$',
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "docker: needs a docker daemon (skipped when there is none)",
+    "ssh: needs an ssh server (skipped when it can't be reached)",
+    "slow: takes more than a few seconds",
 ]

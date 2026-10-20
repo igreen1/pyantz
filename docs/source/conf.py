@@ -45,6 +45,7 @@ def skip_model_config(app, what, name, obj, skip, options):
         return True
     return skip
 
+
 def setup(app):
     app.connect("autodoc-skip-member", skip_model_config)
 

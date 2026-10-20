@@ -48,10 +48,34 @@ class DispatchParams(BaseModel):
     stderr_file: Path | str | None = None
 
 
+STDERR_HEADER = b"\n--- stderr ---\n"
+
+
+def _save_output(params: DispatchParams, stdout: bytes, stderr: bytes) -> None:
+    """Write the captured output to the files the user asked for."""
+    stdout_file = Path(params.stdout_file) if params.stdout_file else None
+    stderr_file = Path(params.stderr_file) if params.stderr_file else None
+
+    if stdout_file:
+        stdout_file.parent.mkdir(exist_ok=True, parents=True)
+        stdout_file.write_bytes(stdout)
+    if stderr_file:
+        stderr_file.parent.mkdir(exist_ok=True, parents=True)
+        if stdout_file and stdout_file.resolve() == stderr_file.resolve():
+            # one file for both: stdout was just written, so add stderr after it
+            with stderr_file.open("ab") as fh:
+                fh.write(STDERR_HEADER + stderr)
+        else:
+            stderr_file.write_bytes(stderr)
+
+
 @add_parameters(DispatchParams)
 @no_submit_fn
 def dispatch(params: DispatchParams) -> bool:
-    """Dispatch a command in a subprocess."""
+    """Dispatch a command in a subprocess.
+
+    The output is saved to the requested files whether or not the command succeeds.
+    """
     logger = logging.getLogger(__name__)
 
     try:
@@ -62,21 +86,20 @@ def dispatch(params: DispatchParams) -> bool:
             timeout=params.timeout,
             input=params.input_stream,
             cwd=params.cwd,
+            env=params.env,
         )
-
-        # save the output for the user
-        if params.stdout_file:
-            stdout_file = Path(params.stdout_file)
-            stdout_file.parent.mkdir(exist_ok=True, parents=True)
-            with stdout_file.open("wb") as fh:
-                fh.write(results.stdout)
-        if params.stderr_file:
-            stderr_file = Path(params.stderr_file)
-            mode = "a" if params.stdout_file else "w"
-            with stderr_file.open(mode + "b") as fh:
-                fh.write(results.stderr)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        logger.exception("Error in dispatch", exc_info=exc)
+        stdout, stderr = exc.stdout or b"", exc.stderr or b""
+        logger.exception(
+            "Error in dispatch; stderr: %s",
+            stderr.decode(errors="replace"),
+            exc_info=exc,
+        )
+        _save_output(params, stdout, stderr)
         return False
-    else:
-        return True
+    except OSError as exc:  # for example, the command does not exist
+        logger.exception("Cannot run %s", params.cmd, exc_info=exc)
+        return False
+
+    _save_output(params, results.stdout, results.stderr)
+    return True

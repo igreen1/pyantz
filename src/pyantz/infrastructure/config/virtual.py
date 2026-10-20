@@ -15,7 +15,7 @@ from pydantic import AfterValidator, BeforeValidator, ConfigDict
 
 from pyantz.infrastructure.config.parameters import is_virtual
 
-from .abtrast_job import AbstractJobConfig
+from .abstract_job import AbstractJobConfig
 from .fn_utils import import_module_item_by_name
 
 if TYPE_CHECKING:
@@ -45,7 +45,11 @@ class VirtualParamModel(Protocol):
 
 def _is_virtual(params: VirtualParamModel) -> VirtualParamModel:
     if not is_virtual(params):
-        raise ValueError
+        msg = (
+            f"{params!r} is not a virtual job: "
+            "its parameter model must be decorated with `mark_virtual`"
+        )
+        raise ValueError(msg)
     return params
 
 

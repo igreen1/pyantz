@@ -6,12 +6,13 @@ from typing import Annotated, Any, Literal, Self, cast
 from pydantic import (
     BeforeValidator,
     ConfigDict,
+    Field,
     WithJsonSchema,
     field_serializer,
     model_validator,
 )
 
-from .abtrast_job import AbstractJobConfig
+from .abstract_job import AbstractJobConfig
 from .fn_utils import (
     import_function_by_name,
     import_module_item_by_name,
@@ -26,7 +27,7 @@ type SubmissionFnType = Callable[[JobConfig], None]  # pylint: disable=E0601
 """Function a "user" function receives to submit jobs."""
 
 type ParametersType = Mapping[str, Any]
-"""Jobs are given paramters by the user."""
+"""Jobs are given parameters by the user."""
 
 type JobFunctionType = Callable[[ParametersType, SubmissionFnType], bool]
 """Function that performs the job expected."""
@@ -56,6 +57,15 @@ class JobConfig(AbstractJobConfig):
     # retried so the runner can decide whether to try to restart it
     num_attempted_runs: int = 0
 
+    # if set, the local runner stops the job (and marks it as failed) after it has
+    # been running this many seconds. The job then runs in its own process
+    timeout_seconds: float | None = Field(default=None, gt=0)
+
+    # how many times a failed job is run again before it is given up on.
+    # Retried jobs run again from the start, so jobs which submit other jobs
+    # should not be retried (the children would be submitted twice)
+    max_retries: int = Field(default=0, ge=0)
+
     # how this job waits for the jobs it depends on (SLURM runner only; the local
     # runner always waits for success): afterok runs it if they succeeded, afterany
     # after they finished either way (e.g., cleanup jobs), afternotok only if one failed
@@ -68,14 +78,18 @@ class JobConfig(AbstractJobConfig):
     @model_validator(mode="after")
     def validate_fn(self) -> Self:
         """Check the parameters for the function."""
-        if not check_config(self, strict=self.strict, check_at_startup=True):
+        if not check_config(
+            self,
+            strict=self.strict,
+            check_at_startup=self.strict,
+        ):
             msg = "Bad function definition"
             raise ValueError(msg)
         return self
 
     @field_serializer("function")
     def serialize_job_function(self, fn: JobFunctionType) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -86,26 +100,31 @@ class JobWithContext(JobConfig):
 
     variables: Mapping[str, Any] | None = None
 
-    @model_validator(mode="after")
-    def _update_ids_in_hyper_parameters(self) -> Self:
-        """Update ids in the "hyper params" (like id, depends_on)."""
-        try:
-            if not self.variables:
-                return self
-            updates: dict[str, Any] = {}
+    @model_validator(mode="before")
+    @classmethod
+    def _update_ids_in_hyper_parameters(cls, data: Any) -> Any:  # noqa: ANN401
+        """Update ids in the "hyper params" (like id, name, depends_on).
 
-            for field in ("job_id", "depends_on", "function"):
-                original_field = getattr(self, field)
-                new_field, _ = resolve_var_any(original_field, variables=self.variables)
-                if new_field != original_field:
-                    updates[field] = new_field
+        This happens before validation, so the resolved values are validated
+        like any value given directly.
+        """
+        if not isinstance(data, Mapping):
+            return data
+        data = cast("Mapping[str, Any]", data)
+        variables = data.get("variables")
+        if not variables:
+            return data
 
-            if updates:
-                return self.model_copy(update=updates)
-        except ValueError as exc:
-            msg = "Error modifying hyper-params with variables"
-            raise ValueError(msg) from exc
-        return self
+        updates: dict[str, Any] = {}
+        for field in ("job_id", "name", "depends_on"):
+            if field not in data:
+                continue
+            original_field = data[field]
+            new_field, _ = resolve_var_any(original_field, variables=variables)
+            if new_field != original_field:
+                updates[field] = new_field
+
+        return {**data, **updates} if updates else data
 
     @classmethod
     def from_config(
@@ -124,8 +143,14 @@ class JobWithContext(JobConfig):
             JobWithContext: job as defined, with default variables if not present
 
         """
+        # no dump round-trip: the function is passed as the callable it already is,
+        # instead of being serialized to a name and imported again
+        config = config_possibly_without_context
         return JobWithContext.model_validate(
-            config_possibly_without_context.model_dump(),
+            {
+                **{field: getattr(config, field) for field in JobConfig.model_fields},
+                "variables": getattr(config, "variables", None),
+            },
         )
 
     def inherit_context(self, parent_context: Mapping[str, Any]) -> JobWithContext:
@@ -147,21 +172,16 @@ def make_job(
     if isinstance(config, (AbstractJobConfig)):
         return config  # type: ignore[return-value] # pyright: ignore[reportReturnType]
     if not isinstance(config, Mapping):
-        raise TypeError
+        msg = f"Job config must be a mapping, got {type(config).__name__}"
+        raise TypeError(msg)
     config = cast("Mapping[str, Any]", config)
     if "function" not in config:
-        raise ValueError
-    use_virtual = cast(
-        "bool",
-        config.get(
-            "virtual",
-            is_virtual(
-                import_module_item_by_name(
-                    config["function"],
-                ),
-            ),
-        ),
-    )
+        msg = "Job config is missing required key 'function'"
+        raise ValueError(msg)
+    if "virtual" in config:
+        use_virtual = bool(config["virtual"])
+    else:
+        use_virtual = is_virtual(import_module_item_by_name(config["function"]))
 
     if use_virtual:
         return VirtualJobConfig.model_validate(config)
