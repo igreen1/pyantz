@@ -29,7 +29,7 @@ from pyantz.infrastructure.config import (
     add_parameters,
     no_submit_fn,
 )
-from pyantz.infrastructure.config.abtrast_job import AbstractJobConfig
+from pyantz.infrastructure.config.abstract_job import AbstractJobConfig
 from pyantz.infrastructure.runner.job_manager import JobVariables
 
 if TYPE_CHECKING:

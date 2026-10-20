@@ -39,6 +39,9 @@ class _Container:
     def wait(self) -> dict[str, int]:
         return {"StatusCode": 0}
 
+    def logs(self) -> bytes:
+        return b""
+
     def get_archive(self, _path: str) -> tuple[list[bytes], dict[str, Any]]:
         return _archive(self._names), {}
 
@@ -84,7 +87,7 @@ def test_path_traversal_is_rejected(
     output.mkdir()
 
     with pytest.raises(tarfile.FilterError):
-        _run(["workspace/ok.txt", "../evil"], output, monkeypatch)
+        _run(["workspace/ok.txt", "workspace/../evil"], output, monkeypatch)
 
     assert not (tmp_path / "evil").exists()
 
@@ -111,7 +114,7 @@ def test_container_is_removed_even_if_extraction_fails(
     """The container is cleaned up when the results are refused."""
     output = tmp_path / "out"
     output.mkdir()
-    container = _Container(["../evil"])
+    container = _Container(["workspace/../evil"])
     monkeypatch.setattr(docker, "from_env", lambda: _Docker(container))
     config = InitialConfig.model_validate(
         {
@@ -139,4 +142,4 @@ def test_normal_results_are_extracted(
 
     _run(["workspace/ok.txt"], output, monkeypatch)
 
-    assert (output / "workspace" / "ok.txt").read_text() == "data"
+    assert (output / "ok.txt").read_text() == "data"
