@@ -24,6 +24,22 @@ if TYPE_CHECKING:
 REMOTE_LOG_FILE = "pyantz.log"
 
 
+def _make_remote_dir(ssh: paramiko.SSHClient, path: str) -> None:
+    """Create the directory (and any missing parents) on the remote.
+
+    Unlike ``sftp.mkdir`` this doesn't fail when the directory already exists
+    (for example when re-running) or when parent directories are missing.
+    """
+    _, stdout, stderr = ssh.exec_command(f"mkdir -p {shlex.quote(path)}")
+    exit_code = stdout.channel.recv_exit_status()
+    if exit_code != 0:
+        msg = (
+            f"Could not create directory {path!r} on the remote "
+            f"(exit code {exit_code}): {stderr.read().decode().strip()}"
+        )
+        raise RuntimeError(msg)
+
+
 def _build_remote_command(
     host_config: SshConfig,
     working_dir: str,
@@ -85,7 +101,7 @@ def _prepare_working_dir(
     """Create (or pick) the directory on the remote that the pipeline runs in."""
     logger = logging.getLogger(__name__)
     if host_config.working_dir is not None:
-        sftp.mkdir(host_config.working_dir)
+        _make_remote_dir(ssh, host_config.working_dir)
         logger.debug("Made working dir %s", host_config.working_dir)
         return host_config.working_dir
 

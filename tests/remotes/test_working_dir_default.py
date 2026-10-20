@@ -19,9 +19,16 @@ REMOTE_TMP = "/tmp/tmp.AbC123"  # noqa: S108
 NOP = "pyantz.jobs.testing.nop.do_nothing"
 
 
+class _ExitStatus:
+    @staticmethod
+    def recv_exit_status() -> int:
+        return 0
+
+
 class _Channel:
     def __init__(self, output: str = "") -> None:
         self._output = output.encode()
+        self.channel = _ExitStatus()
 
     def read(self) -> bytes:
         return self._output
@@ -108,7 +115,7 @@ def test_ssh_with_working_dir_is_used_as_given(
     ssh_module.run_ssh(_config(tmp_path, working_dir="/srv/mine"))
 
     calls = fake_ssh.calls
-    assert ("mkdir", "/srv/mine") in calls
+    assert ("exec", "mkdir -p /srv/mine") in calls
     assert ("exec", "mktemp -d") not in calls
     assert ("put", "/srv/mine/setup.tar.gz") in calls
 
