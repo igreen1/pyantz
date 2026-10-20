@@ -37,8 +37,7 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> JobsReport:
     logger = logging.getLogger(__name__)
 
     queue_file = config.submitter.working_directory / "queue.db"
-    if not config.submitter.working_directory.exists():
-        config.submitter.working_directory.mkdir()
+    config.submitter.working_directory.mkdir(parents=True, exist_ok=True)
     _remove_stale_queue(queue_file)
     logger.debug("Creating sqlite queue %s", queue_file)
 
