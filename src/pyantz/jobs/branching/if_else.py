@@ -22,6 +22,9 @@ from pyantz.infrastructure.config import JobConfig, SubmissionFnType, add_parame
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+# default relative tolerance of "~=": values within one part per million are equal
+DEFAULT_REL_TOL = 1e-6
+
 type ValidOperators = Literal[
     "=",
     "==",
@@ -50,6 +53,9 @@ class IfElseParams(BaseModel):
 
     comparator: ValidOperators
 
+    # tolerances for the "~=" (approximately equal) comparator, see `math.isclose`
+    rel_tol: float = DEFAULT_REL_TOL
+    abs_tol: float = 0.0
     # how the sides are read before comparing with =, <, >, ...:
     # auto: as numbers if both can be, otherwise as they are
     # str: as text; float: as numbers (the job fails if one isn't a number)
@@ -90,6 +96,9 @@ class ConditionalExecution(BaseModel):
 
     comparator: ValidOperators
 
+    # tolerances for the "~=" (approximately equal) comparator, see `math.isclose`
+    rel_tol: float = DEFAULT_REL_TOL
+    abs_tol: float = 0.0
     # see IfElseParams.coerce
     coerce: Coercion = "auto"
 
@@ -118,7 +127,11 @@ def _to_number(value: str | float) -> float | None:
 
 
 def _compare(params: IfElseParams | ConditionalExecution) -> bool:
-    """Evaluate ``left <comparator> right``."""
+    """Evaluate ``left <comparator> right``.
+
+    ``~=`` means approximately equal: both sides are read as numbers and compared
+    with :func:`math.isclose` using the ``rel_tol`` and ``abs_tol`` parameters.
+    """
     left, right = params.left_side, params.right_side
     comparator = params.comparator
 
@@ -127,6 +140,18 @@ def _compare(params: IfElseParams | ConditionalExecution) -> bool:
         if comparator == "=~":
             return re.search(right_text, left_text) is not None
         return (left_text in right_text) == (comparator == "in")
+
+    if comparator == "~=":
+        # approximately equal: both sides are numbers, compared with `math.isclose`
+        left_number, right_number = _to_number(left), _to_number(right)
+        if left_number is None or right_number is None:
+            return False  # not numbers, so they cannot be close
+        return math.isclose(
+            left_number,
+            right_number,
+            rel_tol=params.rel_tol,
+            abs_tol=params.abs_tol,
+        )
 
     op = op_mapping[comparator]
     if params.coerce == "float":
@@ -153,5 +178,4 @@ op_mapping: dict[ValidOperators, Callable[..., bool]] = {
     ">": operator.gt,
     ">=": operator.ge,
     "!=": operator.ne,
-    "~=": operator.ne,
 }
