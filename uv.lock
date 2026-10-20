@@ -1562,6 +1562,11 @@ dependencies = [
     { name = "sqlalchemy" },
 ]
 
+[package.optional-dependencies]
+excel = [
+    { name = "fastexcel" },
+]
+
 [package.dev-dependencies]
 api = [
     { name = "fastapi", extra = ["standard"] },
@@ -1589,12 +1594,14 @@ dev = [
 requires-dist = [
     { name = "docker", specifier = ">=7.1.0" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.127.0" },
+    { name = "fastexcel", marker = "extra == 'excel'", specifier = ">=0.12.0" },
     { name = "paramiko", specifier = ">=4.0.0" },
     { name = "polars", specifier = ">=1.36.1" },
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "ruamel-yaml", specifier = ">=0.19.1" },
     { name = "sqlalchemy", specifier = ">=2.0.42" },
 ]
+provides-extras = ["excel"]
 
 [package.metadata.requires-dev]
 api = [{ name = "fastapi", extras = ["standard"], specifier = ">=0.127.0" }]

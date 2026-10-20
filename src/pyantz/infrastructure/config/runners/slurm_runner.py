@@ -33,11 +33,12 @@ A -> B -> C
 
 """
 
+from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, DirectoryPath, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-DEFAULT_JOB_TIMEOUT: int = 10_000  # 2-ish hours
+DEFAULT_JOB_TIMEOUT: int = 10_000  # about 2.8 hours
 
 
 class SlurmRunnerConfig(BaseModel):
@@ -47,12 +48,20 @@ class SlurmRunnerConfig(BaseModel):
 
     type_: Literal["slurm_sbatch"] = "slurm_sbatch"
 
-    # max time a job can be running before slurm timeouts
+    # max time a job can be running before slurm timeouts. Passed to sbatch as
+    # `--time` (in whole minutes, rounded up) unless `slurm_args` sets a time limit
     max_job_time_seconds: int = DEFAULT_JOB_TIMEOUT
 
+    # extra arguments for every sbatch call. Unless they include
+    # `--kill-on-invalid-dep`, jobs are submitted with `--kill-on-invalid-dep=yes`
+    # so that when a job fails, the jobs waiting on it are cancelled instead of
+    # staying pending forever
     slurm_args: list[str] = Field(default_factory=list)
 
-    working_dir: DirectoryPath
+    # directory shared between the submitting node and the compute nodes.
+    # not checked when the config is parsed: with a remote host it only exists there
+    # (it is checked when the slurm runner starts)
+    working_dir: Path
 
     # if some job A depends on job P and job P submits jobs
     # P1 and P2, if inherit_dependencies then A depends on P1 and P2

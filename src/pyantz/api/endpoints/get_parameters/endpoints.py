@@ -29,6 +29,10 @@ def strip_format[T](s: T) -> T:
             },
         )
 
+    if isinstance(s, list):
+        # json schemas keep alternatives in lists (anyOf, oneOf, allOf, prefixItems)
+        return cast("T", [strip_format(v) for v in s])  # pyright: ignore[reportUnknownVariableType]
+
     return s
 
 
@@ -39,8 +43,10 @@ def get_job_schema(fn_name: str) -> GetJsonSchemaResponse:
     if len(matching_fn) == 0:
         raise HTTPException(status_code=404, detail=f"No such job: {fn_name}") from None
     if len(matching_fn) > 1:
+        candidates = sorted(fn.PYANTZ_NAME for fn in matching_fn)  # type: ignore[attr-defined] # ty: ignore[unresolved-attribute]
         raise HTTPException(
-            status_code=404, detail=f"Multiple matching jobs for: {fn_name}"
+            status_code=409,
+            detail=f"Multiple matching jobs for {fn_name}: {', '.join(candidates)}",
         ) from None
 
     fn = matching_fn[0]
@@ -56,4 +62,4 @@ def get_job_schema(fn_name: str) -> GetJsonSchemaResponse:
             json_schema=json_schema,
         )
 
-    raise HTTPException(status_code=500, detail="No parameter model for: {fn_name}")
+    raise HTTPException(status_code=404, detail=f"No parameter model for: {fn_name}")

@@ -22,7 +22,8 @@ if TYPE_CHECKING:
         SubmissionFnType,
     )
 
-PYANTZ_REGISTERED_FUNCTION: Final[list[JobFunctionType]] = []
+# keyed by name, so registering a function again (a module reload) replaces it
+PYANTZ_REGISTERED_FUNCTION: Final[dict[str, JobFunctionType]] = {}
 
 VIRTUAL_MARKER: Final[str] = "__PYANTZ_VIRTUAL__"
 
@@ -41,14 +42,28 @@ def no_submit_fn[T: (BaseModel | ParametersType)](
 
 
 def get_registered_functions(fn_name: str | None = None) -> list[JobFunctionType]:
-    """Get all the functions which have used the `add_parameters` decorator."""
+    """Get the functions which have used the `add_parameters` decorator.
+
+    A new list is returned each time, so callers can't change the registry.
+
+    Args:
+        fn_name: if given, only the functions with this full dotted name, or whose
+            name ends with it at a `.` boundary (so `copy` finds `x.simple.copy` and
+            `y.moving.copy`, but `py` finds nothing). All matches are returned.
+
+    """
     if fn_name is None:
-        return PYANTZ_REGISTERED_FUNCTION
-    for fn in PYANTZ_REGISTERED_FUNCTION:
-        registered_name = fn.PYANTZ_NAME  # type: ignore[attr-defined]   # ty:ignore[unresolved-attribute]
-        if registered_name.endswith(fn_name):
-            return [fn]
-    return []
+        return list(PYANTZ_REGISTERED_FUNCTION.values())
+    return [
+        fn
+        for fn in PYANTZ_REGISTERED_FUNCTION.values()
+        if _name_matches(fn.PYANTZ_NAME, fn_name)  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+    ]
+
+
+def _name_matches(registered_name: str, query: str) -> bool:
+    """Check if the query is the whole name or a trailing part split on dots."""
+    return registered_name == query or registered_name.endswith("." + query)
 
 
 def trace_fn[**P, T](fn: Callable[P, T]) -> Callable[P, T]:
@@ -110,9 +125,16 @@ def add_parameters[T: BaseModel](
         _fn_with_checker.PYANTZ_CHECKED = True  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
         _fn_with_checker.PYANTZ_CHECK_AT_STARTUP = check_at_startup  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
         _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
-        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker)  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+        try:
+            name = serialize_function(_fn_with_checker)
+        except ValueError:
+            # not importable by name (e.g., defined inside a function), so it can
+            # still run in-process but can't be sent to other processes
+            module = getattr(fn, "__module__", "anonymous")
+            name = f"{module}.{getattr(fn, '__qualname__', 'some_fn')}"
+        _fn_with_checker.PYANTZ_NAME = name  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 
-        PYANTZ_REGISTERED_FUNCTION.append(_fn_with_checker)
+        PYANTZ_REGISTERED_FUNCTION[_fn_with_checker.PYANTZ_NAME] = _fn_with_checker  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 
         return _fn_with_checker
 
@@ -136,6 +158,7 @@ def update_deps[T: BaseModel](
     **should** handle this, this will make life easier.
     """
 
+    @wraps(fn)
     def scramble_deps(job_params: T, deps: list[JobConfig]) -> list[JobConfig]:
         """Re-map all job ids to fresh UUIDs while preserving the dependency graph."""
         old_ids_to_new_ids = {job.job_id: str(uuid.uuid4()) for job in deps}
@@ -144,6 +167,13 @@ def update_deps[T: BaseModel](
             job.model_copy(
                 update={
                     "job_id": old_ids_to_new_ids[job.job_id],
+                    # ids outside of this list (external jobs) are left unchanged
+                    "depends_on": {
+                        old_ids_to_new_ids.get(dep, dep)
+                        for dep in (job.depends_on or set())
+                    }
+                    if job.depends_on
+                    else job.depends_on,
                 }
             )
             for job in deps

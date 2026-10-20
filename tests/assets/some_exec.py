@@ -12,14 +12,12 @@ import polars as pl
 
 
 def main() -> None:
-    """Parse the args.""" 
+    """Parse the args."""
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output", required=True)
     args = parser.parse_args()
     output_file = args.output
     write_file(output_file)
-
-
 
 
 def write_file(output_file: str) -> None:

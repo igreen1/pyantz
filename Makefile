@@ -14,3 +14,6 @@ build:
 
 publish:
 	uvx twine upload dist/*
+
+format-check:
+	uv run ruff format --check
