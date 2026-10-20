@@ -29,6 +29,7 @@ from pyantz.infrastructure.config import (
     add_parameters,
     no_submit_fn,
 )
+from pyantz.infrastructure.config.abtrast_job import AbstractJobConfig
 from pyantz.infrastructure.runner.job_manager import JobVariables
 
 if TYPE_CHECKING:
@@ -239,6 +240,70 @@ def pipeline_expansion(
 type PipelineSubmitter = Callable[[SubmissionFnType], None]
 
 
+def _nested_jobs(value: Any) -> list[Any]:  # noqa: ANN401
+    """Find the job configs (objects or raw dicts) inside *value*, at any depth."""
+    if isinstance(value, AbstractJobConfig):
+        return [value, *_nested_jobs(value.parameters)]
+    if isinstance(value, Mapping):
+        found: list[Any] = [value] if "function" in value else []
+        for item in value.values():
+            found.extend(_nested_jobs(item))
+        return found
+    if isinstance(value, (list, tuple)):
+        return [job for item in value for job in _nested_jobs(item)]
+    return []
+
+
+def _rewrite_ids(value: Any, id_map: Mapping[str, str]) -> Any:  # noqa: ANN401
+    """Replace job ids and the dependencies on them, in the jobs nested in *value*."""
+    if isinstance(value, AbstractJobConfig):
+        return value.model_copy(
+            update={
+                "job_id": id_map.get(value.job_id, value.job_id),
+                "depends_on": (
+                    None
+                    if value.depends_on is None
+                    else {id_map.get(dep, dep) for dep in value.depends_on}
+                ),
+                "parameters": _rewrite_ids(value.parameters, id_map),
+            },
+        )
+    if isinstance(value, Mapping):
+        result = {key: _rewrite_ids(item, id_map) for key, item in value.items()}
+        if "function" in result:
+            old_id = result.get("job_id")
+            if isinstance(old_id, str):
+                result["job_id"] = id_map.get(old_id, old_id)
+            if isinstance(result.get("depends_on"), (list, tuple, set)):
+                result["depends_on"] = [
+                    id_map.get(dep, dep) for dep in result["depends_on"]
+                ]
+        return result
+    if isinstance(value, (list, tuple)):
+        return type(value)(_rewrite_ids(item, id_map) for item in value)
+    return value
+
+
+def _regenerate_nested_ids(parameters: Any) -> Any:  # noqa: ANN401
+    """Give every job nested in *parameters* a new id, keeping their dependencies.
+
+    Jobs in a template are cloned for every row, so nested jobs with fixed ids would
+    collide in the queue. Dependencies between the nested jobs follow their new ids.
+    Ids written as templates (containing ``%{``) are left alone as variables make
+    them unique per clone.
+    """
+    old_ids = {
+        nested.job_id if isinstance(nested, AbstractJobConfig) else nested.get("job_id")
+        for nested in _nested_jobs(parameters)
+    }
+    id_map = {
+        old_id: str(uuid.uuid4())
+        for old_id in old_ids
+        if isinstance(old_id, str) and "%{" not in old_id
+    }
+    return _rewrite_ids(parameters, id_map) if id_map else parameters
+
+
 def _pipeline_factory_factory(
     pipeline_template: list[JobConfig],
 ) -> Callable[[Mapping[str, Any]], PipelineSubmitter]:
@@ -260,18 +325,29 @@ def _pipeline_factory_factory(
     # get the original ids to erase them
     ids_in_pipeline = {job.job_id for job in pipeline_template}
 
-    def reset_job_template(job: JobConfig) -> JobConfig:
-        """Give the job a fresh UUID and drop any intra-template dependency ids."""
+    # old id -> id for this clone, rebuilt for every clone
+    def reset_job_template(job: JobConfig, id_map: Mapping[str, str]) -> JobConfig:
+        """Give the job a fresh id, pointing its dependencies at the new ids.
+
+        Dependencies on jobs outside of the template are kept, and jobs nested in the
+        parameters (like the branches of an `if_else`) get new ids too.
+        """
         return job.model_copy(
             update={
-                "job_id": str(uuid.uuid4()),
-                "depends_on": (
-                    dep
-                    for dep in (job.depends_on or set())
-                    if dep not in ids_in_pipeline
-                ),
+                "job_id": id_map[job.job_id],
+                "depends_on": {
+                    id_map.get(dep, dep) for dep in (job.depends_on or set[str]())
+                },
+                "parameters": _regenerate_nested_ids(job.parameters),
             }
         )
+
+    # if the template says nothing about the order of its jobs, run them in list order
+    template_has_structure = any(
+        dep in ids_in_pipeline
+        for job in pipeline_template
+        for dep in (job.depends_on or set[str]())
+    )
 
     def string_pipeline(pipeline: list[JobConfig]) -> list[JobConfig]:
         """Add sequential dependencies so jobs execute in list order."""
@@ -282,10 +358,10 @@ def _pipeline_factory_factory(
             nonlocal prev
             updated = curr.model_copy(
                 update={
-                    "depends_on": [
-                        *(curr.depends_on or []),
+                    "depends_on": {
+                        *(curr.depends_on or set[str]()),
                         *([prev.job_id] if prev else []),
-                    ]
+                    }
                 }
             )
             prev = updated
@@ -308,9 +384,11 @@ def _pipeline_factory_factory(
     def create_pipeline(pipeline_vars: Mapping[str, Any]) -> PipelineSubmitter:
         """Clone the template, wire it up, and bind the given variable row."""
         # first, create a "clone" of our pipeline, which requires wiping the ids
-        child_pipeline = [reset_job_template(job) for job in pipeline_template]
-        # then string it together so the dependencies work right
-        child_pipeline = string_pipeline(child_pipeline)
+        id_map = {job.job_id: str(uuid.uuid4()) for job in pipeline_template}
+        child_pipeline = [reset_job_template(job, id_map) for job in pipeline_template]
+        # then, if the template has no structure of its own, run the jobs in order
+        if not template_has_structure:
+            child_pipeline = string_pipeline(child_pipeline)
         # now add our variables to the child pipeline
         # first, update our pipeline id!
         pipeline_id = next(pipeline_id_counter)
