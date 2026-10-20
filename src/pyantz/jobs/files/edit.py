@@ -12,9 +12,9 @@ Available jobs:
   extract/save callables.
 """
 
+import copy
 import json
 import logging
-import re
 import tempfile
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
@@ -41,8 +41,11 @@ from pyantz.infrastructure.config.fn_utils import (
 # indentation of the json files which are written
 JSON_INDENT = 2
 
-# pattern to find brackets with an integer in them
-BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
+type _ExtraField = Literal["ignore", "overwrite", "force_object"]
+
+
+class _PathMismatchError(Exception):
+    """The field being edited does not match the structure of the file."""
 
 
 class _EditJsonLikeParams(BaseModel):
@@ -53,13 +56,21 @@ class _EditJsonLikeParams(BaseModel):
     file: Path
 
     # updates to be made to the file
-    # to edit a subfield, use "." to join fields
+    # to edit a subfield, use "." to join fields (escape a literal "." with "\\")
     # for example "a.b" will edit the b field in the object pointed to by "a"
-    # but, if the JSOn object contains a field "a.b", that will be edited instead
     # to edit arrays, use [] notation, with an index
     # so for example "a.[0]" will edit the 0th element of a
-    # but again, if the JSON object contains a field "a.[0]" that will be edited instead
+    # a negative index adds to the front and "[*]" edits every element
     updates: Mapping[str, Any]
+
+    # what to do when the field provided points to a location that doesn't exist in json
+    # for example, consider field = "a.b.c.d" being set to "goodbye!"
+    # but the object looks like {"a": "hello world"}
+    # ignore: return the original if a path doesn't match. Return = {"a": "hello world"}
+    # overwrite: follow as much as possible, then overwrite the leaf.
+    #       Return = {"a": "goodbye!"}  # noqa: ERA001
+    # force_object: add the path. Return = {"a": {"b": {"c": {"d": "goodbye!"}}}}
+    extra_field: _ExtraField = "force_object"
 
 
 class EditJsonParams(_EditJsonLikeParams):
@@ -145,7 +156,7 @@ def _write_atomically(path: Path, write: Callable[[Any], object]) -> None:
 
 def _edit_jsonlike(params: _EditJsonLikeParams, contents: JsonValue) -> JsonValue:
     """Edit a JSON like value and return the contents."""
-    edit_jsonvalue = _json_editor_factory()
+    edit_jsonvalue = _json_editor_factory(params.extra_field)
 
     for field, value in params.updates.items():
         contents = edit_jsonvalue(contents, field, value)
@@ -194,23 +205,21 @@ class EditExternalParams(BaseModel):
     save_function: _FunctionDefinition[Callable[..., None]]
 
     # updates to be made to the file
-    # to edit a subfield, use "." to join fields
+    # to edit a subfield, use "." to join fields (escape a literal "." with "\\")
     # for example "a.b" will edit the b field in the object pointed to by "a"
-    # but, if the JSOn object contains a field "a.b", that will be edited instead
     # to edit arrays, use [] notation, with an index
     # so for example "a.[0]" will edit the 0th element of a
-    # but again, if the JSON object contains a field "a.[0]" that will be edited instead
+    # a negative index adds to the front and "[*]" edits every element
     updates: Mapping[str, Any]
 
     # what to do when the field provided points to a location that doesn't exist in json
     # for example, consider field = "a.b.c.d" being set to "goodbye!"
     # but the object looks like {"a": "hello world"}
-    # what do we do?
     # ignore: return the original if a path doesn't match. Return = {"a": "hello world"}
     # overwrite: follow as much as possible, then overwrite the leaf.
     #       Return = {"a": "goodbye!"}  # noqa: ERA001
     # force_object: add the path. Return = {"a": {"b": {"c": {"d": "goodbye!"}}}}
-    extra_field: Literal["ignore", "overwrite", "force_object"]
+    extra_field: _ExtraField = "force_object"
 
 
 @add_parameters(EditExternalParams)
@@ -229,7 +238,7 @@ def edit_external_method(params: EditExternalParams) -> bool:
         )
         return False
 
-    update_fn = _json_editor_factory()
+    update_fn = _json_editor_factory(params.extra_field)
 
     try:
         contents = extract_result
@@ -252,15 +261,16 @@ def edit_external_method(params: EditExternalParams) -> bool:
     return True
 
 
-def _json_editor_factory(  # noqa: C901
+def _json_editor_factory(  # noqa: C901, PLR0915
+    extra_field: _ExtraField = "force_object",
 ) -> Callable[[JsonValue, str, JsonValue], JsonValue]:
     """Create a callable to edit a JsonValue recursively.
 
     Args:
         extra_field: user has defined a field (nested too deeply); how to handle
             ignore: don't overwrite, ignore the user instructions
-            overwrite: return the value as is
-            force_objecct: turn the value into an object that is as nested as user input
+            overwrite: follow as far as possible, then overwrite the leaf
+            force_object: turn the value into an object that is as nested as user input
 
     """
 
@@ -279,15 +289,26 @@ def _json_editor_factory(  # noqa: C901
             raise ValueError(msg)
         return field_components
 
+    def overwrite_on_mismatch() -> bool:
+        """Say if a leaf replaces a field that doesn't exist in the edited value.
+
+        Raises:
+            _PathMismatchError: the field doesn't exist and extra_field is `ignore`.
+
+        """
+        if extra_field == "ignore":
+            raise _PathMismatchError
+        return extra_field == "overwrite"
+
     def edit_list(
         val: JsonValue, curr_key: str, new_value: JsonValue, field_components: list[str]
     ) -> list[JsonValue]:
         """Edit the value as a list."""
         curr_key = curr_key[1:-1]  # strip []
         if not isinstance(val, list):
-            return [
-                edit_any({}, field_components=field_components, new_value=new_value)
-            ]
+            if overwrite_on_mismatch():
+                return cast("list[JsonValue]", new_value)
+            val = []
         val_as_list: list[JsonValue] = list(val)
         if curr_key == "*":
             return [
@@ -301,6 +322,8 @@ def _json_editor_factory(  # noqa: C901
                 *val_as_list,
             ]
         if curr_idx >= len(val_as_list):
+            if field_components and overwrite_on_mismatch():
+                return [*val_as_list, new_value]
             return [
                 *val_as_list,
                 edit_any({}, field_components=field_components, new_value=new_value),
@@ -318,10 +341,15 @@ def _json_editor_factory(  # noqa: C901
         field_components: list[str],
     ) -> JsonValue:
         """Edit the map."""
-        current: Mapping[str, Any] = (
-            cast("Mapping[str, Any]", val) if isinstance(val, Mapping) else {}
-        )
-        edited = edit_any(current.get(curr_key, {}), field_components, new_value)
+        if not isinstance(val, Mapping):
+            if overwrite_on_mismatch():
+                return new_value
+            val = {}
+        current = cast("Mapping[str, Any]", val)
+        if field_components and curr_key not in current and overwrite_on_mismatch():
+            edited = new_value
+        else:
+            edited = edit_any(current.get(curr_key, {}), field_components, new_value)
         if isinstance(current, MutableMapping):
             # edit in place: keeps the order of the keys and, for yaml, the comments
             cast("MutableMapping[str, Any]", current)[curr_key] = edited
@@ -347,12 +375,19 @@ def _json_editor_factory(  # noqa: C901
             field_components=field_components[1:],
         )
 
-        return None
-
     def edit_any_wrapper(val: JsonValue, field: str, new_value: JsonValue) -> JsonValue:
         """Edit any but accept a user style field string that is then split."""
-        return edit_any(
-            val=val, field_components=split_components(field), new_value=new_value
-        )
+        components = split_components(field)
+        if extra_field != "ignore":
+            return edit_any(val=val, field_components=components, new_value=new_value)
+        # edits happen in place, so work on a copy to leave the original untouched
+        try:
+            return edit_any(
+                val=copy.deepcopy(val),
+                field_components=components,
+                new_value=new_value,
+            )
+        except _PathMismatchError:
+            return val
 
     return edit_any_wrapper

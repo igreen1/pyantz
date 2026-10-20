@@ -113,3 +113,39 @@ def test_yaml_comments_and_order_are_kept(tmp_path: Path) -> None:
     assert "# the first" in text
     assert YAML().load(text) == {"first": 1, "second": 20, "third": 3}
     assert text.index("first") < text.index("second") < text.index("third")
+
+
+@pytest.mark.parametrize(
+    ("extra_field", "expected"),
+    [
+        ("force_object", {"a": {"b": {"c": "bye"}}}),
+        ("overwrite", {"a": "bye"}),
+        ("ignore", {"a": "hello"}),
+    ],
+)
+def test_extra_field_modes(
+    tmp_path: Path, extra_field: str, expected: dict[str, Any]
+) -> None:
+    """The extra_field option decides what happens to a path that doesn't exist."""
+    path = tmp_path / "f.json"
+    path.write_text(json.dumps({"a": "hello"}))
+    params = EditJsonParams(
+        file=path, updates={"a.b.c": "bye"}, extra_field=extra_field
+    ).model_dump()
+
+    assert edit_json(params, lambda *_: None) is True
+
+    assert json.loads(path.read_text()) == expected
+
+
+def test_extra_field_ignore_leaves_other_edits_in_place(tmp_path: Path) -> None:
+    """Ignoring one bad path still applies the valid updates."""
+    path = tmp_path / "f.json"
+    path.write_text(json.dumps({"a": "hello", "x": {"y": 1}}))
+    params = EditJsonParams(
+        file=path, updates={"a.b": 1, "x.y": 2}, extra_field="ignore"
+    ).model_dump()
+
+    assert edit_json(params, lambda *_: None) is True
+
+    assert json.loads(path.read_text()) == {"a": "hello", "x": {"y": 2}}
