@@ -25,6 +25,7 @@ MINIMAL_CONFIG: Final[dict[str, Any]] = {
     ],
     "submitter": {
         "type_": "local_proc",
+        "use_same_proc": True,
         # "working_directory" # set in test
     },
 }

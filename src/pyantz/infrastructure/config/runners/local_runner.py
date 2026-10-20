@@ -5,7 +5,6 @@ to store the SQLite queue, how often to poll for new jobs, and an optional
 overall timeout.  It is the default runner for local development and testing.
 """
 
-import os
 from pathlib import Path
 from typing import Literal
 
@@ -39,6 +38,5 @@ class LocalRunnerConfig(BaseModel):
     progress_interval: float | None = 30.0
 
     # if true, use this process rather than a pool
-    # default to running locally for pytest (easier debugging and faster for small jobs)
-    # run in a separate process for users
-    use_same_proc: bool = "PYTEST_VERSION" in os.environ
+    # (easier debugging and faster for small jobs)
+    use_same_proc: bool = False
