@@ -47,7 +47,6 @@ def run_job_with_details(
 ) -> JobResult:
     """Run the provided job, resolve its variables, and say why it failed if so."""
     logger = logging.getLogger(__name__)
-    logger.debug("Starting running %s", job_config)
 
     def _wrapped_submitter(to_submit: JobConfig) -> None:
         """Submit the job.
@@ -95,7 +94,12 @@ def _run_job_no_parent_wrapper_with_details(
     job_config: JobWithContext,
     wrapped_submit_fn: SubmissionFnType,
 ) -> JobResult:
-    """Run the provided job and resolve variables in its parameters."""
+    """Run the provided job and resolve variables in its parameters.
+
+    A job function reports failure by returning False or by raising an exception.
+    Returning None (as plain python functions often do) counts as success, and any
+    other non-bool result is judged by its truthiness; both log a warning.
+    """
     logger = logging.getLogger(__name__)
     logger.debug("Starting running %s", job_config)
 
@@ -121,7 +125,7 @@ def _run_job_no_parent_wrapper_with_details(
         # mypy hasn't updated properly to 3.14
         with JobVariables.set(job_config.variables):  # type: ignore[attr-defined]
             result = job_config.function(parameters, wrapped_submit_fn)
-        logger.debug("Job (%s) returned result %s", result, job_config.job_id)
+        logger.debug("Job (%s) returned result %s", job_config.job_id, result)
     except Exception as exc:
         logger.exception(
             "Unexpected error while running job: %s",
@@ -129,6 +133,18 @@ def _run_job_no_parent_wrapper_with_details(
             exc_info=exc,
         )
         return JobResult(success=False, details=f"{type(exc).__name__}: {exc}")
+    if result is None:
+        logger.warning(
+            "Job %s returned None instead of a bool; treating it as success",
+            job_config.job_id,
+        )
+        return JobResult(success=True)
+    if not isinstance(result, bool):
+        logger.warning(
+            "Job %s returned %r instead of a bool; using its truthiness",
+            job_config.job_id,
+            result,
+        )
     if not result:
         return JobResult(success=False, details="Job returned a falsy result")
-    return JobResult(success=result)
+    return JobResult(success=True)
