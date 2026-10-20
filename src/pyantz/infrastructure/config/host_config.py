@@ -19,6 +19,11 @@ from typing import Annotated, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
+def _current_user() -> str:
+    """Get the name of the user running pyantz."""
+    return getpass.getuser()
+
+
 class LocalConfig(BaseModel):
     """Execute the submitter locally."""
 
@@ -55,7 +60,7 @@ class RemoteConfig(BaseModel):
     copy_project_dir: bool = False
 
     # after connecting to the remote, what host to use there
-    subsequent_host: ContainerConfig | HostConfig | LocalConfig = LocalConfig()
+    subsequent_host: HostConfig = LocalConfig()
 
     # pass a list of environment variables to be set in the container
     environment_variables: Mapping[str, str] = Field(default_factory=dict)
@@ -74,7 +79,8 @@ class SshConfig(RemoteConfig):
     # port to use for ssh (default is 22)
     remote_port: int = 22
 
-    remote_user: str = getpass.getuser()
+    # defaults to the current user, looked up when the config is created
+    remote_user: str = Field(default_factory=_current_user)
 
     # if set to true, will not wait for the command to finish to terminate
     # the ssh terminal
@@ -116,3 +122,9 @@ type HostConfig = Annotated[
     SshConfig | ContainerConfig | LocalConfig,
     Field(discriminator="type_"),
 ]
+
+
+# HostConfig is defined after the classes that refer to it
+RemoteConfig.model_rebuild()
+SshConfig.model_rebuild()
+ContainerConfig.model_rebuild()

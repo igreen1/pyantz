@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 class SetVariables(BaseModel):
-    """Parmeters for running a job which sets variables."""
+    """Parameters for running a job which sets variables."""
 
     model_config = ConfigDict(frozen=True)
 
