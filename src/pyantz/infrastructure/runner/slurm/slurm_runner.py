@@ -119,7 +119,8 @@ def _create_job_submitter(
     slurm_vars = _get_slurm_env_variables()
     curr_job_id = slurm_vars["job_id"]
     if curr_job_id is None:
-        raise RuntimeError
+        msg = "SLURM_JOB_ID is not set: jobs can only be submitted from within slurm"
+        raise RuntimeError(msg)
 
     job_dependencies = _get_dependent_jobs(curr_job_id=curr_job_id)
 
@@ -358,8 +359,9 @@ def _load_job_config() -> tuple[JobWithContext, SlurmRunnerConfig, Path]:
     slurm_config_arg: str = args.slurm_config
     slurm_config_path = Path(slurm_config_arg)
     if not slurm_config_path.exists():
-        logger.error("No such directory: %s", slurm_config_path)
-        raise ValueError
+        msg = f"No such slurm runner config file: {slurm_config_path}"
+        logger.error(msg)
+        raise ValueError(msg)
 
     slurm_config = SlurmRunnerConfig.model_validate_json(
         slurm_config_path.read_text(
@@ -368,8 +370,9 @@ def _load_job_config() -> tuple[JobWithContext, SlurmRunnerConfig, Path]:
     )
     config_file_path = slurm_config.working_dir / config_file_arg
     if not config_file_path.exists():
-        logger.error("No such job config: %s", config_file_path)
-        raise ValueError
+        msg = f"No such job config file: {config_file_path}"
+        logger.error(msg)
+        raise ValueError(msg)
 
     job_config = JobWithContext.model_validate_json(
         config_file_path.read_text(
