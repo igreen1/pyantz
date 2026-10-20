@@ -29,6 +29,10 @@ def strip_format[T](s: T) -> T:
             },
         )
 
+    if isinstance(s, list):
+        # json schemas keep alternatives in lists (anyOf, oneOf, allOf, prefixItems)
+        return cast("T", [strip_format(v) for v in s])  # pyright: ignore[reportUnknownVariableType]
+
     return s
 
 
