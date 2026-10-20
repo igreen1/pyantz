@@ -26,7 +26,7 @@ type SubmissionFnType = Callable[[JobConfig], None]  # pylint: disable=E0601
 """Function a "user" function receives to submit jobs."""
 
 type ParametersType = Mapping[str, Any]
-"""Jobs are given paramters by the user."""
+"""Jobs are given parameters by the user."""
 
 type JobFunctionType = Callable[[ParametersType, SubmissionFnType], bool]
 """Function that performs the job expected."""
@@ -70,7 +70,7 @@ class JobConfig(AbstractJobConfig):
 
     @field_serializer("function")
     def serialize_job_function(self, fn: JobFunctionType) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 

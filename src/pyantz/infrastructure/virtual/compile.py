@@ -1,6 +1,7 @@
 """Compile virtual jobs to 'real' jobs."""
 
 import graphlib
+from collections import Counter
 from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING, Any, TypeAliasType, cast, get_args, get_origin
 
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
 
 def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     """Compile any virtual jobs to concrete jobs."""
+    _check_unique_ids(jobs)
+
     # uncompiled lookup tables
 
     virtual_job_lookup = {
@@ -80,6 +83,15 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         compiled_jobs.extend(compile_results)
 
     return compiled_jobs
+
+
+def _check_unique_ids(jobs: list[AnyJobConfig]) -> None:
+    """Raise a ValueError if any job id is used by more than one job."""
+    counts = Counter(job.job_id for job in jobs)
+    duplicates = sorted(job_id for job_id, count in counts.items() if count > 1)
+    if duplicates:
+        msg = f"Duplicate job_id(s): {duplicates}"
+        raise ValueError(msg)
 
 
 def _compile_parameters(jobs: list[RealJobConfig]) -> list[RealJobConfig]:

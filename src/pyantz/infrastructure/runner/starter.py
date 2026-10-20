@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config import InitialConfig as _InitialConfig
 from pyantz.infrastructure.runner import start_local as _start_local
+from pyantz.infrastructure.runner.slurm import start as _start_slurm
 
 from ._remotes.container import run_container as start_container
 from ._remotes.ssh import run_ssh as start_ssh
@@ -39,7 +40,7 @@ def start(config: _InitialConfig[Any] | Mapping[str, Any]) -> JobsReport | None:
     return None
 
 
-def run_local(config: _InitialConfig[Any]) -> JobsReport:
+def run_local(config: _InitialConfig[Any]) -> JobsReport | None:
     """Start running the various jobs.
 
     This is a blocking operation if running locally.
@@ -48,4 +49,8 @@ def run_local(config: _InitialConfig[Any]) -> JobsReport:
     if config.submitter.type_ == "local_proc":
         # start local runner
         return _start_local(config)
-    raise ValueError
+    if config.submitter.type_ == "slurm_sbatch":
+        _start_slurm(config)
+        return None
+    msg = f"Unknown submitter type: {config.submitter.type_!r}"
+    raise ValueError(msg)
