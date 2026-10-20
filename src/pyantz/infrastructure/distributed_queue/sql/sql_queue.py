@@ -404,8 +404,6 @@ class SqliteQueue(QueueInterface):
                 eg., may be the error message for debugging.
 
         """
-        self._update_job_statuses()
-
         with Session(self._engine) as sesh:
             update_query = (
                 sa.update(
