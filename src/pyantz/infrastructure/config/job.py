@@ -128,8 +128,14 @@ class JobWithContext(JobConfig):
             JobWithContext: job as defined, with default variables if not present
 
         """
+        # no dump round-trip: the function is passed as the callable it already is,
+        # instead of being serialized to a name and imported again
+        config = config_possibly_without_context
         return JobWithContext.model_validate(
-            config_possibly_without_context.model_dump(),
+            {
+                **{field: getattr(config, field) for field in JobConfig.model_fields},
+                "variables": getattr(config, "variables", None),
+            },
         )
 
     def inherit_context(self, parent_context: Mapping[str, Any]) -> JobWithContext:

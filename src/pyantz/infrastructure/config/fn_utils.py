@@ -22,10 +22,24 @@ ALLOWED_MODULES_VARIABLE = "PYANTZ_ALLOWED_MODULES"
 
 
 def serialize_function(fn: Callable[..., Any]) -> str:
-    """Serialize the function so that others can import it dynamically."""
+    """Serialize the function so that others can import it dynamically.
+
+    Raises:
+        ValueError: if the function can't be imported by name (lambdas and
+            functions defined inside other functions)
+
+    """
     mod_name: str = fn.__module__ if hasattr(fn, "__module__") else "anonymous"
-    fn_name: str = str(fn.__name__) if hasattr(fn, "__name__") else "some_fn"
-    return mod_name + "." + fn_name
+    qualified_name: str = str(
+        getattr(fn, "__qualname__", getattr(fn, "__name__", "some_fn")),
+    )
+    if "<lambda>" in qualified_name or "<locals>" in qualified_name:
+        msg = (
+            f"Function {mod_name}.{qualified_name} is not importable; "
+            "define it at module level"
+        )
+        raise ValueError(msg)
+    return mod_name + "." + qualified_name
 
 
 def _check_import_allowed(key: str) -> None:
@@ -69,19 +83,37 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
     _check_import_allowed(key)
 
     name_components = key.split(".")
-    mod_name = ".".join(name_components[:-1])
-    fn_name = name_components[-1]
-    if not mod_name or not fn_name:
+    if len(name_components) < 2 or not all(name_components):  # noqa: PLR2004
         msg = f"Cannot import '{key}': expected 'package.module.name'"
         raise ValueError(msg)
 
-    try:
-        mod = importlib.import_module(mod_name)
-    except ImportError as exc:
-        msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({exc})"
-        raise ValueError(msg) from exc
-    try:
-        return getattr(mod, fn_name)
-    except AttributeError as exc:
-        msg = f"Cannot import '{key}': Module '{mod_name}' has no attribute '{fn_name}'"
-        raise ValueError(msg) from exc
+    # import the longest prefix that is a module and look the rest up on it,
+    # which allows names like `package.module.Class.method`
+    last_error: ImportError | None = None
+    for split in range(len(name_components) - 1, 0, -1):
+        mod_name = ".".join(name_components[:split])
+        try:
+            item: Any = importlib.import_module(mod_name)
+        except ModuleNotFoundError as exc:
+            if exc.name is not None and mod_name.startswith(exc.name):
+                last_error = exc
+                continue  # this prefix isn't a module, so try a shorter one
+            msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({exc})"
+            raise ValueError(msg) from exc
+        except ImportError as exc:
+            msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({exc})"
+            raise ValueError(msg) from exc
+        try:
+            for attribute in name_components[split:]:
+                item = getattr(item, attribute)
+        except AttributeError as exc:
+            msg = (
+                f"Cannot import '{key}': Module '{mod_name}' has no attribute "
+                f"'{attribute}'"
+            )
+            raise ValueError(msg) from exc
+        return item
+
+    mod_name = ".".join(name_components[:-1])
+    msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({last_error})"
+    raise ValueError(msg) from last_error
