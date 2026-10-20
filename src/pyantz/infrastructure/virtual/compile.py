@@ -2,7 +2,7 @@
 
 import graphlib
 from collections import Counter
-from collections.abc import Iterable, Mapping
+from collections.abc import Collection, Iterable, Mapping
 from typing import TYPE_CHECKING, Any, TypeAliasType, cast, get_args, get_origin
 
 from pydantic import BaseModel, ValidationError
@@ -95,7 +95,11 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     for node_to_compile in compilation_order:
         node_def = get_uncompiled_job_config(node_to_compile)
         node_deps = get_and_consume_dependencies(node_to_compile)
-        compile_results = _compile_singular(node_def, node_deps)
+        compile_results = _compile_singular(
+            node_def,
+            node_deps,
+            virtual_ids=virtual_job_lookup.keys(),
+        )
         compile_results = _compile_parameters(compile_results)
         compiled_jobs.extend(compile_results)
 
@@ -183,33 +187,46 @@ def _try_to_validate_job(
 
 
 def _compile_singular(
-    job: AnyJobConfig, dep_jobs: list[RealJobConfig]
+    job: AnyJobConfig,
+    dep_jobs: list[RealJobConfig],
+    virtual_ids: Collection[str] = (),
 ) -> list[RealJobConfig]:
     """Compile the given job.
 
     Virtual jobs will "consume" this dependencies (they will likely wrap them).
+
+    The wrapped jobs no longer see other virtual jobs (those never exist at runtime),
+    so dependencies on other virtual jobs are moved onto the compiled result. The
+    other virtual job then wraps the compiled result when it is compiled, which
+    nests the jobs so they receive the effects of every virtual job they depended on.
     """
     if not job.virtual:
         return [cast("RealJobConfig", job), *dep_jobs]
     virtual_id = job.job_id
-    dep_jobs = [
-        real_job.model_copy(
-            update={
-                "depends_on": {
-                    id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
-                }
-            }
+    other_virtual_ids = set(virtual_ids) - {virtual_id}
+
+    hoisted_dependencies: set[str] = set()
+    cleaned_dep_jobs: list[RealJobConfig] = []
+    for real_job in dep_jobs:
+        original_deps = real_job.depends_on or set()
+        hoisted_dependencies |= original_deps & other_virtual_ids
+        cleaned_dep_jobs.append(
+            real_job.model_copy(
+                update={
+                    "depends_on": original_deps - other_virtual_ids - {virtual_id},
+                },
+            ),
         )
-        for real_job in dep_jobs
-    ]
-    result = cast("VirtualJobConfig", job).compile_virtual(dep_jobs)
+
+    result = cast("VirtualJobConfig", job).compile_virtual(cleaned_dep_jobs)
     return [
         real_job.model_copy(
             update={
                 "depends_on": {
                     id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
                 }
-            }
+                | hoisted_dependencies,
+            },
         )
         for real_job in result
     ]
