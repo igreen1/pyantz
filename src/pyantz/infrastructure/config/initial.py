@@ -9,7 +9,7 @@ on which the submitter should be started.
 from collections.abc import Mapping
 from typing import Annotated, Any, Self
 
-from pydantic import BaseModel, BeforeValidator, Field
+from pydantic import BaseModel, BeforeValidator, Field, model_validator
 
 from pyantz.infrastructure.virtual import compile_virtual
 
@@ -54,6 +54,20 @@ class InitialConfig[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
     variables: Mapping[str, Any] = Field(default_factory=dict)
 
     host: HostConfig = LocalConfig()
+
+    @model_validator(mode="after")
+    def _check_dependencies_exist(self) -> Self:
+        """Ensure every job only depends on jobs in this configuration."""
+        known_ids = {job.job_id for job in self.jobs}
+        unknown = {
+            job.job_id: sorted(job.depends_on - known_ids)
+            for job in self.jobs
+            if job.depends_on and job.depends_on - known_ids
+        }
+        if unknown:
+            msg = f"Jobs depend on unknown job ids (job -> missing): {unknown}"
+            raise ValueError(msg)
+        return self
 
     def with_new_host(self, new_host: HostConfig) -> Self:
         """Return this configuration with a new host setup."""

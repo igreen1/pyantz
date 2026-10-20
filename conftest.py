@@ -24,6 +24,7 @@ def run_integrated_jobs(tmp_path: Path) -> Callable[[list[dict[str, Any]]], None
     default_config = {
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": working_dir,
         },
     }

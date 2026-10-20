@@ -100,6 +100,7 @@ TRUE_INT_COMPARISONS: list[tuple[int, str, int]] = [
             "==",
             "<=",
             ">=",
+            "~=",
         )
     ],
     *[
@@ -107,7 +108,6 @@ TRUE_INT_COMPARISONS: list[tuple[int, str, int]] = [
         for left, right in itertools.pairwise(SORTED_INTS)
         for op in (
             "!=",
-            "~=",
             "<",
             "<=",
         )
@@ -134,6 +134,7 @@ FALSE_INT_COMPARISONS: list[tuple[int, str, int]] = [
             "==",
             "<=",
             ">=",
+            "~=",
         )
     ],
     *[
@@ -141,7 +142,6 @@ FALSE_INT_COMPARISONS: list[tuple[int, str, int]] = [
         for left, right in itertools.pairwise(SORTED_INTS)
         for op in opposite_ops(
             "!=",
-            "~=",
             "<",
             "<=",
         )
@@ -153,7 +153,11 @@ FALSE_INT_COMPARISONS: list[tuple[int, str, int]] = [
             SORTED_INTS,
             strict=False,
         )
-        for op in opposite_ops(">", ">=", "!=", "~=")
+        for op in opposite_ops(
+            ">",
+            ">=",
+            "!=",
+        )
     ],
 ]
 
