@@ -66,6 +66,11 @@ class JobConfig(AbstractJobConfig):
     # should not be retried (the children would be submitted twice)
     max_retries: int = Field(default=0, ge=0)
 
+    # how this job waits for the jobs it depends on (SLURM runner only; the local
+    # runner always waits for success): afterok runs it if they succeeded, afterany
+    # after they finished either way (e.g., cleanup jobs), afternotok only if one failed
+    dependency_type: Literal["afterok", "afterany", "afternotok"] = "afterok"
+
     # denotes that this a concrete job
     # makes introspection easier/faster at runtime.
     virtual: Literal[False] = False
