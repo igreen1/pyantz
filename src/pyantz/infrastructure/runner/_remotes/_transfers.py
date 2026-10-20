@@ -20,6 +20,10 @@ if TYPE_CHECKING:
     from pyantz.infrastructure.config import ContainerConfig, SshConfig
 
 
+# where containers run when the user doesn't choose a working directory
+DEFAULT_CONTAINER_WORKING_DIR = "/workspace"
+
+
 def add_to_tar_file(contents: str, name: str, tar: tarfile.TarFile) -> None:
     """Add our in-memory contents to the tarball."""
     content_encoded = contents.encode("utf-8")
@@ -44,7 +48,7 @@ def get_project_dir() -> io.BytesIO:
 def get_setup_tar(
     config: InitialConfig[Any], host_config: ContainerConfig | SshConfig
 ) -> io.BytesIO:
-    """Get a byte stream of a tar-file with the config.json and re2quirements file."""
+    """Get a byte stream of a tar-file with the config.json and requirements file."""
     next_conf = config.with_new_host(host_config.subsequent_host)
     requirements = host_config.requirements
 
@@ -60,14 +64,40 @@ def get_setup_tar(
     return out
 
 
+def get_environment(host_config: ContainerConfig | SshConfig) -> dict[str, str]:
+    """Collect the environment variables for the remote command.
+
+    Variables from ``environment_variables_file`` (``KEY=VALUE`` lines, read from
+    this machine) are overridden by ``environment_variables``.
+    """
+    environment: dict[str, str] = {}
+    if host_config.environment_variables_file:
+        file_text = Path(host_config.environment_variables_file).read_text(
+            encoding="utf-8",
+        )
+        for raw_line in file_text.splitlines():
+            line = raw_line.strip().removeprefix("export ").strip()
+            if not line or line.startswith("#"):
+                continue
+            name, separator, value = line.partition("=")
+            if not separator or not name.strip():
+                msg = f"Invalid line in environment variables file: {raw_line!r}"
+                raise ValueError(msg)
+            environment[name.strip()] = value.strip().strip("\"'")
+    environment.update(host_config.environment_variables)
+    return environment
+
+
 def get_cmd(
-    host_config: ContainerConfig | SshConfig, addl_requirements: list[str] | None = None
+    host_config: ContainerConfig | SshConfig,
+    working_dir: str,
+    addl_requirements: list[str] | None = None,
 ) -> list[str]:
     """Get the command to run on the remote.
 
     Unless the project directory is copied (and added through
     ``addl_requirements``), the remote runs the same version of pyantz as the
-    local machine so that the configuration means the same thing on both.
+    local machine, and has *working_dir* as its cwd, so that the configuration means the same thing on both.
     """
     from pyantz import __version__  # noqa: PLC0415  (circular import at module level)
 
@@ -81,6 +111,6 @@ def get_cmd(
     if host_config.requirements:
         cmd.extend(["--with-requirements", "requirements.txt"])
     cmd.extend(addl_requirements)
-    cmd.extend(["pyantz", f"{host_config.working_dir}/config.json"])
+    cmd.extend(["pyantz", f"{working_dir}/config.json"])
 
     return cmd

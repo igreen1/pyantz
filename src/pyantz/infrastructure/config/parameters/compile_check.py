@@ -39,7 +39,7 @@ def check_config(
         hasattr(job_config.function, "PYANTZ_CHECK_AT_STARTUP")
         and job_config.function.PYANTZ_CHECK_AT_STARTUP  # pyright: ignore[reportFunctionMemberAccess]
     ):
-        return _check_params(job_config)
+        return _check_params(job_config, strict=strict)
 
     return True
 
