@@ -150,75 +150,101 @@ def _prepare_working_dir(
     return working_dir
 
 
-def _connect(host_config: SshConfig) -> paramiko.SSHClient:
-    """Connect to the remote, trying keys and falling back to a password."""
-    logger = logging.getLogger(__name__)
-    ssh = paramiko.SSHClient()
-    ssh.load_system_host_keys()
+def _host_key_policy(name: str) -> paramiko.MissingHostKeyPolicy:
+    """Get the paramiko policy for hosts which are not in the known hosts."""
+    policies: dict[str, type[paramiko.MissingHostKeyPolicy]] = {
+        "reject": paramiko.RejectPolicy,
+        "warn": paramiko.WarningPolicy,
+        "auto_add": paramiko.AutoAddPolicy,
+    }
+    return policies[name]()
 
+
+def _connect(ssh: paramiko.SSHClient, host_config: SshConfig) -> None:
+    """Connect, trying keys first and falling back to a password."""
+    logger = logging.getLogger(__name__)
+    ssh.load_system_host_keys()
+    ssh.set_missing_host_key_policy(_host_key_policy(host_config.known_hosts_policy))
+    connect_args: dict[str, Any] = {
+        "hostname": host_config.remote_host,
+        "port": host_config.remote_port,
+        "username": host_config.remote_user,
+        "timeout": host_config.connect_timeout,
+        "key_filename": host_config.key_filename,
+    }
     try:
         logger.debug("Connecting to %s, attempting ssh keys", host_config.remote_host)
-        # login
-        ssh.connect(
-            hostname=host_config.remote_host,
-            port=host_config.remote_port,
-            username=host_config.remote_user,
-        )
+        ssh.connect(**connect_args)
         logger.debug("Connected to %s with ssh keys", host_config.remote_host)
     except paramiko.AuthenticationException:
         logger.debug("Failed to authenticate using keys, failing back to password.")
         ssh.connect(
-            hostname=host_config.remote_host,
-            port=host_config.remote_port,
-            username=host_config.remote_user,
+            **connect_args,
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
-    return ssh
 
 
 def run_ssh(config: InitialConfig[Any]) -> None:
     """Copy our files to a remote and run."""
-    logger = logging.getLogger(__name__)
     if not config.host.type_ == "ssh":
         raise RuntimeError
 
     host_config: SshConfig = cast("SshConfig", config.host)
 
-    ssh = _connect(host_config)
+    ssh = paramiko.SSHClient()
+    try:
+        _connect(ssh, host_config)
+        _run_on_connection(ssh, config, host_config)
+    finally:
+        # also on failures, so sockets aren't leaked
+        ssh.close()
+
+
+def _run_on_connection(
+    ssh: paramiko.SSHClient,
+    config: InitialConfig[Any],
+    host_config: SshConfig,
+) -> None:
+    """Copy our files to the connected remote and run."""
+    logger = logging.getLogger(__name__)
 
     sftp = ssh.open_sftp()
-    working_dir = _prepare_working_dir(ssh, sftp, host_config)
+    try:
+        working_dir = _prepare_working_dir(ssh, sftp, host_config)
 
-    setup_tar_filename = "setup.tar.gz"
-    project_dir_filename = "pyantz.tar.gz"
+        setup_tar_filename = "setup.tar.gz"
+        project_dir_filename = "pyantz.tar.gz"
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        local_setup_tar = os.path.join(tmp_dir, "setup.tar.gz")
-        remote_setup_tar_path = working_dir + "/" + setup_tar_filename
-        with open(local_setup_tar, mode="wb") as fh:
-            fh.write(
-                get_setup_tar(
-                    config,
-                    host_config,
-                ).getvalue()
-            )
-        sftp.put(local_setup_tar, remote_setup_tar_path)
-        logger.debug(
-            "Copied setup files to %s",
-            remote_setup_tar_path,
-        )
-
-        if host_config.copy_project_dir:
-            local_pyantz_file = os.path.join(tmp_dir, "project.tar.gz")
-            remote_pyantz_file = working_dir + "/" + project_dir_filename
-            with open(local_pyantz_file, "wb") as fh:
-                fh.write(get_project_dir().getvalue())
-            sftp.put(local_pyantz_file, remote_pyantz_file)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            local_setup_tar = os.path.join(tmp_dir, "setup.tar.gz")
+            remote_setup_tar_path = working_dir + "/" + setup_tar_filename
+            with open(local_setup_tar, mode="wb") as fh:
+                fh.write(
+                    get_setup_tar(
+                        config,
+                        host_config,
+                    ).getvalue()
+                )
+            sftp.put(local_setup_tar, remote_setup_tar_path)
             logger.debug(
-                "Copied project dir to %s",
-                remote_pyantz_file,
+                "Copied setup files to %s",
+                remote_setup_tar_path,
             )
+
+            if host_config.copy_project_dir:
+                local_pyantz_file = os.path.join(tmp_dir, "project.tar.gz")
+                remote_pyantz_file = working_dir + "/" + project_dir_filename
+                with open(local_pyantz_file, "wb") as fh:
+                    fh.write(get_project_dir().getvalue())
+                sftp.put(local_pyantz_file, remote_pyantz_file)
+                logger.debug(
+                    "Copied project dir to %s",
+                    remote_pyantz_file,
+                )
+    finally:
+        sftp.close()
+
     # perform our setup by untaring
     _run_checked(
         ssh,

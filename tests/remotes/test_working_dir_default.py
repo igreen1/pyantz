@@ -44,6 +44,9 @@ class _FakeSftp:
     def put(self, _local: str, remote: str) -> None:
         self._calls.append(("put", remote))
 
+    def close(self) -> None:
+        return None
+
 
 class _FakeSshClient:
     """Stand-in for ``paramiko.SSHClient`` recording what it was asked to do."""
@@ -54,6 +57,12 @@ class _FakeSshClient:
         type(self).calls = []
 
     def load_system_host_keys(self) -> None:
+        return None
+
+    def set_missing_host_key_policy(self, _policy: object) -> None:
+        return None
+
+    def close(self) -> None:
         return None
 
     def connect(self, **_kwargs: Any) -> None:  # noqa: ANN401
