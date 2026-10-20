@@ -120,7 +120,7 @@ def columnar_operation(params: ColumnarOperationParameters) -> bool:
     logger.debug("Starting columnar operation %s", params.operation)
 
     if not params.source_parquet_file.exists():
-        logger.exception(
+        logger.error(
             "Cannot update parquet with operation, no such file: %s",
             params.source_parquet_file,
         )

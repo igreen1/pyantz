@@ -37,7 +37,8 @@ def _make_pipeline(
         TypeError: If ``pipeline`` is not iterable.
     """
     if not isinstance(pipeline, Iterable):
-        raise TypeError
+        msg = f"A pipeline must be a list of jobs, got {type(pipeline).__name__}"
+        raise TypeError(msg)
 
     return [make_job(config) for config in pipeline]  # pyright: ignore[reportUnknownVariableType]
 

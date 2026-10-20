@@ -43,6 +43,10 @@ def file_contains(params: FileContentsParams) -> bool:
     if not params.file.exists():
         return False
 
+    # an empty file can't be memory mapped; it only contains the empty substring
+    if params.file.stat().st_size == 0:
+        return params.substring == ""
+
     # use memory mapping to efficiently load the file without overloading ram
     # and allow for substrings to span multiple lines
     # user must include line breaks if they wish to search for them
