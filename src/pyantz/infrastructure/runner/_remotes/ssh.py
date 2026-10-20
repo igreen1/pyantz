@@ -24,6 +24,41 @@ if TYPE_CHECKING:
 REMOTE_LOG_FILE = "pyantz.log"
 
 
+def _run_checked(ssh: paramiko.SSHClient, cmd: str, description: str) -> str:
+    """Run a command on the remote and raise if it fails.
+
+    Args:
+        ssh: connected client
+        cmd: shell command to run
+        description: what the command does, used in the error message
+
+    Returns:
+        str: what the command wrote to stdout
+
+    Raises:
+        RuntimeError: if the exit status is not zero; the message has its stderr
+
+    """
+    logger = logging.getLogger(__name__)
+    _, stdout, stderr = ssh.exec_command(cmd)
+    out = stdout.read().decode()
+    err = stderr.read().decode()
+    exit_code = stdout.channel.recv_exit_status()
+    logger.debug(
+        "%s: exit code %s\n\tstdout=%s\n\tstderr=%s",
+        description,
+        exit_code,
+        out,
+        err,
+    )
+    if exit_code != 0:
+        msg = (
+            f"{description} failed on the remote (exit code {exit_code}): {err.strip()}"
+        )
+        raise RuntimeError(msg)
+    return out
+
+
 def _make_remote_dir(ssh: paramiko.SSHClient, path: str) -> None:
     """Create the directory (and any missing parents) on the remote.
 
@@ -185,22 +220,16 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 remote_pyantz_file,
             )
     # perform our setup by untaring
-    _stdin, stdout, stderr = ssh.exec_command(
-        f"tar -xvzf {shlex.quote(remote_setup_tar_path)} -C {shlex.quote(working_dir)}"
-    )
-    logger.debug(
-        "Untar setup files,\n\tstdout=%s\n\tstderr=%s",
-        stdout.read().decode(),
-        stderr.read().decode(),
+    _run_checked(
+        ssh,
+        f"tar -xvzf {shlex.quote(remote_setup_tar_path)} -C {shlex.quote(working_dir)}",
+        "Extracting the setup files",
     )
     if host_config.copy_project_dir:
-        _, stdout, stderr = ssh.exec_command(
-            f"tar -xzvf {shlex.quote(remote_pyantz_file)} -C {shlex.quote(working_dir)}"
-        )
-        logger.debug(
-            "Untar project files,\n\tstdout=%s\n\tstderr=%s",
-            stdout.read().decode(),
-            stderr.read().decode(),
+        _run_checked(
+            ssh,
+            f"tar -xzvf {shlex.quote(remote_pyantz_file)} -C {shlex.quote(working_dir)}",
+            "Extracting the project files",
         )
     logger.debug("Starting remote command")
     # actually run our command to run pyantz!
@@ -208,12 +237,8 @@ def run_ssh(config: InitialConfig[Any]) -> None:
     if host_config.copy_project_dir:
         addl_requirements = ["--with", f"{working_dir}/pyantz"]
     remote_cmd = _build_remote_command(host_config, working_dir, addl_requirements)
-    _, stdout, stderr = ssh.exec_command(remote_cmd)
-    logger.debug(
-        "Output from command:\n\tstdout=%s\n\tstderr=%s",
-        stdout.read().decode(),
-        stderr.read().decode(),
-    )
+    # for a background run, this only checks that the command was launched
+    _run_checked(ssh, remote_cmd, "Running pyantz")
     logger.debug("Finished submission, exiting submitter on local machine.")
 
     if host_config.sync_data_at_end:
