@@ -51,7 +51,7 @@ class MoveParams(BaseModel):
     # source file to move over
     src: Path
 
-    # location to place the reuslt
+    # location to place the result
     dst: Path
 
 
