@@ -1,14 +1,24 @@
 """Compile virtual jobs to 'real' jobs."""
 
 import graphlib
-from collections.abc import Iterable, Mapping
-from typing import TYPE_CHECKING, Any, TypeAliasType, cast, get_args, get_origin
+from collections import Counter
+from collections.abc import Collection, Iterable, Mapping
+from types import UnionType
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    TypeAliasType,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 from pydantic import BaseModel, ValidationError
 
 from pyantz.infrastructure.config.abtrast_job import AbstractJobConfig
 from pyantz.infrastructure.config.parameters.decorators import get_parameters
-from pyantz.infrastructure.config.pipeline import JobPipeline
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import (
@@ -23,6 +33,8 @@ if TYPE_CHECKING:
 
 def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     """Compile any virtual jobs to concrete jobs."""
+    _check_unique_ids(jobs)
+
     # uncompiled lookup tables
 
     virtual_job_lookup = {
@@ -32,18 +44,35 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         job.job_id: cast("RealJobConfig", job) for job in jobs if not job.virtual
     }
 
+    graph = {job.job_id: job.depends_on or set[str]() for job in jobs}
+    try:
+        compilation_order = reversed(
+            list(graphlib.TopologicalSorter(graph).static_order()),
+        )
+    except graphlib.CycleError as exc:
+        msg = f"Dependency cycle: {' -> '.join(exc.args[1])}"
+        raise ValueError(msg) from exc
+
     if not virtual_job_lookup:
         return _compile_parameters([*real_job_lookup.values()])
+
+    unknown_dependencies = {
+        job.job_id: sorted(job.depends_on - graph.keys())
+        for job in jobs
+        if job.depends_on and job.depends_on - graph.keys()
+    }
+    if unknown_dependencies:
+        msg = f"Jobs depend on unknown job ids (job -> missing): {unknown_dependencies}"
+        raise ValueError(msg)
 
     def get_uncompiled_job_config(job_id: str) -> AnyJobConfig:
         """Look up a job by id from either the real or virtual lookup tables."""
         lookup_val = real_job_lookup.get(job_id, virtual_job_lookup.get(job_id))
         if lookup_val is None:
-            raise ValueError
+            msg = f"No job with id {job_id!r}"
+            raise ValueError(msg)
         return lookup_val
 
-    graph = {job.job_id: job.depends_on or set[str]() for job in jobs}
-    compilation_order = reversed(list(graphlib.TopologicalSorter(graph).static_order()))
     compiled_jobs: list[RealJobConfig] = []
 
     def get_and_consume_dependencies(job_id: str) -> list[RealJobConfig]:
@@ -75,11 +104,24 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     for node_to_compile in compilation_order:
         node_def = get_uncompiled_job_config(node_to_compile)
         node_deps = get_and_consume_dependencies(node_to_compile)
-        compile_results = _compile_singular(node_def, node_deps)
+        compile_results = _compile_singular(
+            node_def,
+            node_deps,
+            virtual_ids=virtual_job_lookup.keys(),
+        )
         compile_results = _compile_parameters(compile_results)
         compiled_jobs.extend(compile_results)
 
     return compiled_jobs
+
+
+def _check_unique_ids(jobs: list[AnyJobConfig]) -> None:
+    """Raise a ValueError if any job id is used by more than one job."""
+    counts = Counter(job.job_id for job in jobs)
+    duplicates = sorted(job_id for job_id, count in counts.items() if count > 1)
+    if duplicates:
+        msg = f"Duplicate job_id(s): {duplicates}"
+        raise ValueError(msg)
 
 
 def _compile_parameters(jobs: list[RealJobConfig]) -> list[RealJobConfig]:
@@ -100,7 +142,9 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
     singular_job_params, iterable_job_params = joblike_parms
 
     for parm_job_field in singular_job_params:
-        sub_job = job.parameters[parm_job_field]
+        sub_job = job.parameters.get(parm_job_field)
+        if sub_job is None:
+            continue  # optional job parameter that wasn't provided
         sub_job_validated: AnyJobConfig | None = _try_to_validate_job(sub_job)
         if sub_job_validated is None:
             continue  # cannot help this parameter out
@@ -113,8 +157,13 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
             },
         )
     for multi_parm_job_field in iterable_job_params:
-        sub_jobs = job.parameters[multi_parm_job_field]
-        sub_jobs = type(sub_jobs)([_try_to_validate_job(j) for j in sub_jobs])
+        sub_jobs = job.parameters.get(multi_parm_job_field)
+        if sub_jobs is None:
+            continue  # optional job parameter that wasn't provided
+        validated_sub_jobs = [_try_to_validate_job(j) for j in sub_jobs]
+        if any(sub_job is None for sub_job in validated_sub_jobs):
+            continue  # not all jobs, so cannot help this parameter out
+        sub_jobs = type(sub_jobs)(validated_sub_jobs)
         job = job.model_copy(
             update={
                 "parameters": {
@@ -149,44 +198,57 @@ def _try_to_validate_job(
 
     try:
         return make_job(possible_job)
-    except ValidationError:
+    except ValidationError, TypeError, ValueError:
         return None
 
 
 def _compile_singular(
-    job: AnyJobConfig, dep_jobs: list[RealJobConfig]
+    job: AnyJobConfig,
+    dep_jobs: list[RealJobConfig],
+    virtual_ids: Collection[str] = (),
 ) -> list[RealJobConfig]:
     """Compile the given job.
 
     Virtual jobs will "consume" this dependencies (they will likely wrap them).
+
+    The wrapped jobs no longer see other virtual jobs (those never exist at runtime),
+    so dependencies on other virtual jobs are moved onto the compiled result. The
+    other virtual job then wraps the compiled result when it is compiled, which
+    nests the jobs so they receive the effects of every virtual job they depended on.
     """
     if not job.virtual:
         return [cast("RealJobConfig", job), *dep_jobs]
     virtual_id = job.job_id
-    dep_jobs = [
-        real_job.model_copy(
-            update={
-                "depends_on": {
-                    id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
-                }
-            }
+    other_virtual_ids = set(virtual_ids) - {virtual_id}
+
+    hoisted_dependencies: set[str] = set()
+    cleaned_dep_jobs: list[RealJobConfig] = []
+    for real_job in dep_jobs:
+        original_deps = real_job.depends_on or set()
+        hoisted_dependencies |= original_deps & other_virtual_ids
+        cleaned_dep_jobs.append(
+            real_job.model_copy(
+                update={
+                    "depends_on": original_deps - other_virtual_ids - {virtual_id},
+                },
+            ),
         )
-        for real_job in dep_jobs
-    ]
-    result = cast("VirtualJobConfig", job).compile_virtual(dep_jobs)
+
+    result = cast("VirtualJobConfig", job).compile_virtual(cleaned_dep_jobs)
     return [
         real_job.model_copy(
             update={
                 "depends_on": {
                     id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
                 }
-            }
+                | hoisted_dependencies,
+            },
         )
         for real_job in result
     ]
 
 
-def _find_joblike_parameters_with_model(  # noqa: C901
+def _find_joblike_parameters_with_model(
     job: RealJobConfig,
 ) -> tuple[Iterable[str], Iterable[str]] | None:
     """Find parameters which appear to be a job.
@@ -198,11 +260,12 @@ def _find_joblike_parameters_with_model(  # noqa: C901
     single_job_fields: set[str] = set()
     iterable_job_fields: set[str] = set()
     if isinstance(job.parameters, BaseModel):
-        # if parameters have been turned into instance, check types directly
-        for field, value in job.parameters.model_dump().items():
+        # if parameters have been turned into instance, check the values directly
+        for field in type(job.parameters).model_fields:
+            value = getattr(job.parameters, field)
             if isinstance(value, AbstractJobConfig):
                 single_job_fields.add(field)
-            if isinstance(value, Iterable) and all(
+            elif _is_non_empty_iterable(value) and all(
                 isinstance(subval, AbstractJobConfig)
                 for subval in value  # pyright: ignore[reportUnknownVariableType]
             ):
@@ -217,27 +280,61 @@ def _find_joblike_parameters_with_model(  # noqa: C901
         return None
 
     for field, field_type in param_model.model_fields.items():
-        type_ = field_type.annotation
-        if type_ is None or not isinstance(type_, (type, TypeAliasType)):  # pyright: ignore[reportUnnecessaryIsInstance]
-            continue
-
-        if isinstance(type_, TypeAliasType):  # pyright: ignore[reportUnnecessaryIsInstance]
-            if type_ is JobPipeline:
-                iterable_job_fields.add(field)
-            continue
-        if issubclass(type_, (AbstractJobConfig,)):
+        is_single, is_iterable = _classify_job_annotation(field_type.annotation)
+        if is_single:
             single_job_fields.add(field)
-        if (
-            get_origin(type_) is not None
-            and isinstance(get_origin(type_), type)
-            and issubclass(get_origin(type_), Iterable)  # type: ignore  # noqa: PGH003
-            and any(
-                issubclass(type_arg, AbstractJobConfig) for type_arg in get_args(type_)
-            )
-        ):
+        if is_iterable:
             iterable_job_fields.add(field)
 
     return (
         single_job_fields,
         iterable_job_fields,
     )
+
+
+def _is_non_empty_iterable(value: object) -> bool:
+    """Return True for non-empty iterables which aren't strings or mappings."""
+    return (
+        isinstance(value, Iterable)
+        and not isinstance(value, (str, bytes, Mapping))
+        and bool(value)  # pyright: ignore[reportUnknownArgumentType]
+    )
+
+
+def _classify_job_annotation(annotation: Any) -> tuple[bool, bool]:  # noqa: ANN401
+    """Decide whether a type annotation holds a single job or an iterable of jobs.
+
+    Looks through ``Annotated``, type aliases (like ``JobPipeline``), and unions.
+
+    Returns:
+        tuple[bool, bool]: (holds a single job, holds an iterable of jobs)
+
+    """
+    if isinstance(annotation, TypeAliasType):
+        return _classify_job_annotation(annotation.__value__)
+
+    origin = get_origin(annotation)
+    args = get_args(annotation)
+
+    if origin is Annotated:
+        return _classify_job_annotation(args[0])
+    if origin is Union or origin is UnionType:
+        classified = [_classify_job_annotation(arg) for arg in args]
+        return (
+            any(single for single, _ in classified),
+            any(iterable for _, iterable in classified),
+        )
+    if origin is None:
+        is_job = isinstance(annotation, type) and issubclass(
+            annotation, AbstractJobConfig
+        )
+        return is_job, False
+    if (
+        isinstance(origin, type)
+        and issubclass(origin, Iterable)
+        and not issubclass(origin, (str, bytes, Mapping))
+    ):
+        return False, any(
+            _classify_job_annotation(arg)[0] for arg in args if arg is not Ellipsis
+        )
+    return False, False
