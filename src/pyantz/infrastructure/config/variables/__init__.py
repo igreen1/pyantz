@@ -7,6 +7,9 @@ from typing import Any, cast
 
 VARIABLE_REGEX = re.compile(r"(%{[^%{}]+})")
 
+# maximum nesting of variables referring to other variables
+MAX_RESOLUTION_DEPTH = 32
+
 
 def resolve_parameters(
     job_parameters: Mapping[str, Any],
@@ -18,7 +21,7 @@ def resolve_parameters(
 
     Args:
         job_parameters (Mapping[str, Any]): parameters to be passed to the function
-        variables (Mapping[str, Any]): variables to put in the paramters
+        variables (Mapping[str, Any]): variables to put in the parameters
 
     Returns:
         Mapping[str, Any]: parameters with the variables eagerly replaced
@@ -73,18 +76,33 @@ def resolve_var_any[T](
     return some_val, False
 
 
-def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
+def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[Any, bool]:
     """Resolve the string by replacing variables.
+
+    If the whole string is exactly one reference (``"%{n}"``) to a non-string
+    variable, the variable's value is returned as is, preserving its type.
+    Otherwise, values are converted to strings and interpolated.
 
     Returns the string with variables interleaved
         AND a boolean. If the boolean is true, then a variable substring was found
         but could not be replaced because the variable isn't set.
     """
+    whole_reference = VARIABLE_REGEX.fullmatch(v)
+    if whole_reference is not None:
+        name = whole_reference.group(1)[2:-1]
+        if name in variables and not isinstance(variables[name], str):
+            return variables[name], False
+
     s = v
 
     unmade_change = False
     variable_detected = True
+    passes = 0
     while variable_detected:
+        passes += 1
+        if passes > MAX_RESOLUTION_DEPTH:
+            msg = f"Recursive variable reference while resolving {v!r}"
+            raise ValueError(msg)
         variable_detected = False
         for match in VARIABLE_REGEX.finditer(s):
             start = match.start()
