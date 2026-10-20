@@ -36,7 +36,7 @@ from pyantz.infrastructure.config.fn_utils import (
     serialize_function,
 )
 
-# pattern to find backets with an integer in them
+# pattern to find brackets with an integer in them
 BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
 
 
@@ -158,7 +158,7 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
         self,
         fn: T,
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -217,7 +217,7 @@ def edit_external_method(params: EditExternalParams) -> bool:
             contents = update_fn(contents, field, value)
     except Exception as exc:
         logger.exception(
-            "Error while updateing JsonValue - check that is a properly formed json",
+            "Error while updating JsonValue - check that is a properly formed json",
             exc_info=exc,
         )
         return False

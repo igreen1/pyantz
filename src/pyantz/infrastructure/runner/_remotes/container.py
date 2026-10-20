@@ -14,7 +14,12 @@ from typing import TYPE_CHECKING, Any, cast
 import docker
 import docker.errors
 
-from ._transfers import get_cmd, get_project_dir, get_setup_tar
+from ._transfers import (
+    DEFAULT_CONTAINER_WORKING_DIR,
+    get_cmd,
+    get_project_dir,
+    get_setup_tar,
+)
 
 # http status of a name clash
 CONFLICT = 409
@@ -78,17 +83,19 @@ def run_container(config: InitialConfig[Any]) -> None:
 
     host_config: ContainerConfig = cast("ContainerConfig", config.host)
 
+    working_dir = host_config.working_dir or DEFAULT_CONTAINER_WORKING_DIR
+
     client = _make_client(host_config.container_service)
     _ensure_image(client, host_config.image)
     addl_req = []
     if host_config.copy_project_dir:
         addl_req = ["--with", "/pyantz"]
-    cmd = get_cmd(host_config, addl_req)
+    cmd = get_cmd(host_config, working_dir, addl_req)
     try:
         container = client.containers.create(
             image=host_config.image,
             name=host_config.name,
-            working_dir=host_config.working_dir,
+            working_dir=working_dir,
             detach=True,
             command=cmd,
         )
@@ -100,7 +107,7 @@ def run_container(config: InitialConfig[Any]) -> None:
 
     try:
         _copy_success = container.put_archive(  # pyright: ignore[reportUnknownMemberType]
-            f"{host_config.working_dir}/",
+            f"{working_dir}/",
             get_setup_tar(config, host_config),
         )
         if host_config.copy_project_dir:
@@ -114,7 +121,7 @@ def run_container(config: InitialConfig[Any]) -> None:
         logger.info("Container output:\n%s", logs)
 
         if host_config.output_dir:
-            bits, _stat = container.get_archive(host_config.working_dir + "/")
+            bits, _stat = container.get_archive(working_dir + "/")
             _extract_output(bits, host_config.output_dir)
 
         if status_code != 0:
