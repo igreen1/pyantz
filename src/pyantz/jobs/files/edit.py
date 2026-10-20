@@ -1,4 +1,4 @@
-"""In-place editing of JSON and YAML files.
+r"""In-place editing of JSON and YAML files.
 
 Fields are addressed with dot-separated paths (e.g. ``"server.port"``)
 and array indices in bracket notation (e.g. ``"items.[0]"``).  Escape a
@@ -18,7 +18,7 @@ import re
 import tempfile
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, cast
 
 from pydantic import (
     BaseModel,
@@ -314,17 +314,19 @@ def _json_editor_factory(  # noqa: C901
     def edit_map(
         val: JsonValue,
         curr_key: str,
-        new_value: str,
+        new_value: JsonValue,
         field_components: list[str],
-    ) -> Mapping[str, Any]:
+    ) -> JsonValue:
         """Edit the map."""
-        current: Mapping[str, Any] = val if isinstance(val, Mapping) else {}
-        edited = edit_any(current.get(curr_key, {}), field_components, new_value)  # type: ignore  # noqa: PGH003
+        current: Mapping[str, Any] = (
+            cast("Mapping[str, Any]", val) if isinstance(val, Mapping) else {}
+        )
+        edited = edit_any(current.get(curr_key, {}), field_components, new_value)
         if isinstance(current, MutableMapping):
             # edit in place: keeps the order of the keys and, for yaml, the comments
-            current[curr_key] = edited
-            return current
-        return {**current, curr_key: edited}
+            cast("MutableMapping[str, Any]", current)[curr_key] = edited
+            return cast("JsonValue", current)
+        return cast("JsonValue", {**current, curr_key: edited})
 
     def edit_any(
         val: JsonValue, field_components: list[str], new_value: JsonValue
@@ -334,14 +336,14 @@ def _json_editor_factory(  # noqa: C901
             return new_value
         curr_key = field_components[0]
         if curr_key.startswith("[") and curr_key.endswith("]"):
-            fn = edit_list
+            fn: Callable[..., JsonValue] = edit_list
         else:
-            fn = edit_map  # type: ignore # noqa: PGH003
+            fn = edit_map
 
         return fn(
             val,
             curr_key,
-            new_value,  # type: ignore  # noqa: PGH003
+            new_value,
             field_components=field_components[1:],
         )
 

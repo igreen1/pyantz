@@ -181,7 +181,7 @@ def _run_jobs_temp_dir_remote(
     # mkdir must happen first so make everything depend on mkdir.
     # The jobs find the directory in the variable, which they inherit from this job.
     # Note the cleanup only runs if every job succeeded (a failure fails its dependents)
-    jobs = [
+    contextual_jobs = [
         JobWithContext.from_config(
             job.model_copy(
                 update={"depends_on": {*(job.depends_on or ()), mkdir_job.job_id}}
@@ -190,7 +190,7 @@ def _run_jobs_temp_dir_remote(
         for job in params.jobs
     ]
     # notional order, but with the dependencies may not fully matter
-    jobs = [mkdir_job, *jobs, delete_dir_job]
+    jobs = [mkdir_job, *contextual_jobs, delete_dir_job]
 
     for job in jobs:
         submit_fn(job)

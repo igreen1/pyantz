@@ -33,7 +33,7 @@ class AddVariables(BaseModel):
     variables: Mapping[str, Any]
 
     def compile_virtual(self, deps: list[JobConfig]) -> list[JobConfig]:
-        """Wrap *deps* in a :func:`~pyantz.jobs.wrappers.variables.run_jobs_in_context` job.
+        """Wrap *deps* in a ``run_jobs_in_context`` job.
 
         Produces a single concrete job that, when executed, injects
         :attr:`variables` into every job in *deps* before submitting them.
@@ -45,6 +45,7 @@ class AddVariables(BaseModel):
         Returns:
             A single-element list containing the compiled
             :class:`~pyantz.infrastructure.config.job.JobConfig`.
+
         """
         configs = [
             {

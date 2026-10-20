@@ -16,7 +16,7 @@ import os
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, Self, cast
 
 import polars as pl
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -227,7 +227,10 @@ def pipeline_expansion(
     if params.cols_to_exclude:
         case_matrix = case_matrix.select(pl.exclude(*params.cols_to_exclude))
 
-    pipeline_submit_factory = _pipeline_factory_factory(params.pipeline_template)
+    pipeline_submit_factory = _pipeline_factory_factory(
+        # virtual jobs are compiled away before a job runs
+        cast("list[JobConfig]", params.pipeline_template)
+    )
     for sub_matrix in case_matrix.collect_batches():
         for row_entry in sub_matrix.iter_rows(named=True):
             pipeline_submitter = pipeline_submit_factory(row_entry)
@@ -314,13 +317,15 @@ def _pipeline_factory_factory(
     supplied variable mapping injected into every job.
 
     Args:
-        pipeline_template: The list of :class:`~pyantz.infrastructure.config.job.JobConfig`
+        pipeline_template: The list of
+            :class:`~pyantz.infrastructure.config.job.JobConfig`
             objects to clone for each case.
 
     Returns:
         A callable that accepts a variable mapping and returns a
         ``PipelineSubmitter`` closure.  Calling that closure with a
         ``SubmissionFnType`` enqueues the cloned pipeline.
+
     """
     # get the original ids to erase them
     ids_in_pipeline = {job.job_id for job in pipeline_template}

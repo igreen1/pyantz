@@ -20,7 +20,8 @@ def _make_pipeline(
     """Convert a raw iterable into a validated list of job configs.
 
     Called automatically by Pydantic's BeforeValidator when a ``JobPipeline``
-    field is populated.  Each element is passed to :func:`~pyantz.infrastructure.config.job.make_job`,
+    field is populated.  Each element is passed to
+    :func:`~pyantz.infrastructure.config.job.make_job`,
     which selects :class:`~pyantz.infrastructure.config.job.JobConfig` vs
     :class:`~pyantz.infrastructure.config.virtual.VirtualJobConfig` based on
     the ``virtual`` flag or the type of the ``function`` value.
@@ -35,6 +36,7 @@ def _make_pipeline(
 
     Raises:
         TypeError: If ``pipeline`` is not iterable.
+
     """
     if not isinstance(pipeline, Iterable):
         msg = f"A pipeline must be a list of jobs, got {type(pipeline).__name__}"

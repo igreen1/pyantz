@@ -37,6 +37,7 @@ def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
     Returns:
         Flat list of compiled :class:`~pyantz.infrastructure.config.job.JobConfig`
         instances with all virtual jobs expanded.
+
     """
     job_configs = list(map(make_job, jobs))
     problems = find_graph_problems(job_configs)

@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 import paramiko
@@ -151,7 +152,6 @@ def _sync_output(host_config: SshConfig, working_dir: str) -> None:
 
 def _prepare_working_dir(
     ssh: paramiko.SSHClient,
-    sftp: paramiko.SFTPClient,
     host_config: SshConfig,
 ) -> str:
     """Create (or pick) the directory on the remote that the pipeline runs in."""
@@ -240,33 +240,33 @@ def _run_on_connection(
 
     sftp = ssh.open_sftp()
     try:
-        working_dir = _prepare_working_dir(ssh, sftp, host_config)
+        working_dir = _prepare_working_dir(ssh, host_config)
 
         setup_tar_filename = "setup.tar.gz"
         project_dir_filename = "pyantz.tar.gz"
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            local_setup_tar = os.path.join(tmp_dir, "setup.tar.gz")
+            local_setup_tar = Path(tmp_dir) / "setup.tar.gz"
             remote_setup_tar_path = working_dir + "/" + setup_tar_filename
-            with open(local_setup_tar, mode="wb") as fh:
+            with local_setup_tar.open(mode="wb") as fh:
                 fh.write(
                     get_setup_tar(
                         config,
                         host_config,
                     ).getvalue()
                 )
-            sftp.put(local_setup_tar, remote_setup_tar_path)
+            sftp.put(os.fspath(local_setup_tar), remote_setup_tar_path)
             logger.debug(
                 "Copied setup files to %s",
                 remote_setup_tar_path,
             )
 
             if host_config.copy_project_dir:
-                local_pyantz_file = os.path.join(tmp_dir, "project.tar.gz")
+                local_pyantz_file = Path(tmp_dir) / "project.tar.gz"
                 remote_pyantz_file = working_dir + "/" + project_dir_filename
-                with open(local_pyantz_file, "wb") as fh:
+                with local_pyantz_file.open("wb") as fh:
                     fh.write(get_project_dir().getvalue())
-                sftp.put(local_pyantz_file, remote_pyantz_file)
+                sftp.put(os.fspath(local_pyantz_file), remote_pyantz_file)
                 logger.debug(
                     "Copied project dir to %s",
                     remote_pyantz_file,
@@ -283,7 +283,8 @@ def _run_on_connection(
     if host_config.copy_project_dir:
         _run_checked(
             ssh,
-            f"tar -xzvf {shlex.quote(remote_pyantz_file)} -C {shlex.quote(working_dir)}",
+            f"tar -xzvf {shlex.quote(remote_pyantz_file)} "
+            f"-C {shlex.quote(working_dir)}",
             "Extracting the project files",
         )
     logger.debug("Starting remote command")

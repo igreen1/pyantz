@@ -68,7 +68,7 @@ def _name_matches(registered_name: str, query: str) -> bool:
 
 def trace_fn[**P, T](fn: Callable[P, T]) -> Callable[P, T]:
     """Log when a function starts and finishes."""
-    logger = logging.getLogger(fn.__name__ if hasattr(fn, "__name__") else __name__)
+    logger = logging.getLogger(getattr(fn, "__name__", __name__))
 
     @wraps(fn)
     def _log_wrapper(*args: P.args, **kwargs: P.kwargs) -> T:

@@ -47,7 +47,7 @@ def run_pipeline(params: LocalPipelineParameters) -> bool:
     )
 
     def submit_fn(job: JobConfig, parent: Any) -> None:  # noqa: ANN401
-        """Raise immediately — submitting jobs from a local pipeline is not supported."""
+        """Raise immediately: submitting jobs from a local pipeline is unsupported."""
         del job, parent  # just to say we "used" them
         msg = "Cannot submit jobs from within a local pipeline."
         raise RuntimeError(msg)

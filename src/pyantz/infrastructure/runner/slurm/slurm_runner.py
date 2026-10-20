@@ -164,8 +164,9 @@ def _add_dependency_to_sbatch(
     """Add the listed dependencies to the job submission.
 
     Any dependency the user gave (``--dependency=X``, ``--dependency X``, ``-d X`` or
-    ``-dX``) is merged with the new ones into a single ``--dependency=X,afterok:..`` (or the job's dependency type)
-    argument added at the end. The other arguments are left as they were.
+    ``-dX``) is merged with the new ones into a single
+    ``--dependency=X,afterok:..`` (or the job's dependency type) argument added at
+    the end. The other arguments are left as they were.
     """
     remaining: list[str] = []
     former_deps: str | None = None

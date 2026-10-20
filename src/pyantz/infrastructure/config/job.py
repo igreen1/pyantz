@@ -129,7 +129,7 @@ class JobWithContext(JobConfig):
     @classmethod
     def from_config(
         cls,
-        config_possibly_without_context: JobConfig,
+        config_possibly_without_context: JobConfig | VirtualJobConfig,
     ) -> JobWithContext:
         """Create a JobWithContext from another job config.
 

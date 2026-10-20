@@ -126,6 +126,13 @@ def _to_number(value: str | float) -> float | None:
     return number if math.isfinite(number) else None  # "nan" and "inf" are text
 
 
+def _compare_text(left: str, right: str, comparator: str) -> bool:
+    """Evaluate the comparators that read both sides as text."""
+    if comparator == "=~":
+        return re.search(right, left) is not None
+    return (left in right) == (comparator == "in")
+
+
 def _compare(params: IfElseParams | ConditionalExecution) -> bool:
     """Evaluate ``left <comparator> right``.
 
@@ -136,10 +143,7 @@ def _compare(params: IfElseParams | ConditionalExecution) -> bool:
     comparator = params.comparator
 
     if comparator in {"in", "not in", "=~"}:
-        left_text, right_text = str(left), str(right)
-        if comparator == "=~":
-            return re.search(right_text, left_text) is not None
-        return (left_text in right_text) == (comparator == "in")
+        return _compare_text(str(left), str(right), comparator)
 
     if comparator == "~=":
         # approximately equal: both sides are numbers, compared with `math.isclose`
@@ -154,16 +158,13 @@ def _compare(params: IfElseParams | ConditionalExecution) -> bool:
         )
 
     op = op_mapping[comparator]
-    if params.coerce == "float":
-        left_number, right_number = _to_number(left), _to_number(right)
-        if left_number is None or right_number is None:
-            msg = f"Cannot compare {left!r} and {right!r} as numbers"
-            raise ValueError(msg)
-        return op(left_number, right_number)
-    if params.coerce == "auto":
+    if params.coerce in {"float", "auto"}:
         left_number, right_number = _to_number(left), _to_number(right)
         if left_number is not None and right_number is not None:
             return op(left_number, right_number)
+        if params.coerce == "float":
+            msg = f"Cannot compare {left!r} and {right!r} as numbers"
+            raise ValueError(msg)
     if params.coerce == "str" or isinstance(left, str) != isinstance(right, str):
         # text compared with text; a number against text is compared as text too
         return op(str(left), str(right))

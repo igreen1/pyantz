@@ -12,12 +12,10 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pyantz.infrastructure.config import InitialConfig
-
 if TYPE_CHECKING:
     from typing import Any
 
-    from pyantz.infrastructure.config import ContainerConfig, SshConfig
+    from pyantz.infrastructure.config import ContainerConfig, InitialConfig, SshConfig
 
 
 # where containers run when the user doesn't choose a working directory
@@ -144,7 +142,8 @@ def get_cmd(
 
     Unless the project directory is copied (and added through
     ``addl_requirements``), the remote runs the same version of pyantz as the
-    local machine, and has *working_dir* as its cwd, so that the configuration means the same thing on both.
+    local machine, and has *working_dir* as its cwd, so that the configuration
+    means the same thing on both.
     """
     from pyantz import __version__  # noqa: PLC0415  (circular import at module level)
 
