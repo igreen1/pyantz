@@ -48,8 +48,9 @@ class RemoteConfig(BaseModel):
     output_dir: str | None = None
 
     # if set, will use this as the directory to run as cwd
-    # if not set, will use the tmpfs location
-    working_dir: str = "/workspace"
+    # if not set, ssh hosts use a new temporary directory created on the remote
+    # and containers use /workspace
+    working_dir: str | None = None
 
     # files to add as python requirements
     requirements: list[str] | None = None
