@@ -20,6 +20,9 @@ from ._transfers import get_cmd, get_project_dir, get_setup_tar
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
 
+# where the output of a background run is written, in the remote working directory
+REMOTE_LOG_FILE = "pyantz.log"
+
 
 def _build_remote_command(
     host_config: SshConfig,
@@ -28,8 +31,18 @@ def _build_remote_command(
 ) -> str:
     """Build the shell command which runs pyantz in the remote working directory."""
     cmd = get_cmd(host_config, working_dir, addl_requirements)
+    background: list[str] = []
     if host_config.run_async:
         cmd.insert(0, "nohup")  # let our ssh client terminate
+        # without redirecting its output, the ssh channel stays open until the
+        # background process exits, which makes reading the output block
+        background = [">", REMOTE_LOG_FILE, "2>&1", "<", "/dev/null", "&"]
+        logging.getLogger(__name__).info(
+            "Running in the background; output goes to %s/%s on %s",
+            working_dir,
+            REMOTE_LOG_FILE,
+            host_config.remote_host,
+        )
     # every value is quoted, only the operators written here are shell syntax
     remote_cmd = " ".join(
         [
@@ -37,7 +50,7 @@ def _build_remote_command(
             shlex.quote(working_dir),
             "&&",
             *map(shlex.quote, cmd),
-            *(["&"] if host_config.run_async else []),
+            *background,
         ],
     )
     logging.getLogger(__name__).debug(
