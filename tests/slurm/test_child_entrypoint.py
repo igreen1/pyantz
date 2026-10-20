@@ -83,7 +83,7 @@ def test_child_job_runs_from_sbatch_command(tmp_path: Path) -> None:
     child_args = argv[argv.index(sys.executable) :]
 
     # the node does not inherit the submitter's environment variable
-    env = {k: v for k, v in os.environ.items() if k != "PYANTZ_SLURM_CONFIG_DIR"}
+    env = {k: v for k, v in os.environ.items() if k != "PYANTZ_SLURM_CONFIG_FILE"}
     env["SLURM_JOB_ID"] = "1000"
     result = subprocess.run(
         child_args,

@@ -40,7 +40,7 @@ def _run_child(
         **os.environ,
         "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}",
         "SLURM_JOB_ID": "1",
-        "PYANTZ_SLURM_CONFIG_DIR": os.fspath(slurm_config),
+        "PYANTZ_SLURM_CONFIG_FILE": os.fspath(slurm_config),
     }
     return subprocess.run(
         [

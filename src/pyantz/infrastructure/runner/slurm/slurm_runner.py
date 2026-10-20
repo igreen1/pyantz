@@ -27,7 +27,10 @@ if TYPE_CHECKING:
 ENTRY_BASH_FILE_PATH = Path(__file__).parent / "run.sh"
 # (not `__name__`, which is `__main__` when this module is run as a script)
 ENTRY_MODULE_NAME = "pyantz.infrastructure.runner.slurm.slurm_runner"
-CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_DIR"
+# holds the path of a *file* (the saved slurm runner config), not a directory.
+# It is only passed on to jobs through the environment (`--export=ALL`), so
+# prefer passing the path explicitly where possible
+CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_FILE"
 SECONDS_PER_MINUTE = 60
 
 
