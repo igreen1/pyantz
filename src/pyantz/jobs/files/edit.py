@@ -14,6 +14,7 @@ Available jobs:
 
 import json
 import logging
+import re
 import tempfile
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
@@ -39,6 +40,9 @@ from pyantz.infrastructure.config.fn_utils import (
 
 # indentation of the json files which are written
 JSON_INDENT = 2
+
+# pattern to find brackets with an integer in them
+BRACKET_PATTERN: re.Pattern[str] = re.compile(r"\[([\d+\*])\]")
 
 
 class _EditJsonLikeParams(BaseModel):
@@ -174,7 +178,7 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
         self,
         fn: T,
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -233,7 +237,7 @@ def edit_external_method(params: EditExternalParams) -> bool:
             contents = update_fn(contents, field, value)
     except Exception as exc:
         logger.exception(
-            "Error while updateing JsonValue - check that is a properly formed json",
+            "Error while updating JsonValue - check that is a properly formed json",
             exc_info=exc,
         )
         return False
