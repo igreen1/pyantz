@@ -10,6 +10,7 @@ import logging
 import os
 import shlex
 import subprocess
+import sys
 import tempfile
 from typing import TYPE_CHECKING, Any, cast
 
@@ -176,8 +177,15 @@ def _connect(ssh: paramiko.SSHClient, host_config: SshConfig) -> None:
         logger.debug("Connecting to %s, attempting ssh keys", host_config.remote_host)
         ssh.connect(**connect_args)
         logger.debug("Connected to %s with ssh keys", host_config.remote_host)
-    except paramiko.AuthenticationException:
+    except paramiko.AuthenticationException as exc:
         logger.debug("Failed to authenticate using keys, failing back to password.")
+        if not sys.stdin.isatty():
+            msg = (
+                f"Could not authenticate to {host_config.remote_host} as "
+                f"{host_config.remote_user} with ssh keys, and there is no terminal "
+                "to ask for a password. Set up key based login (or an ssh agent)."
+            )
+            raise RuntimeError(msg) from exc
         ssh.connect(
             **connect_args,
             password=getpass.getpass(f"Password ({host_config.remote_user}): "),
