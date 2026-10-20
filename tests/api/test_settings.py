@@ -73,6 +73,7 @@ def test_both_servers_use_the_same_settings(
         lambda *_args, **kwargs: calls.append(kwargs),
     )
     monkeypatch.setenv("PYANTZ_HOST", "10.0.0.5")
+    monkeypatch.setenv("PYANTZ_API_TOKEN", "secret")
     monkeypatch.setenv("PYANTZ_PORT", "1234")
 
     starter()

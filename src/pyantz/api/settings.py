@@ -1,6 +1,8 @@
 """Settings of the api servers, read from the environment when a server starts."""
 
 import os
+import tempfile
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -43,3 +45,49 @@ def get_settings() -> Settings:
         )
         msg = f"Invalid server settings: {problems}"
         raise ValueError(msg) from exc
+
+
+CORS_ORIGINS_VARIABLE = "PYANTZ_CORS_ORIGINS"
+API_TOKEN_VARIABLE = "PYANTZ_API_TOKEN"  # noqa: S105
+RUNS_DIR_VARIABLE = "PYANTZ_RUNS_DIR"
+LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def get_cors_origins() -> list[str]:
+    """Get the origins allowed to call the api from `PYANTZ_CORS_ORIGINS`.
+
+    The variable holds comma separated origins, e.g. ``http://localhost:5173``.
+    """
+    return [
+        origin.strip()
+        for origin in os.environ.get(CORS_ORIGINS_VARIABLE, "").split(",")
+        if origin.strip()
+    ]
+
+
+def get_api_token() -> str | None:
+    """Get the token which clients must send, if `PYANTZ_API_TOKEN` is set."""
+    return os.environ.get(API_TOKEN_VARIABLE) or None
+
+
+def get_runs_dir() -> Path:
+    """Get the directory holding one working directory per run."""
+    if RUNS_DIR_VARIABLE in os.environ:
+        return Path(os.environ[RUNS_DIR_VARIABLE])
+    return Path(tempfile.gettempdir()) / "pyantz-runs"
+
+
+def check_safe_to_bind(settings: Settings) -> None:
+    """Refuse to listen on a non-local address when no token protects the api.
+
+    Raises:
+        ValueError: if the host is reachable from other machines and there is no
+            `PYANTZ_API_TOKEN`
+
+    """
+    if settings.host not in LOCAL_HOSTS and get_api_token() is None:
+        msg = (
+            f"Refusing to listen on {settings.host!r} without authentication: "
+            f"set {API_TOKEN_VARIABLE}, or use one of {sorted(LOCAL_HOSTS)}"
+        )
+        raise ValueError(msg)
