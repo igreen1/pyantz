@@ -12,6 +12,7 @@ Available jobs:
 * :func:`mkdir` — create a directory (including parents).
 """
 
+import logging
 import shutil
 from pathlib import Path
 
@@ -51,7 +52,7 @@ class MoveParams(BaseModel):
     # source file to move over
     src: Path
 
-    # location to place the reuslt
+    # location to place the result
     dst: Path
 
 
@@ -73,6 +74,10 @@ class DeleteParams(BaseModel):
 
     missing_ok: bool = True
 
+    # if true, directories are deleted with everything inside them
+    # (otherwise only empty directories can be deleted)
+    recursive: bool = False
+
 
 @add_parameters(DeleteParams)
 @no_submit_fn
@@ -83,8 +88,17 @@ def delete(params: DeleteParams) -> bool:
 
     if params.path.is_file():
         params.path.unlink()
+    elif params.recursive:
+        shutil.rmtree(params.path)
     else:
-        params.path.rmdir()
+        try:
+            params.path.rmdir()
+        except OSError:
+            logging.getLogger(__name__).exception(
+                "Cannot delete %s: it is not empty (use recursive to delete it anyway)",
+                params.path,
+            )
+            return False
 
     return True
 
@@ -108,7 +122,17 @@ class CreateFileParams(BaseModel):
 @add_parameters(CreateFileParams)
 @no_submit_fn
 def create(params: CreateFileParams) -> bool:
-    """Create the file as requested and write contents if provided."""
+    """Create the file as requested and write contents if provided.
+
+    If the file exists and `overwrite` is false, its contents are never changed:
+    asking to write contents to it fails.
+    """
+    if params.path.exists() and not params.overwrite and params.contents:
+        logging.getLogger(__name__).error(
+            "Not writing to %s: it exists and overwrite is false",
+            params.path,
+        )
+        return False
     if params.overwrite:
         params.path.unlink(missing_ok=True)
     params.path.touch(exist_ok=True)
@@ -130,7 +154,7 @@ class Mkdirparams(BaseModel):
 @add_parameters(Mkdirparams)
 @no_submit_fn
 def mkdir(params: Mkdirparams) -> bool:
-    """Create the file as requested and write contents if provided."""
+    """Create the directory, and any missing parents (it may already exist)."""
     params.dir_path.mkdir(parents=True, exist_ok=True)
 
     return True
