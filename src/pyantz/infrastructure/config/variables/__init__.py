@@ -29,7 +29,7 @@ def resolve_parameters(
 
     """
     logger = logging.getLogger(__name__)
-    logger.info("Resolving parameters")
+    logger.debug("Resolving parameters")
     logger.debug("Pre resolution: %s", job_parameters)
     result = resolve_var_any(job_parameters, variables=variables)
     logger.debug("Post resolution %s", result)
