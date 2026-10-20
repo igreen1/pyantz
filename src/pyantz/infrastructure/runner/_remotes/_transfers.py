@@ -20,6 +20,10 @@ if TYPE_CHECKING:
     from pyantz.infrastructure.config import ContainerConfig, SshConfig
 
 
+# where containers run when the user doesn't choose a working directory
+DEFAULT_CONTAINER_WORKING_DIR = "/workspace"
+
+
 def add_to_tar_file(contents: str, name: str, tar: tarfile.TarFile) -> None:
     """Add our in-memory contents to the tarball."""
     content_encoded = contents.encode("utf-8")
@@ -44,7 +48,7 @@ def get_project_dir() -> io.BytesIO:
 def get_setup_tar(
     config: InitialConfig[Any], host_config: ContainerConfig | SshConfig
 ) -> io.BytesIO:
-    """Get a byte stream of a tar-file with the config.json and re2quirements file."""
+    """Get a byte stream of a tar-file with the config.json and requirements file."""
     next_conf = config.with_new_host(host_config.subsequent_host)
     requirements = host_config.requirements
 
@@ -61,9 +65,11 @@ def get_setup_tar(
 
 
 def get_cmd(
-    host_config: ContainerConfig | SshConfig, addl_requirements: list[str] | None = None
+    host_config: ContainerConfig | SshConfig,
+    working_dir: str,
+    addl_requirements: list[str] | None = None,
 ) -> list[str]:
-    """Get the command to run on the remote."""
+    """Get the command to run on the remote, which has *working_dir* as its cwd."""
     if addl_requirements is None:
         addl_requirements = []
     cmd = [
@@ -72,6 +78,6 @@ def get_cmd(
     if host_config.requirements:
         cmd.extend(["--with-requirements", "requirements.txt"])
     cmd.extend(addl_requirements)
-    cmd.extend(["pyantz", f"{host_config.working_dir}/config.json"])
+    cmd.extend(["pyantz", f"{working_dir}/config.json"])
 
     return cmd

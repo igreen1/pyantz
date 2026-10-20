@@ -15,6 +15,7 @@ MINIMAL_CONFIG: Final[dict[str, Any]] = {
     ],
     "submitter": {
         "type_": "local_proc",
+        "use_same_proc": True,
         # "working_directory" # set in test
     },
 }
@@ -38,6 +39,7 @@ def test_pipeline_successful(tmp_path: Path) -> None:
         ],
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": tmp_path,
         },
         "variables": {
@@ -72,6 +74,7 @@ def test_pipeline_failure(tmp_path: Path) -> None:
         ],
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": tmp_path,
         },
         "variables": {
@@ -107,6 +110,7 @@ def test_pipeline_failure_no_deps(tmp_path: Path) -> None:
         ],
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": tmp_path,
         },
         "variables": {

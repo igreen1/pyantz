@@ -34,7 +34,7 @@ class JobQueue(Base):
     __tablename__: str = "job_queue"
 
     q_index: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    job_id: Mapped[str]  # uuid of the job
+    job_id: Mapped[str] = mapped_column(index=True)  # uuid of the job
 
 
 class JobConfigTable(Base):
@@ -57,7 +57,8 @@ class DependencyTable(Base):
     __tablename__: str = "dependencies"
 
     job_id: Mapped[str] = mapped_column(primary_key=True)
-    depends_on: Mapped[str] = mapped_column(primary_key=True)
+    # indexed to find the dependents of a job without scanning the whole table
+    depends_on: Mapped[str] = mapped_column(primary_key=True, index=True)
 
 
 class StatusTable(Base):
@@ -66,7 +67,11 @@ class StatusTable(Base):
     __tablename__: str = "job_status"
 
     job_id: Mapped[str] = mapped_column(primary_key=True)
-    job_status: Mapped[int]
+    # indexed because statuses are polled constantly
+    job_status: Mapped[int] = mapped_column(index=True)
+
+    # the worker (its process id) which is running the job, while it is RUNNING
+    worker_id: Mapped[int | None] = mapped_column(default=None)
 
 
 # pylint: enable=too-few-public-methods
