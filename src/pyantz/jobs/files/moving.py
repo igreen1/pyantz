@@ -10,11 +10,20 @@ import logging
 import os
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
+
+
+def _remove(path: Path) -> None:
+    """Delete a file or directory tree if it exists."""
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink(missing_ok=True)
 
 
 class RsyncParams(BaseModel):
@@ -51,14 +60,19 @@ def rsync(params: RsyncParams) -> bool:
             cmd,
             check=True,
             shell=False,
+            capture_output=True,
         )
         logger.debug("Rsync copying: %s", result.stdout.decode())
     except subprocess.CalledProcessError as exc:
         logger.exception(
-            "Failed to rsync %s",
+            "Failed to rsync %s: %s",
             params.source,
+            exc.stderr.decode(errors="replace"),
             exc_info=exc,
         )
+        return False
+    except OSError as exc:  # for example, rsync is not installed
+        logger.exception("Cannot run rsync", exc_info=exc)
         return False
     else:
         return True
@@ -94,21 +108,23 @@ def copy(params: CopyParams) -> bool:
         return False
     if destination.exists():
         logger.warning("Destination file already exists!")
-        if params.overwrite:
-            if destination.is_file():
-                destination.unlink()
-            else:
-                shutil.rmtree(destination)
-        else:
+        if not params.overwrite:
             logger.error("File exists and not overwriting - cannot copy ")
             return False
+
+    # copy next to the destination first: the existing destination is only
+    # replaced once the copy has worked, so a failure doesn't lose its data
+    staging = destination.with_name(f".{destination.name}.{uuid.uuid4().hex}.tmp")
     try:
         if source.is_file():
-            shutil.copy2(source, destination)
+            shutil.copy2(source, staging)
         else:
-            shutil.copytree(source, destination)
+            shutil.copytree(source, staging)
+        _remove(destination)
+        staging.rename(destination)
     except OSError as exc:
         logger.exception("Cannot copy file: %s", source, exc_info=exc)
+        _remove(staging)
         return False
     else:
         return True
@@ -139,16 +155,17 @@ def move(params: MoveParams) -> bool:
             params.source,
         )
         return False
+    backup: Path | None = None
     if params.destination.exists():
         logger.warning("Destination file already exists!")
-        if params.overwrite:
-            if params.destination.is_file():
-                params.destination.unlink()
-            else:
-                shutil.rmtree(params.destination)
-        else:
+        if not params.overwrite:
             logger.error("File exists and not overwriting - cannot copy ")
             return False
+        # keep the old destination until the move has worked
+        backup = params.destination.with_name(
+            f".{params.destination.name}.{uuid.uuid4().hex}.bak",
+        )
+        params.destination.rename(backup)
 
     try:
         shutil.move(params.source, params.destination)
@@ -158,6 +175,11 @@ def move(params: MoveParams) -> bool:
             params.source,
             exc_info=exc,
         )
+        if backup is not None:
+            _remove(params.destination)  # anything the failed move left behind
+            backup.rename(params.destination)
         return False
     else:
+        if backup is not None:
+            _remove(backup)
         return True

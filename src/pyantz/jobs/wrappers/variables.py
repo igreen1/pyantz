@@ -4,16 +4,17 @@ A user may wish to declare some variables locally for a few common jobs.
 """
 
 import logging
+import os
 import tempfile
 import uuid
 from collections.abc import Callable, Mapping
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Final, Literal
 
 from pydantic import (
     BaseModel,
     BeforeValidator,
     ConfigDict,
-    DirectoryPath,
     model_validator,
 )
 
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
 
 
 class SetVariables(BaseModel):
-    """Parmeters for running a job which sets variables."""
+    """Parameters for running a job which sets variables."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -126,14 +127,16 @@ class TemporaryDirectoryParams(BaseModel):
     submit_type: Literal["local", "remote"] = "local"
 
     # if using remote, MUST use this variable
-    # if using local, this will override the default usage of tempdir
-    shared_working_dir: DirectoryPath
+    # if using local, this is the directory in which the temporary directory is made
+    # (by default, the system's temporary location)
+    shared_working_dir: Path | None = None
 
     @model_validator(mode="after")
     def validate_submit_and_dir(self) -> TemporaryDirectoryParams:
-        """Ensure that remote mode has a concrete shared working directory."""
-        if self.submit_type == "remote" and not self.shared_working_dir.exists():
-            raise ValueError
+        """Ensure that remote mode has a shared working directory."""
+        if self.submit_type == "remote" and self.shared_working_dir is None:
+            msg = "shared_working_dir is required when submit_type is 'remote'"
+            raise ValueError(msg)
         return self
 
 
@@ -143,7 +146,7 @@ def run_jobs_with_temp_dir(
 ) -> bool:
     """Run jobs with a temporary directory."""
     if params.submit_type == "local":
-        return _run_jobs_temp_dir_local(params, submit_fn=submit_fn)
+        return _run_jobs_temp_dir_local(params)
 
     return _run_jobs_temp_dir_remote(params, submit_fn)
 
@@ -152,6 +155,9 @@ def _run_jobs_temp_dir_remote(
     params: TemporaryDirectoryParams, submit_fn: SubmissionFnType
 ) -> bool:
     """Submit the jobs to be run after creating a working dir for them."""
+    if params.shared_working_dir is None:
+        msg = "shared_working_dir is required when submit_type is 'remote'"
+        raise ValueError(msg)
     dir_name = f"tempdir_{uuid.uuid4().hex}"
     dir_path = params.shared_working_dir / dir_name
 
@@ -168,14 +174,19 @@ def _run_jobs_temp_dir_remote(
         # should only happen after everything else has completed!
         depends_on={job.job_id for job in (*params.jobs, mkdir_job)},
         function="pyantz.jobs.files.simple.delete",  # type: ignore[arg-type] # ty:ignore[invalid-argument-type]
-        parameters={"path": dir_path},
+        # the jobs will have put files in it
+        parameters={"path": dir_path, "recursive": True},
     )
 
-    # mkdir must happen first so make everything depend on mkdir
+    # mkdir must happen first so make everything depend on mkdir.
+    # The jobs find the directory in the variable, which they inherit from this job.
+    # Note the cleanup only runs if every job succeeded (a failure fails its dependents)
     jobs = [
-        job.model_copy(
-            update={"depends_on": {*(job.depends_on or ()), mkdir_job.job_id}}
-        )
+        JobWithContext.from_config(
+            job.model_copy(
+                update={"depends_on": {*(job.depends_on or ()), mkdir_job.job_id}}
+            ),
+        ).inherit_context({params.variable_name: os.fspath(dir_path)})
         for job in params.jobs
     ]
     # notional order, but with the dependencies may not fully matter
@@ -187,15 +198,22 @@ def _run_jobs_temp_dir_remote(
     return True
 
 
-def _run_jobs_temp_dir_local(
-    params: TemporaryDirectoryParams, submit_fn: SubmissionFnType
-) -> bool:
+def _run_jobs_temp_dir_local(params: TemporaryDirectoryParams) -> bool:
     """Run the jobs locally with a temporary directory."""
     curr_variables: Final[Mapping[str, Any]] = (
         _vars if (_vars := JobVariables.get()) else {}
     )
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
+    def _no_submit(_job: JobConfig) -> None:
+        """Refuse submissions, which would run after the directory is deleted."""
+        msg = (
+            "Jobs run by run_jobs_with_temp_dir in local mode cannot submit other "
+            "jobs because the temporary directory is deleted when they finish; "
+            "use submit_type 'remote' instead"
+        )
+        raise RuntimeError(msg)
+
+    with tempfile.TemporaryDirectory(dir=params.shared_working_dir) as tmpdirname:
         variables_with_dir: Final[Mapping[str, Any]] = {
             **curr_variables,
             params.variable_name: tmpdirname,
@@ -205,7 +223,7 @@ def _run_jobs_temp_dir_local(
             job_with_parent_context = JobWithContext.from_config(job).inherit_context(
                 variables_with_dir
             )
-            if not run_job_no_parent_wrapper(job_with_parent_context, submit_fn):
+            if not run_job_no_parent_wrapper(job_with_parent_context, _no_submit):
                 success = False
                 break
 
