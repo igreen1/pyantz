@@ -1,7 +1,8 @@
 """Compile virtual jobs to 'real' jobs."""
 
 import graphlib
-from collections.abc import Iterable, Mapping
+from collections import Counter
+from collections.abc import Collection, Iterable, Mapping
 from types import UnionType
 from typing import (
     TYPE_CHECKING,
@@ -32,6 +33,8 @@ if TYPE_CHECKING:
 
 def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     """Compile any virtual jobs to concrete jobs."""
+    _check_unique_ids(jobs)
+
     # uncompiled lookup tables
 
     virtual_job_lookup = {
@@ -41,18 +44,35 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         job.job_id: cast("RealJobConfig", job) for job in jobs if not job.virtual
     }
 
+    graph = {job.job_id: job.depends_on or set[str]() for job in jobs}
+    try:
+        compilation_order = reversed(
+            list(graphlib.TopologicalSorter(graph).static_order()),
+        )
+    except graphlib.CycleError as exc:
+        msg = f"Dependency cycle: {' -> '.join(exc.args[1])}"
+        raise ValueError(msg) from exc
+
     if not virtual_job_lookup:
         return _compile_parameters([*real_job_lookup.values()])
+
+    unknown_dependencies = {
+        job.job_id: sorted(job.depends_on - graph.keys())
+        for job in jobs
+        if job.depends_on and job.depends_on - graph.keys()
+    }
+    if unknown_dependencies:
+        msg = f"Jobs depend on unknown job ids (job -> missing): {unknown_dependencies}"
+        raise ValueError(msg)
 
     def get_uncompiled_job_config(job_id: str) -> AnyJobConfig:
         """Look up a job by id from either the real or virtual lookup tables."""
         lookup_val = real_job_lookup.get(job_id, virtual_job_lookup.get(job_id))
         if lookup_val is None:
-            raise ValueError
+            msg = f"No job with id {job_id!r}"
+            raise ValueError(msg)
         return lookup_val
 
-    graph = {job.job_id: job.depends_on or set[str]() for job in jobs}
-    compilation_order = reversed(list(graphlib.TopologicalSorter(graph).static_order()))
     compiled_jobs: list[RealJobConfig] = []
 
     def get_and_consume_dependencies(job_id: str) -> list[RealJobConfig]:
@@ -84,11 +104,24 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
     for node_to_compile in compilation_order:
         node_def = get_uncompiled_job_config(node_to_compile)
         node_deps = get_and_consume_dependencies(node_to_compile)
-        compile_results = _compile_singular(node_def, node_deps)
+        compile_results = _compile_singular(
+            node_def,
+            node_deps,
+            virtual_ids=virtual_job_lookup.keys(),
+        )
         compile_results = _compile_parameters(compile_results)
         compiled_jobs.extend(compile_results)
 
     return compiled_jobs
+
+
+def _check_unique_ids(jobs: list[AnyJobConfig]) -> None:
+    """Raise a ValueError if any job id is used by more than one job."""
+    counts = Counter(job.job_id for job in jobs)
+    duplicates = sorted(job_id for job_id, count in counts.items() if count > 1)
+    if duplicates:
+        msg = f"Duplicate job_id(s): {duplicates}"
+        raise ValueError(msg)
 
 
 def _compile_parameters(jobs: list[RealJobConfig]) -> list[RealJobConfig]:
@@ -127,7 +160,10 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
         sub_jobs = job.parameters.get(multi_parm_job_field)
         if sub_jobs is None:
             continue  # optional job parameter that wasn't provided
-        sub_jobs = type(sub_jobs)([_try_to_validate_job(j) for j in sub_jobs])
+        validated_sub_jobs = [_try_to_validate_job(j) for j in sub_jobs]
+        if any(sub_job is None for sub_job in validated_sub_jobs):
+            continue  # not all jobs, so cannot help this parameter out
+        sub_jobs = type(sub_jobs)(validated_sub_jobs)
         job = job.model_copy(
             update={
                 "parameters": {
@@ -162,38 +198,51 @@ def _try_to_validate_job(
 
     try:
         return make_job(possible_job)
-    except ValidationError:
+    except ValidationError, TypeError, ValueError:
         return None
 
 
 def _compile_singular(
-    job: AnyJobConfig, dep_jobs: list[RealJobConfig]
+    job: AnyJobConfig,
+    dep_jobs: list[RealJobConfig],
+    virtual_ids: Collection[str] = (),
 ) -> list[RealJobConfig]:
     """Compile the given job.
 
     Virtual jobs will "consume" this dependencies (they will likely wrap them).
+
+    The wrapped jobs no longer see other virtual jobs (those never exist at runtime),
+    so dependencies on other virtual jobs are moved onto the compiled result. The
+    other virtual job then wraps the compiled result when it is compiled, which
+    nests the jobs so they receive the effects of every virtual job they depended on.
     """
     if not job.virtual:
         return [cast("RealJobConfig", job), *dep_jobs]
     virtual_id = job.job_id
-    dep_jobs = [
-        real_job.model_copy(
-            update={
-                "depends_on": {
-                    id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
-                }
-            }
+    other_virtual_ids = set(virtual_ids) - {virtual_id}
+
+    hoisted_dependencies: set[str] = set()
+    cleaned_dep_jobs: list[RealJobConfig] = []
+    for real_job in dep_jobs:
+        original_deps = real_job.depends_on or set()
+        hoisted_dependencies |= original_deps & other_virtual_ids
+        cleaned_dep_jobs.append(
+            real_job.model_copy(
+                update={
+                    "depends_on": original_deps - other_virtual_ids - {virtual_id},
+                },
+            ),
         )
-        for real_job in dep_jobs
-    ]
-    result = cast("VirtualJobConfig", job).compile_virtual(dep_jobs)
+
+    result = cast("VirtualJobConfig", job).compile_virtual(cleaned_dep_jobs)
     return [
         real_job.model_copy(
             update={
                 "depends_on": {
                     id_ for id_ in (real_job.depends_on or set()) if id_ != virtual_id
                 }
-            }
+                | hoisted_dependencies,
+            },
         )
         for real_job in result
     ]

@@ -50,7 +50,6 @@ def run_ssh(config: InitialConfig[Any]) -> None:
         )
         logger.debug("Connected to %s with password", host_config.remote_host)
 
-
     sftp = ssh.open_sftp()
     sftp.mkdir(host_config.working_dir)
     logger.debug("Made working dir %s", host_config.working_dir)
@@ -124,7 +123,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
     if host_config.sync_data_at_end:
         if host_config.output_dir is None:
-            raise RuntimeError # checked by validation of model, just for type checking
+            raise RuntimeError  # checked by validation of model, just for type checking
         # run rsync to output directory
         subprocess.run(  # noqa: S603
             [
@@ -133,5 +132,5 @@ def run_ssh(config: InitialConfig[Any]) -> None:
                 f"{host_config.remote_user}@{host_config.remote_host}:{host_config.working_dir}",
                 host_config.output_dir,
             ],
-            check=True
+            check=True,
         )

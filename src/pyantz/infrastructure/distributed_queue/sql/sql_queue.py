@@ -1,6 +1,7 @@
 """Queue running with sql."""
 
 import contextlib
+import logging
 import os
 import sqlite3
 from itertools import batched
@@ -68,6 +69,23 @@ class SqliteQueue(QueueInterface):
 
         """
         self._update_job_statuses()
+        while True:
+            result = self._try_dequeue()
+            # None means a job was dequeued but could not be loaded;
+            # it has been failed, so try again with the next job
+            if result is not None:
+                return result
+
+    def _try_dequeue(self) -> GetJobReturn | None:
+        """Dequeue the next READY job and mark it RUNNING in one transaction.
+
+        Returns:
+            GetJobReturn | None: the result of the dequeue, or None if the job
+                dequeued had a config which could not be loaded. That job is
+                marked ERROR rather than being lost.
+
+        """
+        logger = logging.getLogger(__name__)
         with Session(self._engine) as sesh:
             # get READY jobs
             ready_jobs_query = sa.select(StatusTable.job_id).where(
@@ -97,14 +115,24 @@ class SqliteQueue(QueueInterface):
                 .returning(JobQueue)
             )
             result = sesh.execute(stmt).first()
-            sesh.flush()
             job_id: str | None = result[0].job_id if result is not None else None
 
             if job_id is None:
                 return self._check_empty_type(sesh)
-            return GetJobReturn(
-                payload=self._get_job_config(sesh, job_id),
-            )
+
+            # the job is out of the queue, so it must not stay READY: a crash
+            # before the worker reports back would otherwise lose it silently
+            set_status = sa.update(StatusTable).where(StatusTable.job_id == job_id)
+            sesh.execute(set_status.values(job_status=JobStatus.RUNNING))
+            try:
+                payload = self._get_job_config(sesh, job_id)
+            except Exception:
+                logger.exception("Unable to load config of job %s", job_id)
+                sesh.execute(set_status.values(job_status=JobStatus.ERROR))
+                sesh.commit()
+                return None
+            sesh.commit()
+            return GetJobReturn(payload=payload)
 
     @staticmethod
     def _get_job_config(sesh: Session, job_id: str) -> JobReturn:
@@ -126,7 +154,6 @@ class SqliteQueue(QueueInterface):
             msg = f"Cannot get chunks for config {job_id}"
             raise RuntimeError(msg)
         contents = "".join(content_row)
-        sesh.commit()
 
         job_config = JobWithContext.model_validate_json(contents)
         return JobReturn(job=job_config)
@@ -144,7 +171,7 @@ class SqliteQueue(QueueInterface):
         if jobs_report.running > 0:
             return GetJobReturn(payload=PendingReturn(jobs_report=jobs_report))
         if jobs_report.pending > 0:
-            # hmm, unlikley to be able to recover
+            # hmm, unlikely to be able to recover
             # but the worker is in charge of crashing / killing itself
             # by analyzing the jobs report
             return GetJobReturn(payload=PendingReturn(jobs_report=jobs_report))
@@ -154,6 +181,76 @@ class SqliteQueue(QueueInterface):
             return GetJobReturn(payload=PendingReturn(jobs_report=jobs_report))
         return GetJobReturn(payload=CompleteReturn(jobs_report=jobs_report))
         # all jobs are ERROR or SUCCESS
+
+    def get_job_ids_with_status(self, status: JobStatus) -> list[str]:
+        """Get the ids of the jobs which currently have the status, sorted."""
+        with Session(self._engine) as sesh:
+            rows = sesh.execute(
+                sa.select(StatusTable.job_id)
+                .where(StatusTable.job_status == status)
+                .order_by(StatusTable.job_id),
+            )
+            return [row[0] for row in rows]
+
+    def set_job_worker(self, job_id: str | uuid.UUID, worker_id: int) -> None:
+        """Record which worker is running the job."""
+        with Session(self._engine) as sesh:
+            sesh.execute(
+                sa.update(StatusTable)
+                .where(StatusTable.job_id == str(job_id))
+                .values(worker_id=worker_id),
+            )
+            sesh.commit()
+
+    def fail_jobs_of_worker(self, worker_id: int) -> list[str]:
+        """Mark the RUNNING jobs of a worker which died as ERROR.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
+
+        """
+        with Session(self._engine) as sesh:
+            rows = sesh.execute(
+                sa.update(StatusTable)
+                .where(StatusTable.worker_id == worker_id)
+                .where(StatusTable.job_status == JobStatus.RUNNING)
+                .values(job_status=JobStatus.ERROR)
+                .returning(StatusTable.job_id),
+            )
+            failed = [row[0] for row in rows]
+            sesh.commit()
+        self._update_job_statuses()  # their dependents fail too
+        return failed
+
+    def fail_deadlocked_jobs(self) -> list[str]:
+        """Mark PENDING jobs as ERROR if nothing is READY or RUNNING.
+
+        Callers should confirm the state persists across a few polls: a job that
+        just finished may not have had its dependents promoted yet.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
+
+        """
+        self._update_job_statuses()
+        with Session(self._engine) as sesh:
+            active_job_exists = (
+                sa.select(StatusTable.job_id)
+                .where(
+                    StatusTable.job_status.in_((JobStatus.READY, JobStatus.RUNNING)),
+                )
+                .exists()
+            )
+            stmt = (
+                sa.update(StatusTable)
+                .where(StatusTable.job_status == JobStatus.PENDING)
+                .where(~active_job_exists)
+                .values(job_status=JobStatus.ERROR)
+                .returning(StatusTable.job_id)
+            )
+            failed = [row[0] for row in sesh.execute(stmt)]
+            sesh.commit()
+        return failed
 
     def get_jobs_report(self) -> JobsReport:
         """Get the jobs report.
@@ -216,7 +313,7 @@ class SqliteQueue(QueueInterface):
         )
 
     def _update_job_statuses(self) -> None:
-        """Update statuses of all the josb in the queue.
+        """Update statuses of all the job in the queue.
 
         Propagates errors and successes down the dependency chain.
 
@@ -247,31 +344,29 @@ class SqliteQueue(QueueInterface):
             sesh.execute(delete_jobs_from_queue_query)
             sesh.execute(job_statuses_that_depend_on_failed_job)
 
-            # update jobs to ready if depends on jobs with success
-            success_jobs: sa.Select[Any] = sa.Select(StatusTable.job_id).where(  # pyright: ignore[reportUnknownVariableType]
-                StatusTable.job_status == JobStatus.SUCCESS,
+            # a PENDING job becomes READY only once *every* dependency is SUCCESS.
+            # A dependency on an unknown job (NULL status) keeps the job pending.
+            jobs_with_unfinished_dep = (
+                sa.select(DependencyTable.job_id)
+                .join(
+                    StatusTable,
+                    StatusTable.job_id == DependencyTable.depends_on,
+                    isouter=True,
+                )
+                .where(
+                    sa.or_(
+                        StatusTable.job_status.is_(None),
+                        StatusTable.job_status != JobStatus.SUCCESS,
+                    ),
+                )
             )
-            jobs_depending_on_success = sa.select(DependencyTable.job_id).where(
-                DependencyTable.depends_on.in_(success_jobs),
-            )
-
-            update_pending_jobs_depending_on_success = (
-                sa.update(StatusTable)
-                .where(StatusTable.job_id.in_(jobs_depending_on_success))
-                .where(StatusTable.job_status == JobStatus.PENDING)
-                .values(job_status=JobStatus.READY)
-            )
-            sesh.execute(update_pending_jobs_depending_on_success)
-
-            # update jobs with no dependency
-            jobs_with_deps = sa.select(sa.func.distinct(DependencyTable.job_id))
-            update_query = (
+            promote_ready_jobs = (
                 sa.update(StatusTable)
                 .where(StatusTable.job_status == JobStatus.PENDING)
-                .where(StatusTable.job_id.not_in(jobs_with_deps))
+                .where(StatusTable.job_id.not_in(jobs_with_unfinished_dep))
                 .values(job_status=JobStatus.READY)
             )
-            sesh.execute(update_query)
+            sesh.execute(promote_ready_jobs)
             sesh.commit()
 
     def update_job_status(
@@ -314,7 +409,7 @@ class SqliteQueue(QueueInterface):
         Args:
             job_config (JobWithContext): job to enqueue
             parent_job_id (str | uuid.UUID | None): jobs added inherit their parent
-                dependency "responsbilities". So a job submitting new jobs should pass
+                dependency "responsibilities". So a job submitting new jobs should pass
                 its own id to the function.
                 For example if B depends on A and A adds C then B will depend on C.
                 If, however, the user DOESN'T want that (B should run parallel to C),
@@ -323,11 +418,37 @@ class SqliteQueue(QueueInterface):
 
         Returns:
             bool: True if successfully added; False if unable to add
+                (for example, a job with the same id already exists)
 
         """
         # not required but polite to call whenever accessing
         self._update_job_statuses()
 
+        try:
+            self._insert_job(job_config, parent_job_id)
+        except sqlalchemy.exc.IntegrityError:
+            # the session is rolled back on exit, so the queue is unchanged
+            logging.getLogger(__name__).error(  # noqa: TRY400
+                "Cannot add job %s: a job with this id is already in the queue",
+                job_config.job_id,
+            )
+            return False
+
+        # not required but polite
+        self._update_job_statuses()
+        return True
+
+    def _insert_job(
+        self,
+        job_config: JobWithContext,
+        parent_job_id: str | uuid.UUID | None,
+    ) -> None:
+        """Insert all rows for a job in one transaction.
+
+        Raises:
+            sqlalchemy.exc.IntegrityError: if the job id is already present
+
+        """
         with Session(self._engine) as sesh:
             # first, chunk up the job
             jobs_json = job_config.model_dump_json()
@@ -384,10 +505,6 @@ class SqliteQueue(QueueInterface):
             sesh.add(queue_item)
 
             sesh.commit()
-
-        # not required but polite
-        self._update_job_statuses()
-        return True
 
     def change_config_in_place(self, job_config: JobWithContext) -> None:
         """Change the config of a job.
