@@ -22,7 +22,7 @@ from pyantz.infrastructure.config.job import JobWithContext
 
 
 class JobStatus(IntEnum):
-    """POssible statuses of a job."""
+    """possible statuses of a job."""
 
     # job can be run! just waiting for a worker
     READY = 0
@@ -71,6 +71,16 @@ class JobsReport(BaseModel):
 
     # num jobs currently being run by a worker
     running: int = Field(ge=0)
+
+    @property
+    def all_succeeded(self) -> bool:
+        """True if no job errored and none is left unfinished."""
+        return (
+            self.error == 0
+            and self.pending == 0
+            and self.ready == 0
+            and self.running == 0
+        )
 
 
 class PendingReturn(BaseModel):
