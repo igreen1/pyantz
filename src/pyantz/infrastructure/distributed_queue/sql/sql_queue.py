@@ -8,6 +8,7 @@ from itertools import batched
 from typing import TYPE_CHECKING, Any
 
 import sqlalchemy as sa
+import sqlalchemy.event
 import sqlalchemy.exc
 from sqlalchemy.orm import Session
 
@@ -28,6 +29,10 @@ if TYPE_CHECKING:
     import uuid
     from collections.abc import Generator
     from pathlib import Path
+
+
+# how long a connection waits for another process to release the database lock
+BUSY_TIMEOUT_SECONDS = 30
 
 
 class SqliteQueue(QueueInterface):
@@ -53,10 +58,26 @@ class SqliteQueue(QueueInterface):
             Base.metadata.create_all(self._engine)
 
     def _create_engine(self, database_file: Path) -> sa.Engine:
-        """Create the engine and return it."""
-        return sa.create_engine(
+        """Create the engine and return it.
+
+        Connections use write-ahead logging and wait for locks rather than failing
+        immediately, so many worker processes can share one queue file.
+        Note that WAL needs a local filesystem (not NFS) for the queue file.
+        """
+        engine = sa.create_engine(
             f"""sqlite:///{os.fspath(database_file)}""",
+            connect_args={"timeout": BUSY_TIMEOUT_SECONDS},
         )
+
+        @sqlalchemy.event.listens_for(engine, "connect")
+        def _set_pragmas(dbapi_connection: sqlite3.Connection, _record: object) -> None:
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_SECONDS * 1000}")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+
+        return engine
 
     def get_job(self) -> GetJobReturn:
         """Return a job from the queue.
