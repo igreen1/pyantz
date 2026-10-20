@@ -14,11 +14,15 @@ from pyantz.infrastructure.config import (
 from pyantz.infrastructure.distributed_queue.common.return_types import (
     CompleteReturn,
     JobReturn,
+    JobsReport,
     JobStatus,
     PendingReturn,
 )
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
 from pyantz.infrastructure.runner.job_manager import run_job
+
+# consecutive polls with only pending jobs before they are declared deadlocked
+DEADLOCK_POLLS = 3
 
 # how often the pool checks whether a worker died
 DEATH_CHECK_SECONDS = 0.2
@@ -161,6 +165,32 @@ def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:
         queue.add_job(job_with_var, None)
 
 
+def _check_for_deadlock(
+    queue: SqliteQueue,
+    report: JobsReport,
+    deadlocked_polls: int,
+) -> int:
+    """Fail jobs which can never run and return the updated deadlocked poll count.
+
+    A queue with only pending jobs cannot make progress. To avoid racing with another
+    worker that is between two queue updates, the state must persist for a few
+    consecutive polls before the pending jobs are marked as ERROR.
+    """
+    if report.running != 0 or report.ready != 0 or report.pending == 0:
+        return 0
+    deadlocked_polls += 1
+    if deadlocked_polls < DEADLOCK_POLLS:
+        return deadlocked_polls
+    stuck = queue.fail_deadlocked_jobs()
+    if stuck:
+        logging.getLogger(__name__).error(
+            "Jobs can never run (unknown or unsatisfiable dependencies); "
+            "marking as ERROR: %s",
+            stuck,
+        )
+    return 0
+
+
 def _worker(
     queue_file: Path,
     poll_time: float,
@@ -190,6 +220,7 @@ def _worker(
             raise RuntimeError(msg)
 
     timeout_ctr = 0.0
+    deadlocked_polls = 0
     while True:
         # get job from the queue
         match queue.get_job().payload:
@@ -205,7 +236,8 @@ def _worker(
                 status = JobStatus.SUCCESS if result else JobStatus.ERROR
                 queue.update_job_status(job_config.job_id, status=status)
                 timeout_ctr = 0.0  # reset timer, we got and did a job :)
-            case PendingReturn():
+            case PendingReturn(jobs_report=report):
+                deadlocked_polls = _check_for_deadlock(queue, report, deadlocked_polls)
                 time.sleep(poll_time)
                 timeout_ctr += poll_time
             case CompleteReturn():

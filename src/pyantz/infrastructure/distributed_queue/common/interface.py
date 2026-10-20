@@ -109,6 +109,19 @@ class QueueInterface(Protocol):
         """
 
     @abstractmethod
+    def fail_deadlocked_jobs(self) -> list[str]:
+        """Mark PENDING jobs as ERROR if nothing is READY or RUNNING.
+
+        In that state nothing can ever change the status of a pending job (for
+        example, it depends on a job id that was never added), so the pipeline
+        would wait forever.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
+
+        """
+
+    @abstractmethod
     def get_jobs_report(self) -> JobsReport:
         """Get the jobs report.
 

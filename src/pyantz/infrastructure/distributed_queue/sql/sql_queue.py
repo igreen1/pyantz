@@ -196,6 +196,36 @@ class SqliteQueue(QueueInterface):
         self._update_job_statuses()  # their dependents fail too
         return failed
 
+    def fail_deadlocked_jobs(self) -> list[str]:
+        """Mark PENDING jobs as ERROR if nothing is READY or RUNNING.
+
+        Callers should confirm the state persists across a few polls: a job that
+        just finished may not have had its dependents promoted yet.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
+
+        """
+        self._update_job_statuses()
+        with Session(self._engine) as sesh:
+            active_job_exists = (
+                sa.select(StatusTable.job_id)
+                .where(
+                    StatusTable.job_status.in_((JobStatus.READY, JobStatus.RUNNING)),
+                )
+                .exists()
+            )
+            stmt = (
+                sa.update(StatusTable)
+                .where(StatusTable.job_status == JobStatus.PENDING)
+                .where(~active_job_exists)
+                .values(job_status=JobStatus.ERROR)
+                .returning(StatusTable.job_id)
+            )
+            failed = [row[0] for row in sesh.execute(stmt)]
+            sesh.commit()
+        return failed
+
     def get_jobs_report(self) -> JobsReport:
         """Get the jobs report.
 
