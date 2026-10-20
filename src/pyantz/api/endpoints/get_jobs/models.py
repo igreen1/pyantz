@@ -1,21 +1,19 @@
 """Data models for the `get_jobs` endpoint."""
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 
 
-class GetJobReponse(BaseModel):
+class JobInfo(BaseModel):
+    """A job which can be used in pyantz."""
+
+    # import path of the function, which is how configs refer to the job
+    name: str
+
+    # first paragraph of the job's docstring
+    description: str
+
+
+class GetJobResponse(BaseModel):
     """Response returned by the get_job request."""
 
-    # functions that can be used in pyantz.
-    pyantz_jobs: list[str]
-
-    # description of the job
-    pyantz_job_descriptions: list[str]
-
-    @model_validator(mode="after")
-    def check_lengths(self) -> GetJobReponse:
-        """Ensure that the lengths of the two lists are the same."""
-        if len(self.pyantz_jobs) != len(self.pyantz_job_descriptions):
-            msg = "The lengths of pyantz_jobs and pyantz_job_descriptions must be same."
-            raise ValueError(msg)
-        return self
+    jobs: list[JobInfo]

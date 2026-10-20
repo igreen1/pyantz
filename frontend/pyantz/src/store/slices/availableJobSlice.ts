@@ -60,9 +60,10 @@ export const fetchAvailableJobs = createAsyncThunk(
   "availableJobs/fetchAvailableJobs",
   async () => {
     const response = await api.get("/api/v1.0/jobs/get_all_jobs");
+    const jobs = response.data.jobs as { name: string; description: string }[];
     return {
-      items: response.data.pyantz_jobs as string[],
-      descriptions: response.data.pyantz_job_descriptions as string[],
+      items: jobs.map((job) => job.name),
+      descriptions: jobs.map((job) => job.description),
     };
   },
 );
