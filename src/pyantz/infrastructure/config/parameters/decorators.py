@@ -103,7 +103,7 @@ def add_parameters[T: BaseModel](
         param_cls: basemodel to use to validate
         check_at_startup: if True, will check the parameters class at startup.
             this disallows variables as those won't be set yet. Instead, prefer
-            setting this value in the configuration as part of the initial params
+            setting this value in the configuration as part of the initial params.
 
     """
 

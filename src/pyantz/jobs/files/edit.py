@@ -185,7 +185,7 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
 class EditExternalParams(BaseModel):
     """Edit a file using an external function to extract and to save off."""
 
-    # will accept the args/kwargs provded
+    # will accept the args/kwargs provided
     # MUST return a JsonValue to be edited
     extract_function: _FunctionDefinition[Callable[..., JsonValue]]
 
@@ -202,7 +202,7 @@ class EditExternalParams(BaseModel):
     # but again, if the JSON object contains a field "a.[0]" that will be edited instead
     updates: Mapping[str, Any]
 
-    # what to do when the field provided points to a loction that doesn't exist in json
+    # what to do when the field provided points to a location that doesn't exist in json
     # for example, consider field = "a.b.c.d" being set to "goodbye!"
     # but the object looks like {"a": "hello world"}
     # what do we do?

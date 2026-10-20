@@ -104,7 +104,7 @@ def _save_slurm_config(config: InitialConfig[SlurmRunnerConfig]) -> Path:
         Path: where the slurm configuration was saved
 
     """
-    uid = str(uuid.uuid4())  # to reduce collisions if a user re-uses a working_dir
+    uid = str(uuid.uuid4())  # to reduce collisions if a user reuses a working_dir
     save_path = config.submitter.working_dir / f"global_slurm_config_{uid!s}.json"
     save_path.write_text(config.submitter.model_dump_json())
     os.environ[CONFIG_FILE_ENVIRON_VAR_NAME] = os.fspath(save_path)
@@ -395,7 +395,7 @@ def _run_on_node() -> bool:
 
     def wrapped_submitter(
         job_to_submit: JobConfig,
-        # don't need parent id beacuse the "parent id" is the slurm job id
+        # don't need parent id because the "parent id" is the slurm job id
         # which we grab from the current environment
         _parent_id: str | uuid.UUID | None = None,
     ) -> None:

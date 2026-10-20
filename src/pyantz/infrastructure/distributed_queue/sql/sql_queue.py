@@ -336,7 +336,7 @@ class SqliteQueue(QueueInterface):
         )
 
     def _update_job_statuses(self) -> None:
-        """Update statuses of all the job in the queue.
+        """Update statuses of all the jobs in the queue.
 
         Propagates errors and successes down the dependency chain.
 
@@ -580,7 +580,7 @@ class SqliteQueue(QueueInterface):
                 for chunk_as_tuple in batched(jobs_json, CHUNKSIZE, strict=False)
             )
 
-            # then, add it to the job config defintion table
+            # then, add it to the job config definition table
             job_configs = [
                 JobConfigTable(
                     job_id=job_config.job_id,

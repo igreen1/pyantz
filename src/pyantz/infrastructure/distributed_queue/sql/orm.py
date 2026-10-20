@@ -41,7 +41,7 @@ class JobConfigTable(Base):
     """The job config table holds the configurations for the jobs in the queue.
 
     Note that a job may span multiple tuples (rows) if the config is very large.
-    In that case, it will have mutliple sub-indices.
+    In that case, it will have multiple sub-indices.
     """
 
     __tablename__: str = "queue_items"

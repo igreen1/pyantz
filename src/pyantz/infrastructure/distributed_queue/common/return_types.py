@@ -22,7 +22,7 @@ from pyantz.infrastructure.config.job import JobWithContext
 
 
 class JobStatus(IntEnum):
-    """possible statuses of a job."""
+    """Possible statuses of a job."""
 
     # job can be run! just waiting for a worker
     READY = 0

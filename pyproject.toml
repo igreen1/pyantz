@@ -48,6 +48,7 @@ api = [
 dev = [
     "autodoc-pydantic>=2.2.0",
     "bandit>=1.9.4",
+    "codespell>=2.4.1",
     "hypothesis>=6.151.10",
     "mypy>=1.17.1",
     "polars[all]>=1.39.3",
