@@ -63,7 +63,7 @@ class ExternalExtractParams(BaseModel):
         self,
         fn: Callable[..., pl.DataFrame | pl.LazyFrame],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -89,6 +89,7 @@ def save_from_external_extraction(params: ExternalExtractParams) -> bool:
         return False
 
     try:
+        Path(params.result_parquet_location).parent.mkdir(parents=True, exist_ok=True)
         if isinstance(result, pl.LazyFrame):
             result.sink_parquet(params.result_parquet_location)
         elif isinstance(result, pl.DataFrame):  # pyright: ignore[reportUnnecessaryIsInstance]
@@ -129,9 +130,9 @@ class ExternalSimpleParams(BaseModel):
     @field_serializer("external_function")
     def serialize_job_function(
         self,
-        fn: Callable[..., pl.DataFrame | pl.LazyFrame],
+        fn: Callable[..., Any],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -164,8 +165,8 @@ class ExternalAnalysisParams(BaseModel):
     #: and passed as kwargs to the analysis function
     variable_names_to_parquets: Mapping[str, Path]
 
-    #: if lazy, all dataframes are scanned into memory
-    #: if eager, all dataframes are scanned into memory
+    #: if lazy, all dataframes are scanned lazily (polars LazyFrames)
+    #: if eager, all dataframes are read into memory (polars DataFrames)
     #: if a mapping, maps each variable name from `variable_names_to_files` to one
     lazy_or_eager: Literal["lazy", "eager"] | Mapping[str, Literal["lazy", "eager"]]
 
@@ -192,7 +193,7 @@ class ExternalAnalysisParams(BaseModel):
         self,
         fn: Callable[..., Any],
     ) -> str:
-        """Serialize the fucntion."""
+        """Serialize the function."""
         return serialize_function(fn)
 
 
@@ -214,7 +215,8 @@ def external_analysis(params: ExternalAnalysisParams) -> bool:
                 logger.error(
                     "User must register %s with a lazy or eager loader", variable_name
                 )
-                raise RuntimeError
+                msg = f"No lazy or eager loader registered for {variable_name!r}"
+                raise RuntimeError(msg)
         else:
             return_type = params.lazy_or_eager
         return _mapping[return_type]
@@ -224,8 +226,8 @@ def external_analysis(params: ExternalAnalysisParams) -> bool:
             var_name: get_loader_func(var_name)(file_path)
             for var_name, file_path in params.variable_names_to_parquets.items()
         }
-    except RuntimeError:
-        logger.debug("IO Error, cannot run external function")
+    except Exception as exc:
+        logger.exception("Cannot load the data, not running the function", exc_info=exc)
         return False
 
     # output of the function is discarded

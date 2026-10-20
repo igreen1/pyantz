@@ -38,7 +38,7 @@ class SubmitParams[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # the wrapped configuration to submti
+    # the wrapped configuration to submit
     runner_config: S
 
     jobs: tuple[JobConfig, ...]
@@ -63,9 +63,9 @@ def submit(params: SubmitParams[Any]) -> bool:
         jobs=params.jobs, submitter=params.runner_config, variables=curr_variables
     )
 
-    start(new_initial_config)
+    report = start(new_initial_config)
 
-    return True
+    return report is None or report.all_succeeded
 
 
 class HostParams[
@@ -99,6 +99,6 @@ def new_host(params: HostParams[Any, Any]) -> bool:
         host=params.host_config,
     )
 
-    start(new_initial_config)
+    report = start(new_initial_config)
 
-    return True
+    return report is None or report.all_succeeded

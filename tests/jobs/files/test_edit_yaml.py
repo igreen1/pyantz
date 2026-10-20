@@ -61,7 +61,7 @@ def test_nested_yaml(tmp_path: Path) -> None:
             "angles.right.hemi": 20,
             "generals.[1].name": "vader",
             "new_afield\\.cool": "hello",
-            "generals.[3]": {"name": "why hello"}
+            "generals.[3]": {"name": "why hello"},
         },
     }
     expected_contents: dict[str, Any] = {
@@ -78,10 +78,10 @@ def test_nested_yaml(tmp_path: Path) -> None:
             },
             {
                 "name": "why hello",
-            }
+            },
         ],
         "new_field": {"new_subfield": "value1"},
-        "new_afield.cool": "hello"
+        "new_afield.cool": "hello",
     }
 
     edit_yaml(
