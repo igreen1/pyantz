@@ -60,4 +60,4 @@ def get_job_schema(fn_name: str) -> GetJsonSchemaResponse:
             json_schema=json_schema,
         )
 
-    raise HTTPException(status_code=500, detail="No parameter model for: {fn_name}")
+    raise HTTPException(status_code=404, detail=f"No parameter model for: {fn_name}")
