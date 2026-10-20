@@ -45,7 +45,11 @@ class VirtualParamModel(Protocol):
 
 def _is_virtual(params: VirtualParamModel) -> VirtualParamModel:
     if not is_virtual(params):
-        raise ValueError
+        msg = (
+            f"{params!r} is not a virtual job: "
+            "its parameter model must be decorated with `mark_virtual`"
+        )
+        raise ValueError(msg)
     return params
 
 

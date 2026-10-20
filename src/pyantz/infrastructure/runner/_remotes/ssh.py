@@ -124,7 +124,9 @@ def _build_remote_command(
 def _sync_output(host_config: SshConfig, working_dir: str) -> None:
     """Copy the remote working directory to the local output directory."""
     if host_config.output_dir is None:
-        raise RuntimeError  # checked by validation of model, just for type checking
+        # the model validates this, the check is for the type checker
+        msg = "output_dir must be set when sync_data_at_end is true"
+        raise RuntimeError(msg)
     rsync = shutil.which("rsync")
     if rsync is None:
         msg = (
@@ -213,8 +215,9 @@ def _connect(ssh: paramiko.SSHClient, host_config: SshConfig) -> None:
 
 def run_ssh(config: InitialConfig[Any]) -> None:
     """Copy our files to a remote and run."""
-    if not config.host.type_ == "ssh":
-        raise RuntimeError
+    if config.host.type_ != "ssh":
+        msg = f"run_ssh needs an 'ssh' host, got {config.host.type_!r}"
+        raise RuntimeError(msg)
 
     host_config: SshConfig = cast("SshConfig", config.host)
 
