@@ -17,6 +17,10 @@ dependencies = [
     "sqlalchemy>=2.0.42",
 ]
 
+[project.optional-dependencies]
+# reading excel files (pyantz.jobs.files.reformat.excel_to_csv)
+excel = ["fastexcel>=0.12.0"]
+
 [project.scripts]
 pyantz = "pyantz.__main__:main"
 pyantz-status = "pyantz.status:main"
