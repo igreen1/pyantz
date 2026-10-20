@@ -318,9 +318,9 @@ def _worker(
         match queue.get_job().payload:
             case JobReturn(job=job_config):
                 # set job to running
-                queue.update_job_status(job_config.job_id, status=JobStatus.RUNNING)
-                queue.set_job_worker(job_config.job_id, os.getpid())
                 try:
+                    queue.update_job_status(job_config.job_id, status=JobStatus.RUNNING)
+                    queue.set_job_worker(job_config.job_id, os.getpid())
                     result = run_job_with_details(job_config, submit_fn)
                 except Exception as exc:
                     logger.exception("Unknown error in job!", exc_info=exc)
