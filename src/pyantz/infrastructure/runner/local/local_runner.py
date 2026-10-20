@@ -257,6 +257,36 @@ def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:
         queue.add_job(job_with_var, None)
 
 
+def _record_result(
+    queue: SqliteQueue, job_config: JobWithContext, result: JobResult
+) -> None:
+    """Store the outcome of a job, or put it back in the queue to be retried."""
+    if result.success:
+        queue.update_job_status(
+            job_config.job_id,
+            status=JobStatus.SUCCESS,
+            details=result.details,
+        )
+    elif job_config.num_attempted_runs < job_config.max_retries:
+        attempts = job_config.num_attempted_runs + 1
+        logging.getLogger(__name__).warning(
+            "Job %s failed, retrying (retry %d of %d)",
+            job_config.job_id,
+            attempts,
+            job_config.max_retries,
+        )
+        queue.change_config_in_place(
+            job_config.model_copy(update={"num_attempted_runs": attempts}),
+        )
+        queue.update_job_status(job_config.job_id, status=JobStatus.PENDING)
+    else:
+        queue.update_job_status(
+            job_config.job_id,
+            status=JobStatus.ERROR,
+            details=result.details,
+        )
+
+
 def _check_for_deadlock(
     queue: SqliteQueue,
     report: JobsReport,
@@ -335,12 +365,7 @@ def _worker(
                     )
                     queue.update_job_status(job_config.job_id, status=JobStatus.ERROR)
                     raise
-                status = JobStatus.SUCCESS if result.success else JobStatus.ERROR
-                queue.update_job_status(
-                    job_config.job_id,
-                    status=status,
-                    details=result.details,
-                )
+                _record_result(queue, job_config, result)
                 timeout_ctr = 0.0  # reset timer, we got and did a job :)
             case PendingReturn(jobs_report=report):
                 deadlocked_polls = _check_for_deadlock(queue, report, deadlocked_polls)

@@ -101,7 +101,8 @@ class QueueInterface(Protocol):
         Then it will set its status to PENDING.
 
         The queue will then set PENDING to READY on its next check and return
-        the job to be re-run.
+        the job to be re-run (the job is put back in the queue if a worker had
+        already taken it out).
 
         Args:
             job_config (JobWithContext): configuration to run
