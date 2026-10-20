@@ -93,12 +93,21 @@ def get_cmd(
     working_dir: str,
     addl_requirements: list[str] | None = None,
 ) -> list[str]:
-    """Get the command to run on the remote, which has *working_dir* as its cwd."""
+    """Get the command to run on the remote.
+
+    Unless the project directory is copied (and added through
+    ``addl_requirements``), the remote runs the same version of pyantz as the
+    local machine, and has *working_dir* as its cwd, so that the configuration means the same thing on both.
+    """
+    from pyantz import __version__  # noqa: PLC0415  (circular import at module level)
+
     if addl_requirements is None:
         addl_requirements = []
     cmd = [
         "uvx",
     ]
+    if not host_config.copy_project_dir:
+        cmd.extend(["--from", f"pyantz=={__version__}"])
     if host_config.requirements:
         cmd.extend(["--with-requirements", "requirements.txt"])
     cmd.extend(addl_requirements)
