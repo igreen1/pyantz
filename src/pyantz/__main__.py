@@ -108,7 +108,9 @@ def main() -> None:
         print(_describe(config))  # noqa: T201
         return
 
-    _start(config)
+    report = _start(config)
+    if report is not None and not report.all_succeeded:
+        _sys.exit(1)
 
 
 if __name__ == "__main__":
