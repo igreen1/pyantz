@@ -88,7 +88,7 @@ def add_parameters[T: BaseModel](
         param_cls: basemodel to use to validate
         check_at_startup: if True, will check the parameters class at startup.
             this disallows variables as those won't be set yet. Instead, prefer
-            setting this value in the configuration as part of the inital params.s
+            setting this value in the configuration as part of the initial params
 
     """
 
@@ -110,7 +110,14 @@ def add_parameters[T: BaseModel](
         _fn_with_checker.PYANTZ_CHECKED = True  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
         _fn_with_checker.PYANTZ_CHECK_AT_STARTUP = check_at_startup  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
         _fn_with_checker.PYANTZ_VALIDATION_MODEL = param_cls  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
-        _fn_with_checker.PYANTZ_NAME = serialize_function(_fn_with_checker)  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
+        try:
+            name = serialize_function(_fn_with_checker)
+        except ValueError:
+            # not importable by name (e.g., defined inside a function), so it can
+            # still run in-process but can't be sent to other processes
+            module = getattr(fn, "__module__", "anonymous")
+            name = f"{module}.{getattr(fn, '__qualname__', 'some_fn')}"
+        _fn_with_checker.PYANTZ_NAME = name  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 
         PYANTZ_REGISTERED_FUNCTION.append(_fn_with_checker)
 
@@ -136,6 +143,7 @@ def update_deps[T: BaseModel](
     **should** handle this, this will make life easier.
     """
 
+    @wraps(fn)
     def scramble_deps(job_params: T, deps: list[JobConfig]) -> list[JobConfig]:
         """Re-map all job ids to fresh UUIDs while preserving the dependency graph."""
         old_ids_to_new_ids = {job.job_id: str(uuid.uuid4()) for job in deps}
@@ -144,6 +152,13 @@ def update_deps[T: BaseModel](
             job.model_copy(
                 update={
                     "job_id": old_ids_to_new_ids[job.job_id],
+                    # ids outside of this list (external jobs) are left unchanged
+                    "depends_on": {
+                        old_ids_to_new_ids.get(dep, dep)
+                        for dep in (job.depends_on or set())
+                    }
+                    if job.depends_on
+                    else job.depends_on,
                 }
             )
             for job in deps

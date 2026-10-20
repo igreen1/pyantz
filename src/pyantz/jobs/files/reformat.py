@@ -1,4 +1,4 @@
-"""Reformate between tabular datasets."""
+"""Reformat between tabular datasets."""
 
 import logging
 from pathlib import Path
