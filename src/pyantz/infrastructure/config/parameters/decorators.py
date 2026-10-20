@@ -88,7 +88,7 @@ def add_parameters[T: BaseModel](
         param_cls: basemodel to use to validate
         check_at_startup: if True, will check the parameters class at startup.
             this disallows variables as those won't be set yet. Instead, prefer
-            setting this value in the configuration as part of the inital params.s
+            setting this value in the configuration as part of the initial params
 
     """
 
@@ -143,6 +143,7 @@ def update_deps[T: BaseModel](
     **should** handle this, this will make life easier.
     """
 
+    @wraps(fn)
     def scramble_deps(job_params: T, deps: list[JobConfig]) -> list[JobConfig]:
         """Re-map all job ids to fresh UUIDs while preserving the dependency graph."""
         old_ids_to_new_ids = {job.job_id: str(uuid.uuid4()) for job in deps}
@@ -151,6 +152,13 @@ def update_deps[T: BaseModel](
             job.model_copy(
                 update={
                     "job_id": old_ids_to_new_ids[job.job_id],
+                    # ids outside of this list (external jobs) are left unchanged
+                    "depends_on": {
+                        old_ids_to_new_ids.get(dep, dep)
+                        for dep in (job.depends_on or set())
+                    }
+                    if job.depends_on
+                    else job.depends_on,
                 }
             )
             for job in deps
