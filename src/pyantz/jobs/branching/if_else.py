@@ -10,7 +10,9 @@ Both jobs support template variables in ``left_side`` and ``right_side``,
 making them useful for dynamic branching based on runtime state.
 """
 
+import math
 import operator
+import re
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict
@@ -29,7 +31,12 @@ type ValidOperators = Literal[
     ">=",
     "!=",
     "~=",
+    "in",
+    "not in",
+    "=~",
 ]
+
+type Coercion = Literal["auto", "str", "float"]
 
 
 class IfElseParams(BaseModel):
@@ -43,6 +50,12 @@ class IfElseParams(BaseModel):
 
     comparator: ValidOperators
 
+    # how the sides are read before comparing with =, <, >, ...:
+    # auto: as numbers if both can be, otherwise as they are
+    # str: as text; float: as numbers (the job fails if one isn't a number)
+    # `in`, `not in` and `=~` always compare text
+    coerce: Coercion = "auto"
+
     # the "if" part of the job
     if_true: JobConfig
 
@@ -54,9 +67,7 @@ class IfElseParams(BaseModel):
 def if_else(params: IfElseParams, submit_fn: SubmissionFnType) -> bool:
     """Submit a job based on a conditional value."""
     # first compare which one we want to do
-    op = op_mapping[params.comparator]
-
-    if op(params.left_side, params.right_side):
+    if _compare(params):
         submit_fn(
             params.if_true,
         )
@@ -79,6 +90,9 @@ class ConditionalExecution(BaseModel):
 
     comparator: ValidOperators
 
+    # see IfElseParams.coerce
+    coerce: Coercion = "auto"
+
     if_true: JobConfig
 
 
@@ -87,13 +101,48 @@ def conditionally_execute(
     params: ConditionalExecution, submit_fn: SubmissionFnType
 ) -> bool:
     """Execute a job iff a condition is true."""
-    op = op_mapping[params.comparator]
-
-    if op(params.left_side, params.right_side):
+    if _compare(params):
         submit_fn(
             params.if_true,
         )
     return True
+
+
+def _to_number(value: str | float) -> float | None:
+    """Read a value as a number, or None if it isn't one."""
+    try:
+        number = float(value)
+    except ValueError:
+        return None
+    return number if math.isfinite(number) else None  # "nan" and "inf" are text
+
+
+def _compare(params: IfElseParams | ConditionalExecution) -> bool:
+    """Evaluate ``left <comparator> right``."""
+    left, right = params.left_side, params.right_side
+    comparator = params.comparator
+
+    if comparator in {"in", "not in", "=~"}:
+        left_text, right_text = str(left), str(right)
+        if comparator == "=~":
+            return re.search(right_text, left_text) is not None
+        return (left_text in right_text) == (comparator == "in")
+
+    op = op_mapping[comparator]
+    if params.coerce == "float":
+        left_number, right_number = _to_number(left), _to_number(right)
+        if left_number is None or right_number is None:
+            msg = f"Cannot compare {left!r} and {right!r} as numbers"
+            raise ValueError(msg)
+        return op(left_number, right_number)
+    if params.coerce == "auto":
+        left_number, right_number = _to_number(left), _to_number(right)
+        if left_number is not None and right_number is not None:
+            return op(left_number, right_number)
+    if params.coerce == "str" or isinstance(left, str) != isinstance(right, str):
+        # text compared with text; a number against text is compared as text too
+        return op(str(left), str(right))
+    return op(left, right)
 
 
 op_mapping: dict[ValidOperators, Callable[..., bool]] = {

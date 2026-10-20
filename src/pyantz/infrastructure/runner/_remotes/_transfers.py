@@ -44,7 +44,7 @@ def get_project_dir() -> io.BytesIO:
 def get_setup_tar(
     config: InitialConfig[Any], host_config: ContainerConfig | SshConfig
 ) -> io.BytesIO:
-    """Get a byte stream of a tar-file with the config.json and re2quirements file."""
+    """Get a byte stream of a tar-file with the config.json and requirements file."""
     next_conf = config.with_new_host(host_config.subsequent_host)
     requirements = host_config.requirements
 
