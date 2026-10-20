@@ -6,7 +6,7 @@ just to wrap the public interfaces.
 
 Queues are expected to be stateless. The "state" should be persisted
 in the storage of the queue itself, but the queue instance is merely
-a conveience wrapper to access whatever persistent layer is used.
+a convenience wrapper to access whatever persistent layer is used.
 
 Classes may, however, store accessor details in their state.
 SQLite queues, for example, store a sqlalchemy engine to access
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from pyantz.infrastructure.config.job import JobWithContext
 
-    from .return_types import GetJobReturn, JobsReport, JobStatus
+    from .return_types import GetJobReturn, JobsReport, JobStatus, JobStatusReport
 
 
 class QueueInterface(Protocol):
@@ -45,6 +45,7 @@ class QueueInterface(Protocol):
         self,
         job_id: str | uuid.UUID,
         status: JobStatus,
+        details: str | None = None,
     ) -> None:
         """Update the status of the job.
 
@@ -53,6 +54,18 @@ class QueueInterface(Protocol):
             status (JobStatus): new state after this update
             details (str | None): additional information about status
                 eg., may be the error message for debugging.
+
+        """
+
+    @abstractmethod
+    def get_job_status(self, job_id: str | uuid.UUID) -> JobStatusReport:
+        """Get the current status of a job, and the details given with it.
+
+        Args:
+            job_id (str | uuid.UUID): job to look up
+
+        Raises:
+            KeyError: if there is no such job
 
         """
 
@@ -67,7 +80,7 @@ class QueueInterface(Protocol):
         Args:
             job_config (JobWithContext): job to enqueue
             parent_job_id (str | uuid.UUID | None): jobs added inherit their parent
-                dependency "responsbilities". So a job submitting new jobs should pass
+                dependency "responsibilities". So a job submitting new jobs should pass
                 its own id to the function.
                 For example if B depends on A and A adds C then B will depend on C.
                 If, however, the user DOESN'T want that (B should run parallel to C),
@@ -93,6 +106,32 @@ class QueueInterface(Protocol):
 
         Args:
             job_config (JobWithContext): configuration to run
+
+        """
+
+    @abstractmethod
+    def set_job_worker(self, job_id: str | uuid.UUID, worker_id: int) -> None:
+        """Record which worker is running the job."""
+
+    @abstractmethod
+    def fail_jobs_of_worker(self, worker_id: int) -> list[str]:
+        """Mark the RUNNING jobs of a worker which died as ERROR.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
+
+        """
+
+    @abstractmethod
+    def fail_deadlocked_jobs(self) -> list[str]:
+        """Mark PENDING jobs as ERROR if nothing is READY or RUNNING.
+
+        In that state nothing can ever change the status of a pending job (for
+        example, it depends on a job id that was never added), so the pipeline
+        would wait forever.
+
+        Returns:
+            list[str]: ids of the jobs which were failed
 
         """
 

@@ -38,7 +38,6 @@ class LocalForLoopParams(BaseModel):
 @add_parameters(LocalForLoopParams)
 def local_for_loop(params: LocalForLoopParams, submit_fn: SubmissionFnType) -> bool:
     """Run a series of jobs locally for a set of iterations."""
-    success = True
     curr_variables: Final[Mapping[str, Any]] = (
         _vars if (_vars := JobVariables.get()) else {}
     )
@@ -46,8 +45,8 @@ def local_for_loop(params: LocalForLoopParams, submit_fn: SubmissionFnType) -> b
     for _iter in range(params.num_iterations):
         for job in params.jobs:
             job_ctx = JobWithContext.from_config(job).inherit_context(curr_variables)
-            success &= run_job_no_parent_wrapper(job_ctx, submit_fn)
-            if not success:
-                break
+            if not run_job_no_parent_wrapper(job_ctx, submit_fn):
+                # stop everything: later jobs and iterations must not run
+                return False
 
-    return success
+    return True

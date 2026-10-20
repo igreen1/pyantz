@@ -1,18 +1,16 @@
 """Primary server to run."""
 
-import os
-
 import uvicorn
 
-host = os.environ.get("PYANTZ_HOST", "127.0.0.1")
-port = int(os.environ.get("PYANTZ_PORT", "8000"))
+from .settings import get_settings
 
 
 def start_dev_server() -> None:
     """Start a development server."""
+    settings = get_settings()
     uvicorn.run(
         "pyantz.api.backend:app",
-        host=host,
-        port=port,
+        host=settings.host,
+        port=settings.port,
         log_level="info",
     )
