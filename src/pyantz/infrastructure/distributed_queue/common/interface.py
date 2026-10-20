@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from pyantz.infrastructure.config.job import JobWithContext
 
-    from .return_types import GetJobReturn, JobsReport, JobStatus
+    from .return_types import GetJobReturn, JobsReport, JobStatus, JobStatusReport
 
 
 class QueueInterface(Protocol):
@@ -45,6 +45,7 @@ class QueueInterface(Protocol):
         self,
         job_id: str | uuid.UUID,
         status: JobStatus,
+        details: str | None = None,
     ) -> None:
         """Update the status of the job.
 
@@ -53,6 +54,18 @@ class QueueInterface(Protocol):
             status (JobStatus): new state after this update
             details (str | None): additional information about status
                 eg., may be the error message for debugging.
+
+        """
+
+    @abstractmethod
+    def get_job_status(self, job_id: str | uuid.UUID) -> JobStatusReport:
+        """Get the current status of a job, and the details given with it.
+
+        Args:
+            job_id (str | uuid.UUID): job to look up
+
+        Raises:
+            KeyError: if there is no such job
 
         """
 

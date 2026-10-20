@@ -13,7 +13,7 @@ SQLite's per-column string limit is not exceeded.
 
 from typing import Final
 
-from sqlalchemy import String
+from sqlalchemy import String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # our jobs are chunked when stored
@@ -72,6 +72,9 @@ class StatusTable(Base):
 
     # the worker (its process id) which is running the job, while it is RUNNING
     worker_id: Mapped[int | None] = mapped_column(default=None)
+
+    # why the job is in this status, for example the error message for failures
+    details: Mapped[str | None] = mapped_column(Text, default=None)
 
 
 # pylint: enable=too-few-public-methods

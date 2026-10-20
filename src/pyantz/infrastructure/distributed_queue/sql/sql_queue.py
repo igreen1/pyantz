@@ -19,6 +19,7 @@ from pyantz.infrastructure.distributed_queue.common.return_types import (
     JobReturn,
     JobsReport,
     JobStatus,
+    JobStatusReport,
     PendingReturn,
 )
 
@@ -360,7 +361,10 @@ class SqliteQueue(QueueInterface):
             job_statuses_that_depend_on_failed_job = (
                 sa.update(StatusTable)
                 .where(StatusTable.job_id.in_(jobs_that_depend_on_failed_job))
-                .values(job_status=JobStatus.ERROR)
+                .values(
+                    job_status=JobStatus.ERROR,
+                    details="A job this job depends on failed",
+                )
             )
 
             sesh.execute(delete_jobs_from_queue_query)
@@ -395,6 +399,7 @@ class SqliteQueue(QueueInterface):
         self,
         job_id: str | uuid.UUID,
         status: JobStatus,
+        details: str | None = None,
     ) -> None:
         """Update the status of the job.
 
@@ -411,13 +416,37 @@ class SqliteQueue(QueueInterface):
                     StatusTable,
                 )
                 .where(StatusTable.job_id == job_id)
-                .values(job_status=status)
+                .values(job_status=status, details=details)
             )
             sesh.execute(update_query)
             sesh.flush()
             sesh.commit()
 
         self._update_job_statuses()
+
+    def get_job_status(self, job_id: str | uuid.UUID) -> JobStatusReport:
+        """Get the current status of a job, and the details given with it.
+
+        Args:
+            job_id (str | uuid.UUID): job to look up
+
+        Raises:
+            KeyError: if there is no such job
+
+        """
+        with Session(self._engine) as sesh:
+            row = sesh.execute(
+                sa.select(StatusTable.job_status, StatusTable.details).where(
+                    StatusTable.job_id == str(job_id),
+                ),
+            ).first()
+        if row is None:
+            raise KeyError(job_id)
+        return JobStatusReport(
+            job_id=job_id,
+            status=JobStatus(row[0]),
+            status_details=row[1],
+        )
 
     def add_job(
         self,
