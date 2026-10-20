@@ -64,6 +64,30 @@ def get_setup_tar(
     return out
 
 
+def get_environment(host_config: ContainerConfig | SshConfig) -> dict[str, str]:
+    """Collect the environment variables for the remote command.
+
+    Variables from ``environment_variables_file`` (``KEY=VALUE`` lines, read from
+    this machine) are overridden by ``environment_variables``.
+    """
+    environment: dict[str, str] = {}
+    if host_config.environment_variables_file:
+        file_text = Path(host_config.environment_variables_file).read_text(
+            encoding="utf-8",
+        )
+        for raw_line in file_text.splitlines():
+            line = raw_line.strip().removeprefix("export ").strip()
+            if not line or line.startswith("#"):
+                continue
+            name, separator, value = line.partition("=")
+            if not separator or not name.strip():
+                msg = f"Invalid line in environment variables file: {raw_line!r}"
+                raise ValueError(msg)
+            environment[name.strip()] = value.strip().strip("\"'")
+    environment.update(host_config.environment_variables)
+    return environment
+
+
 def get_cmd(
     host_config: ContainerConfig | SshConfig,
     working_dir: str,

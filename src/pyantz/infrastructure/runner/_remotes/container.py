@@ -17,6 +17,7 @@ import docker.errors
 from ._transfers import (
     DEFAULT_CONTAINER_WORKING_DIR,
     get_cmd,
+    get_environment,
     get_project_dir,
     get_setup_tar,
 )
@@ -98,6 +99,7 @@ def run_container(config: InitialConfig[Any]) -> None:
             working_dir=working_dir,
             detach=True,
             command=cmd,
+            environment=get_environment(host_config),
         )
     except docker.errors.APIError as exc:
         if exc.status_code == CONFLICT:

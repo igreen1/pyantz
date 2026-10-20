@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import paramiko
 
-from ._transfers import get_cmd, get_project_dir, get_setup_tar
+from ._transfers import get_cmd, get_environment, get_project_dir, get_setup_tar
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
@@ -84,6 +84,13 @@ def _build_remote_command(
 ) -> str:
     """Build the shell command which runs pyantz in the remote working directory."""
     cmd = get_cmd(host_config, working_dir, addl_requirements)
+    environment = get_environment(host_config)
+    if environment:
+        cmd = [
+            "env",
+            *(f"{name}={value}" for name, value in environment.items()),
+            *cmd,
+        ]
     background: list[str] = []
     if host_config.run_async:
         cmd.insert(0, "nohup")  # let our ssh client terminate
