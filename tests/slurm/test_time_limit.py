@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from pyantz.infrastructure.config import InitialConfig
-from pyantz.infrastructure.config.runners import SlurmRunnerConfig
 from pyantz.infrastructure.runner.slurm import start
 
 if TYPE_CHECKING:
@@ -31,7 +30,7 @@ def sbatch_calls(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
 
 
 def _start(tmp_path: Path, **submitter: Any) -> None:  # noqa: ANN401
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         {
             "jobs": [{"function": NOP, "parameters": {}}],
             "submitter": {

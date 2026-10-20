@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from pyantz import start
-from pyantz.infrastructure.config import InitialConfig, LocalRunnerConfig
+from pyantz.infrastructure.config import InitialConfig
 
 MINIMAL_CONFIG: Final[dict[str, Any]] = {
     "jobs": [
@@ -55,6 +55,6 @@ def test_direct_call_with_validated_model(tmp_path: Path) -> None:
     config = deepcopy(MINIMAL_CONFIG)
     config["submitter"]["working_directory"] = os.fspath(tmp_path)
 
-    loaded_config = InitialConfig[LocalRunnerConfig].model_validate(config)
+    loaded_config = InitialConfig.model_validate(config)
 
     start(loaded_config)

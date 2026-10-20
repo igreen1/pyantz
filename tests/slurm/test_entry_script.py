@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config import InitialConfig
-from pyantz.infrastructure.config.runners import SlurmRunnerConfig
 from pyantz.infrastructure.runner.slurm import slurm_runner, start
 
 if TYPE_CHECKING:
@@ -30,7 +29,7 @@ def test_sbatch_command_uses_this_interpreter_and_module_form(
 
     monkeypatch.setattr(subprocess, "run", _run)
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         {
             "jobs": [{"function": NOP, "parameters": {}}],
             "submitter": {"type_": "slurm_sbatch", "working_dir": os.fspath(tmp_path)},

@@ -66,7 +66,7 @@ def _setup_logging(level: str, log_file: str | None) -> None:
     )
 
 
-def _describe(config: _InitialConfig[Any]) -> str:
+def _describe(config: _InitialConfig) -> str:
     """List the jobs of the configuration and what they depend on."""
     lines = [f"{len(config.jobs)} job(s):"]
     for job in config.jobs:
@@ -90,7 +90,7 @@ def main() -> None:
 
     # load and check the config
     try:
-        config: _InitialConfig[Any] = _InitialConfig.model_validate(  # pyright: ignore[reportUnknownVariableType]
+        config: _InitialConfig = _InitialConfig.model_validate(
             _load_config_data(config_location),
         )
     except (

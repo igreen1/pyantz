@@ -1,15 +1,13 @@
 """A large pipeline of jobs to be run."""
 
-import uuid
-
 import os
+import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import polars as pl
-from polars.testing import assert_frame_equal
-
 import pytest
+from polars.testing import assert_frame_equal
 
 from pyantz import start
 

@@ -113,7 +113,7 @@ class FakeClient:
         return self
 
 
-def _config(output_dir: Path | None = None, **host: Any) -> InitialConfig[Any]:  # noqa: ANN401
+def _config(output_dir: Path | None = None, **host: Any) -> InitialConfig:  # noqa: ANN401
     return InitialConfig.model_validate(
         {
             "jobs": [{"function": NOP, "parameters": {}}],

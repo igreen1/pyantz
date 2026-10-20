@@ -34,23 +34,35 @@ CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_FILE"
 SECONDS_PER_MINUTE = 60
 
 
-def start(config: InitialConfig[SlurmRunnerConfig]) -> None:
-    """Start the slurm pipeline up."""
+def start(config: InitialConfig) -> None:
+    """Start the slurm pipeline up.
+
+    Raises:
+        TypeError: if the submitter of the configuration is not a slurm runner
+        NotADirectoryError: if the slurm working directory does not exist
+
+    """
     logger = logging.getLogger(__name__)
     logger.debug("Starting slurm with config %s", config)
 
-    working_dir = config.submitter.working_dir
+    runner_config = config.submitter
+    if not isinstance(runner_config, SlurmRunnerConfig):
+        msg = f"Expected a slurm_sbatch submitter, not {runner_config.type_!r}"
+        raise TypeError(msg)
+
+    working_dir = runner_config.working_dir
     if not working_dir.is_dir():
         msg = f"Slurm working_dir {working_dir} is not an existing directory"
         raise NotADirectoryError(msg)
 
     # store our global configuration in an environment variable
-    slurm_config_path = _save_slurm_config(config)
-    _initial_submit(config, slurm_config_path)
+    slurm_config_path = _save_slurm_config(runner_config)
+    _initial_submit(config, runner_config, slurm_config_path)
 
 
 def _initial_submit(
-    config: InitialConfig[SlurmRunnerConfig],
+    config: InitialConfig,
+    runner_config: SlurmRunnerConfig,
     slurm_config_path: Path,
 ) -> None:
     """Submit our initial set of jobs.
@@ -67,7 +79,7 @@ def _initial_submit(
     # directly call sbatch instead of submitter
     # because our parent node may not be a slurm job
     # so we don't want to make the child depend on the current
-    sbatch = _create_sbatch(config.submitter, slurm_config_path)
+    sbatch = _create_sbatch(runner_config, slurm_config_path)
 
     def _submit(job: JobConfig, job_to_slurm_id_map: dict[str, str]) -> str:
         """Resolve context, compute dependencies, and call sbatch for one job."""
@@ -97,7 +109,7 @@ def _initial_submit(
         job_to_slurm_id_map[job_id_s] = _submit(job, job_to_slurm_id_map)
 
 
-def _save_slurm_config(config: InitialConfig[SlurmRunnerConfig]) -> Path:
+def _save_slurm_config(runner_config: SlurmRunnerConfig) -> Path:
     """Save the slurm configuration in a global location and store in environment.
 
     Returns:
@@ -105,8 +117,8 @@ def _save_slurm_config(config: InitialConfig[SlurmRunnerConfig]) -> Path:
 
     """
     uid = str(uuid.uuid4())  # to reduce collisions if a user reuses a working_dir
-    save_path = config.submitter.working_dir / f"global_slurm_config_{uid!s}.json"
-    save_path.write_text(config.submitter.model_dump_json())
+    save_path = runner_config.working_dir / f"global_slurm_config_{uid!s}.json"
+    save_path.write_text(runner_config.model_dump_json())
     os.environ[CONFIG_FILE_ENVIRON_VAR_NAME] = os.fspath(save_path)
     return save_path
 

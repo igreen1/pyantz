@@ -1,7 +1,5 @@
 """Test that errors say what is wrong."""
 
-from typing import Any
-
 import pytest
 from pydantic import BaseModel, ValidationError
 
@@ -17,7 +15,7 @@ from pyantz.infrastructure.runner._remotes.ssh import run_ssh
 NOP = "pyantz.jobs.testing.nop.do_nothing"
 
 
-def _config(host: dict[str, str]) -> InitialConfig[Any]:
+def _config(host: dict[str, str]) -> InitialConfig:
     return InitialConfig.model_validate(
         {
             "jobs": [{"function": NOP, "parameters": {}}],

@@ -28,7 +28,7 @@ def submitted(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.delenv("PYANTZ_SLURM_CONFIG_DIR", raising=False)
     work = tmp_path / "work"
     work.mkdir()
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         {
             "jobs": [{"function": NOP, "parameters": {}}],
             "submitter": {"type_": "slurm_sbatch", "working_dir": os.fspath(work)},

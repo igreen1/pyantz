@@ -49,7 +49,7 @@ def _submit_one_job(tmp_path: Path) -> list[str]:
     """Run the submitter and return the argv given to the fake sbatch."""
     work = tmp_path / "work"
     work.mkdir()
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         {
             "jobs": [
                 {

@@ -7,7 +7,6 @@ import pytest
 from pyantz import start
 from pyantz.infrastructure.config import InitialConfig
 from pyantz.infrastructure.config.job import make_job
-from pyantz.infrastructure.config.runners.local_runner import LocalRunnerConfig
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,7 +36,7 @@ def run_integrated_jobs(tmp_path: Path) -> Callable[[list[dict[str, Any]]], None
             "jobs": jobs_validated,
         }
 
-        initial_config = InitialConfig[LocalRunnerConfig].model_validate(config)
+        initial_config = InitialConfig.model_validate(config)
 
         start(initial_config)
 

@@ -137,7 +137,7 @@ def install(monkeypatch: pytest.MonkeyPatch) -> type[FakeSshClient]:
     return fake
 
 
-def ssh_config(tmp_path: Path, **host: Any) -> InitialConfig[Any]:  # noqa: ANN401
+def ssh_config(tmp_path: Path, **host: Any) -> InitialConfig:  # noqa: ANN401
     """Make a config which runs one job on an ssh host."""
     return InitialConfig.model_validate(
         {

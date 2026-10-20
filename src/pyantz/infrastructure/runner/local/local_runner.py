@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pyantz.infrastructure.config import (
     InitialConfig,
@@ -45,21 +45,30 @@ if TYPE_CHECKING:
     from multiprocessing.synchronize import Event as SyncEvent
 
 
-def start(config: InitialConfig[LocalRunnerConfig]) -> JobsReport:
-    """Start the local runner processes and return the final report of the jobs."""
-    logger = logging.getLogger(__name__)
+def start(config: InitialConfig) -> JobsReport:
+    """Start the local runner processes and return the final report of the jobs.
 
-    queue_file = config.submitter.working_directory / "queue.db"
-    config.submitter.working_directory.mkdir(parents=True, exist_ok=True)
+    Raises:
+        TypeError: if the submitter of the configuration is not a local runner
+
+    """
+    logger = logging.getLogger(__name__)
+    runner_config = config.submitter
+    if not isinstance(runner_config, LocalRunnerConfig):
+        msg = f"Expected a local_proc submitter, not {runner_config.type_!r}"
+        raise TypeError(msg)
+
+    queue_file = runner_config.working_directory / "queue.db"
+    runner_config.working_directory.mkdir(parents=True, exist_ok=True)
     _remove_stale_queue(queue_file)
     logger.debug("Creating sqlite queue %s", queue_file)
 
     queue = SqliteQueue(queue_file)
     _fill_queue(config, queue)
-    if config.submitter.use_same_proc:
-        _run_within_same_proc(config, queue_file)
+    if runner_config.use_same_proc:
+        _run_within_same_proc(runner_config, queue_file)
     else:
-        _start_pool(config, queue_file)
+        _start_pool(runner_config, queue_file)
 
     report = queue.get_jobs_report()
     logger.info(
@@ -104,14 +113,11 @@ def _remove_stale_queue(queue_file: Path) -> None:
         path.unlink(missing_ok=True)
 
 
-def _run_within_same_proc(
-    config: InitialConfig[LocalRunnerConfig], queue_file: Path
-) -> None:
+def _run_within_same_proc(runner_config: LocalRunnerConfig, queue_file: Path) -> None:
     """Run the local runner pool in this process.
 
     Mostly used for testing.
     """
-    runner_config = config.submitter
     with _sigterm_as_keyboard_interrupt():
         _worker(
             queue_file=queue_file,
@@ -120,10 +126,9 @@ def _run_within_same_proc(
         )
 
 
-def _start_pool(config: InitialConfig[LocalRunnerConfig], queue_file: Path) -> None:
+def _start_pool(runner_config: LocalRunnerConfig, queue_file: Path) -> None:
     """Start the local runner pool."""
     logger = logging.getLogger(__name__)
-    runner_config = config.submitter
 
     logger.debug("Starting local runners")
     procs = [
@@ -262,7 +267,7 @@ def _worker_process(queue_file: Path, poll_time: float, timeout: float | None) -
         logging.getLogger(__name__).warning("Worker process interrupted, exiting")
 
 
-def _fill_queue(config: InitialConfig[Any], queue: SqliteQueue) -> None:
+def _fill_queue(config: InitialConfig, queue: SqliteQueue) -> None:
     """Fill the queue with the initial jobs to run."""
     logger = logging.getLogger(__name__)
     logger.debug("Filling queue with initial jobs to run.")

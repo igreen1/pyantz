@@ -8,7 +8,6 @@ import pytest
 from pydantic import ValidationError
 
 from pyantz.infrastructure.config import InitialConfig, JobConfig
-from pyantz.infrastructure.config.runners import SlurmRunnerConfig
 from pyantz.infrastructure.runner.slurm import start
 
 if TYPE_CHECKING:
@@ -32,7 +31,7 @@ def sbatch_calls(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
 
 
 def _start(tmp_path: Path, jobs: list[dict[str, Any]]) -> None:
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         {
             "jobs": [{"function": NOP, "parameters": {}, **job} for job in jobs],
             "submitter": {"type_": "slurm_sbatch", "working_dir": os.fspath(tmp_path)},

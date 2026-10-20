@@ -15,15 +15,13 @@ from pydantic import BaseModel, ConfigDict
 
 from pyantz import start
 from pyantz.infrastructure.config import (
-    ContainerConfig,
+    AnyRunner,
     InitialConfig,
     JobConfig,
-    LocalConfig,
-    SshConfig,
     add_parameters,
     no_submit_fn,
 )
-from pyantz.infrastructure.config.runners import LocalRunnerConfig, SlurmRunnerConfig
+from pyantz.infrastructure.config.host_config import HostConfig
 from pyantz.infrastructure.runner.job_manager import (
     JobVariables,
 )
@@ -33,20 +31,20 @@ if TYPE_CHECKING:
     from typing import Any, Final
 
 
-class SubmitParams[S: (LocalRunnerConfig, SlurmRunnerConfig)](BaseModel):
+class SubmitParams(BaseModel):
     """Parameters to submit a job through a new submitter."""
 
     model_config = ConfigDict(frozen=True)
 
     # the wrapped configuration to submit
-    runner_config: S
+    runner_config: AnyRunner
 
     jobs: tuple[JobConfig, ...]
 
 
 @add_parameters(SubmitParams)
 @no_submit_fn  # we're making our own!
-def submit(params: SubmitParams[Any]) -> bool:
+def submit(params: SubmitParams) -> bool:
     """Wrap a set of jobs in a new submitter.
 
     This allows a user to switch submitters in their pipeline, which may
@@ -68,26 +66,23 @@ def submit(params: SubmitParams[Any]) -> bool:
     return report is None or report.all_succeeded
 
 
-class HostParams[
-    H: (ContainerConfig, LocalConfig, SshConfig),
-    S: (LocalRunnerConfig, SlurmRunnerConfig),
-](BaseModel):
+class HostParams(BaseModel):
     """Parameters to submit a job through a new submitter."""
 
     model_config = ConfigDict(frozen=True)
 
     # configuration of the host to run on
-    host_config: H
+    host_config: HostConfig
 
     # configuration of the submitter to use on the new host
-    submit_config: S
+    submit_config: AnyRunner
 
     jobs: tuple[JobConfig, ...]
 
 
 @add_parameters(HostParams)
 @no_submit_fn  # we're making our own!
-def new_host(params: HostParams[Any, Any]) -> bool:
+def new_host(params: HostParams) -> bool:
     """Run a set of jobs on a new host."""
     curr_variables: Final[Mapping[str, Any]] = (
         _vars if (_vars := JobVariables.get()) else {}

@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from pyantz.infrastructure.config import InitialConfig
-from pyantz.infrastructure.config.runners import SlurmRunnerConfig
 from pyantz.infrastructure.runner.slurm import start
 
 if TYPE_CHECKING:
@@ -25,7 +24,7 @@ def _config(working_dir: str, host: dict[str, Any]) -> dict[str, Any]:
 
 def test_nonexistent_working_dir_valid_for_ssh_host() -> None:
     """A path that only exists on the cluster doesn't break local parsing."""
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         _config(
             "/cluster/only/path",
             {"type_": "ssh", "remote_host": "login.cluster"},
@@ -37,7 +36,7 @@ def test_nonexistent_working_dir_valid_for_ssh_host() -> None:
 def test_start_errors_clearly_for_missing_working_dir(tmp_path: Path) -> None:
     """The slurm runner checks the directory where it actually runs."""
     missing = tmp_path / "missing"
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         _config(os.fspath(missing), {"type_": "local"}),
     )
 

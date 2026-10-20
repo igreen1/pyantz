@@ -9,7 +9,7 @@ import logging
 import os
 import tarfile
 import tempfile
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, cast
 
 import docker
 import docker.errors
@@ -76,7 +76,7 @@ def _extract_output(bits: Iterable[bytes], output_dir: str) -> None:
             tf.extractall(output_dir, members=members, filter="data")
 
 
-def run_container(config: InitialConfig[Any]) -> None:
+def run_container(config: InitialConfig) -> None:
     """Copy our files to the container and run!."""
     logger = logging.getLogger(__name__)
     if config.host.type_ != "container":

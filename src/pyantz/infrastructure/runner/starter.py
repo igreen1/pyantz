@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pyantz.infrastructure.distributed_queue.common.return_types import JobsReport
 
 
-def start(config: _InitialConfig[Any] | Mapping[str, Any]) -> JobsReport | None:
+def start(config: _InitialConfig | Mapping[str, Any]) -> JobsReport | None:
     """Check how to start the program and route to the proper starter.
 
     Returns:
@@ -27,7 +27,7 @@ def start(config: _InitialConfig[Any] | Mapping[str, Any]) -> JobsReport | None:
             blocking; None if the outcome is not known (e.g. remote hosts).
 
     """
-    loaded_config: _InitialConfig[Any] = _InitialConfig.model_validate(config)  # pyright: ignore[reportUnknownVariableType]
+    loaded_config: _InitialConfig = _InitialConfig.model_validate(config)
     if loaded_config.host.type_ == "local":
         return run_local(loaded_config)
     if loaded_config.host.type_ == "container":
@@ -40,7 +40,7 @@ def start(config: _InitialConfig[Any] | Mapping[str, Any]) -> JobsReport | None:
     return None
 
 
-def run_local(config: _InitialConfig[Any]) -> JobsReport | None:
+def run_local(config: _InitialConfig) -> JobsReport | None:
     """Start running the various jobs.
 
     This is a blocking operation if running locally.

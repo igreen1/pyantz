@@ -213,7 +213,7 @@ def _connect(ssh: paramiko.SSHClient, host_config: SshConfig) -> None:
         logger.debug("Connected to %s with password", host_config.remote_host)
 
 
-def run_ssh(config: InitialConfig[Any]) -> None:
+def run_ssh(config: InitialConfig) -> None:
     """Copy our files to a remote and run."""
     if config.host.type_ != "ssh":
         msg = f"run_ssh needs an 'ssh' host, got {config.host.type_!r}"
@@ -232,7 +232,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
 
 def _run_on_connection(
     ssh: paramiko.SSHClient,
-    config: InitialConfig[Any],
+    config: InitialConfig,
     host_config: SshConfig,
 ) -> None:
     """Copy our files to the connected remote and run."""

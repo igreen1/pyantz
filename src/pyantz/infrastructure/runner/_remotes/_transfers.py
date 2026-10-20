@@ -13,8 +13,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any
-
     from pyantz.infrastructure.config import ContainerConfig, InitialConfig, SshConfig
 
 
@@ -91,7 +89,7 @@ def get_project_dir() -> io.BytesIO:
 
 
 def get_setup_tar(
-    config: InitialConfig[Any], host_config: ContainerConfig | SshConfig
+    config: InitialConfig, host_config: ContainerConfig | SshConfig
 ) -> io.BytesIO:
     """Get a byte stream of a tar-file with the config.json and requirements file."""
     next_conf = config.with_new_host(host_config.subsequent_host)

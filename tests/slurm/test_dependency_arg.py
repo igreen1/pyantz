@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from pyantz.infrastructure.config import InitialConfig
-from pyantz.infrastructure.config.runners import SlurmRunnerConfig
 from pyantz.infrastructure.runner.slurm import start
 from pyantz.infrastructure.runner.slurm.slurm_runner import _add_dependency_to_sbatch
 
@@ -81,7 +80,7 @@ def test_sbatch_command_for_job_with_dependencies(
 
     monkeypatch.setattr(subprocess, "run", _run)
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)
-    config = InitialConfig[SlurmRunnerConfig].model_validate(
+    config = InitialConfig.model_validate(
         {
             "jobs": [
                 {"job_id": "a", "function": NOP, "parameters": {}},

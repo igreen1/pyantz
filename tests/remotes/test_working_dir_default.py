@@ -87,7 +87,7 @@ def fake_ssh(monkeypatch: pytest.MonkeyPatch) -> type[_FakeSshClient]:
     return _FakeSshClient
 
 
-def _config(tmp_path: Path, **host: Any) -> InitialConfig[Any]:  # noqa: ANN401
+def _config(tmp_path: Path, **host: Any) -> InitialConfig:  # noqa: ANN401
     return InitialConfig.model_validate(
         {
             "jobs": [{"function": NOP, "parameters": {}}],
