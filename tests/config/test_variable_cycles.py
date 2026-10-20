@@ -1,5 +1,7 @@
 """Test that cyclic variable references raise instead of hanging."""
 
+# regression tests for issue #21
+
 import pytest
 
 from pyantz.infrastructure.config.variables import resolve_var_any

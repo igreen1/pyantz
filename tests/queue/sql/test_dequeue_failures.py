@@ -1,5 +1,7 @@
 """Test that dequeued jobs are never lost."""
 
+# regression tests for issue #19
+
 from typing import TYPE_CHECKING
 
 import sqlalchemy as sa

@@ -1,5 +1,7 @@
 """Test jobs whose dependencies can never be satisfied."""
 
+# regression tests for issue #17
+
 import os
 from typing import TYPE_CHECKING
 

@@ -1,5 +1,7 @@
 """Regression tests: a job is READY only when ALL of its dependencies succeed."""
 
+# regression tests for issue #10
+
 from typing import TYPE_CHECKING
 
 import pytest

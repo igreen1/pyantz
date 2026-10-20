@@ -1,5 +1,7 @@
 """Test adding a job whose id is already in the queue."""
 
+# regression tests for issue #16
+
 import os
 from typing import TYPE_CHECKING
 

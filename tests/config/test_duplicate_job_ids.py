@@ -1,5 +1,7 @@
 """Test that duplicate job ids are rejected rather than silently dropped."""
 
+# regression tests for issue #15
+
 import os
 from typing import TYPE_CHECKING, Any
 

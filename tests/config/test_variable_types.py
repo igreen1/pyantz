@@ -1,5 +1,7 @@
 """Test that variable substitution preserves the type of whole-value references."""
 
+# regression tests for issue #20
+
 import os
 from typing import TYPE_CHECKING, Any
 

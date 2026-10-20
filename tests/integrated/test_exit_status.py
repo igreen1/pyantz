@@ -1,5 +1,7 @@
 """Test that the outcome of a pipeline is reported to the caller."""
 
+# regression tests for issue #18
+
 import json
 import os
 import sys
