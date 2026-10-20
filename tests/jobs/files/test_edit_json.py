@@ -6,7 +6,14 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from ruamel.yaml import YAML
 
-from pyantz.jobs.files.edit import EditJsonParams, EditYamlParams, edit_json, edit_yaml
+from pyantz.jobs.files.edit import (
+    EditExternalParams,
+    EditJsonParams,
+    EditYamlParams,
+    edit_external_method,
+    edit_json,
+    edit_yaml,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -149,3 +156,81 @@ def test_extra_field_ignore_leaves_other_edits_in_place(tmp_path: Path) -> None:
     assert edit_json(params, lambda *_: None) is True
 
     assert json.loads(path.read_text()) == {"a": "hello", "x": {"y": 2}}
+
+
+def test_missing_file_and_directory_fail(tmp_path: Path) -> None:
+    """A path which isn't a file fails both editors."""
+    assert _edit_json(tmp_path / "missing.json", {"a": 1}) is False
+    assert _edit_yaml(tmp_path / "missing.yaml", {"a": 1}) is False
+    assert _edit_json(tmp_path, {"a": 1}) is False
+    assert _edit_yaml(tmp_path, {"a": 1}) is False
+
+
+@pytest.mark.parametrize(
+    ("original", "updates", "expected"),
+    [
+        ({"d": [1, 2, 3]}, {"d.[*]": 0}, {"d": [0, 0, 0]}),
+        ({"d": [{"x": 1}, {"x": 2}]}, {"d.[*].x": 9}, {"d": [{"x": 9}, {"x": 9}]}),
+        ({"d": [1, 2]}, {"d.[5]": 3}, {"d": [1, 2, 3]}),
+        ({"d": [1, 2]}, {"d.[-1]": 0}, {"d": [0, 1, 2]}),
+        ({"d": "text"}, {"d.[0]": 1}, {"d": [1]}),
+        ({"a.b": 1}, {"a\\.b": 2}, {"a.b": 2}),
+    ],
+)
+def test_list_and_escape_edits(
+    tmp_path: Path,
+    original: dict[str, Any],
+    updates: dict[str, Any],
+    expected: dict[str, Any],
+) -> None:
+    """Lists can be edited by index or all at once, and dots can be escaped."""
+    path = tmp_path / "f.json"
+    path.write_text(json.dumps(original))
+
+    assert _edit_json(path, updates) is True
+
+    assert json.loads(path.read_text()) == expected
+
+
+def extract_fixed() -> dict[str, Any]:
+    """Give the content to edit."""
+    return {"a": {"b": 1}}
+
+
+SAVED: list[Any] = []
+
+
+def save_contents(contents: Any, *_args: Any) -> None:  # noqa: ANN401
+    """Remember what was saved."""
+    SAVED.append(contents)
+
+
+def save_fails(_contents: Any) -> None:  # noqa: ANN401
+    """Fail to save."""
+    msg = "disk full"
+    raise OSError(msg)
+
+
+def test_edit_external_method() -> None:
+    """The extracted value is edited and given to the save function."""
+    SAVED.clear()
+    params = EditExternalParams(
+        extract_function={"func": extract_fixed},  # type: ignore[arg-type]
+        save_function={"func": save_contents},  # type: ignore[arg-type]
+        updates={"a.b": 2, "c": 3},
+    )
+
+    assert edit_external_method(params.model_dump(), lambda *_: None) is True
+
+    assert SAVED == [{"a": {"b": 2}, "c": 3}]
+
+
+def test_edit_external_method_failing_save() -> None:
+    """A save which fails fails the job."""
+    params = EditExternalParams(
+        extract_function={"func": extract_fixed},  # type: ignore[arg-type]
+        save_function={"func": save_fails},  # type: ignore[arg-type]
+        updates={"a": 1},
+    )
+
+    assert edit_external_method(params.model_dump(), lambda *_: None) is False
