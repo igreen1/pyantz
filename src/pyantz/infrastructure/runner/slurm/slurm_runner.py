@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import math
 import os
 import re
 import subprocess
@@ -27,6 +28,7 @@ ENTRY_BASH_FILE_PATH = Path(__file__).parent / "run.sh"
 # (not `__name__`, which is `__main__` when this module is run as a script)
 ENTRY_MODULE_NAME = "pyantz.infrastructure.runner.slurm.slurm_runner"
 CONFIG_FILE_ENVIRON_VAR_NAME: str = "PYANTZ_SLURM_CONFIG_DIR"
+SECONDS_PER_MINUTE = 60
 
 
 def start(config: InitialConfig[SlurmRunnerConfig]) -> None:
@@ -186,6 +188,16 @@ def _add_dependency_to_sbatch(args: list[str], dependencies: list[str]) -> list[
     return [*remaining, f"--dependency={combined_deps}"]
 
 
+def _has_time_limit(slurm_args: list[str]) -> bool:
+    """Check whether the sbatch arguments already set a time limit."""
+    return any(
+        arg in {"--time", "-t"}
+        or arg.startswith("--time=")
+        or (arg.startswith("-t") and not arg.startswith("--"))
+        for arg in slurm_args
+    )
+
+
 def _create_sbatch(
     config: SlurmRunnerConfig,
     slurm_config_path: Path,
@@ -220,6 +232,11 @@ def _create_sbatch(
 
         if dependencies is not None:
             slurm_args = _add_dependency_to_sbatch(slurm_args, dependencies)
+
+        # limit how long slurm lets the job run, unless the user chose a limit
+        if not _has_time_limit(slurm_args):
+            minutes = math.ceil(config.max_job_time_seconds / SECONDS_PER_MINUTE)
+            slurm_args.append(f"--time={minutes}")
 
         # if a dependency fails, cancel the dependents rather than leaving them
         # pending forever; this matches how the local runner fails them

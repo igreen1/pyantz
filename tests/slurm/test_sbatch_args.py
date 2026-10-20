@@ -48,9 +48,16 @@ def _start(tmp_path: Path, slurm_args: list[str], jobs: int = 1) -> None:
 
 
 def _slurm_options(cmd: list[str]) -> list[str]:
-    """Get the options between `sbatch` and the script being submitted."""
+    """Get the user's options between `sbatch` and the script being submitted.
+
+    Options pyantz adds on its own (time limit, invalid dependency handling) are left out.
+    """
     script = next(i for i, arg in enumerate(cmd) if arg.endswith("run.sh"))
-    return cmd[1:script]
+    return [
+        arg
+        for arg in cmd[1:script]
+        if not arg.startswith(("--time=", "--kill-on-invalid-dep"))
+    ]
 
 
 def test_arguments_keep_their_order(
@@ -65,7 +72,6 @@ def test_arguments_keep_their_order(
     assert _slurm_options(sbatch_calls[0]) == [
         *args,
         "--parsable",
-        "--kill-on-invalid-dep=yes",
     ]
 
 
@@ -81,7 +87,6 @@ def test_repeated_flags_are_kept(
     assert _slurm_options(sbatch_calls[0]) == [
         *args,
         "--parsable",
-        "--kill-on-invalid-dep=yes",
     ]
 
 
@@ -96,5 +101,4 @@ def test_parsable_is_not_duplicated(
         "--parsable",
         "--mem",
         "1G",
-        "--kill-on-invalid-dep=yes",
     ]
