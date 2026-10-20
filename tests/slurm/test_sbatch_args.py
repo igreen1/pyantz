@@ -62,7 +62,11 @@ def test_arguments_keep_their_order(
 
     _start(tmp_path, args)
 
-    assert _slurm_options(sbatch_calls[0]) == [*args, "--parsable"]
+    assert _slurm_options(sbatch_calls[0]) == [
+        *args,
+        "--parsable",
+        "--kill-on-invalid-dep=yes",
+    ]
 
 
 def test_repeated_flags_are_kept(
@@ -74,7 +78,11 @@ def test_repeated_flags_are_kept(
 
     _start(tmp_path, args)
 
-    assert _slurm_options(sbatch_calls[0]) == [*args, "--parsable"]
+    assert _slurm_options(sbatch_calls[0]) == [
+        *args,
+        "--parsable",
+        "--kill-on-invalid-dep=yes",
+    ]
 
 
 def test_parsable_is_not_duplicated(
@@ -84,4 +92,9 @@ def test_parsable_is_not_duplicated(
     """If the user already passes --parsable it isn't added a second time."""
     _start(tmp_path, ["--parsable", "--mem", "1G"])
 
-    assert _slurm_options(sbatch_calls[0]) == ["--parsable", "--mem", "1G"]
+    assert _slurm_options(sbatch_calls[0]) == [
+        "--parsable",
+        "--mem",
+        "1G",
+        "--kill-on-invalid-dep=yes",
+    ]

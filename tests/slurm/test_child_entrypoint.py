@@ -80,14 +80,13 @@ def test_sbatch_command_passes_slurm_config(tmp_path: Path) -> None:
 def test_child_job_runs_from_sbatch_command(tmp_path: Path) -> None:
     """Executing the sbatch-ed command line on a 'node' runs the job."""
     argv = _submit_one_job(tmp_path)
-    script_idx = next(i for i, a in enumerate(argv) if a.endswith("slurm_runner.py"))
-    child_args = argv[script_idx:]
+    child_args = argv[argv.index(sys.executable) :]
 
     # the node does not inherit the submitter's environment variable
     env = {k: v for k, v in os.environ.items() if k != "PYANTZ_SLURM_CONFIG_DIR"}
     env["SLURM_JOB_ID"] = "1000"
     result = subprocess.run(
-        [sys.executable, *child_args],
+        child_args,
         capture_output=True,
         env=env,
         check=False,
