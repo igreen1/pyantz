@@ -59,7 +59,7 @@ class RemoteConfig(BaseModel):
     copy_project_dir: bool = False
 
     # after connecting to the remote, what host to use there
-    subsequent_host: ContainerConfig | HostConfig | LocalConfig = LocalConfig()
+    subsequent_host: HostConfig = LocalConfig()
 
     # pass a list of environment variables to be set in the container
     environment_variables: Mapping[str, str] = Field(default_factory=dict)
@@ -121,3 +121,9 @@ type HostConfig = Annotated[
     SshConfig | ContainerConfig | LocalConfig,
     Field(discriminator="type_"),
 ]
+
+
+# HostConfig is defined after the classes that refer to it
+RemoteConfig.model_rebuild()
+SshConfig.model_rebuild()
+ContainerConfig.model_rebuild()
