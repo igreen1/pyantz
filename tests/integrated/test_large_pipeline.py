@@ -491,7 +491,7 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
         },
     }
     start(config)
-    _check_run(tmp_path / "workspace")
+    _check_run(tmp_path)
 
 
 def _check_run(tmp_path: Path) -> None:
