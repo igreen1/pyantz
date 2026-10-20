@@ -57,6 +57,10 @@ class JobConfig(AbstractJobConfig):
     # retried so the runner can decide whether to try to restart it
     num_attempted_runs: int = 0
 
+    # if set, the local runner stops the job (and marks it as failed) after it has
+    # been running this many seconds. The job then runs in its own process
+    timeout_seconds: float | None = Field(default=None, gt=0)
+
     # how many times a failed job is run again before it is given up on.
     # Retried jobs run again from the start, so jobs which submit other jobs
     # should not be retried (the children would be submitted twice)
