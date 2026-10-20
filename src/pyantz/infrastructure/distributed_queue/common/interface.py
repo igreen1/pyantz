@@ -136,6 +136,13 @@ class QueueInterface(Protocol):
         """
 
     @abstractmethod
+    def get_failed_jobs(self) -> list[JobStatusReport]:
+        """Get the status (with the error details) of every job which errored.
+
+        Returns (list[JobStatusReport]): the failed jobs, sorted by job id.
+        """
+
+    @abstractmethod
     def get_jobs_report(self) -> JobsReport:
         """Get the jobs report.
 

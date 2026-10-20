@@ -69,7 +69,22 @@ def start(config: InitialConfig[LocalRunnerConfig]) -> JobsReport:
         report.error,
         report.total - report.success - report.error,
     )
+    _log_failures(queue)
     return report
+
+
+def _log_failures(queue: SqliteQueue) -> None:
+    """Log a table with each failed job and the first line of its error."""
+    failed = queue.get_failed_jobs()
+    if not failed:
+        return
+    rows = [
+        (str(job.job_id), (job.status_details or "").strip().partition("\n")[0])
+        for job in failed
+    ]
+    width = max(len(job_id) for job_id, _ in rows)
+    table = "\n".join(f"  {job_id:<{width}}  {error}" for job_id, error in rows)
+    logging.getLogger(__name__).error("%d job(s) failed:\n%s", len(failed), table)
 
 
 def _remove_stale_queue(queue_file: Path) -> None:

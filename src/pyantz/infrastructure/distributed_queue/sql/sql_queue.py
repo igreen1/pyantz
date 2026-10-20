@@ -215,6 +215,21 @@ class SqliteQueue(QueueInterface):
             )
             return [row[0] for row in rows]
 
+    def get_failed_jobs(self) -> list[JobStatusReport]:
+        """Get the status (with the error details) of every job which errored."""
+        with Session(self._engine) as sesh:
+            rows = sesh.execute(
+                sa.select(StatusTable.job_id, StatusTable.details)
+                .where(StatusTable.job_status == JobStatus.ERROR)
+                .order_by(StatusTable.job_id),
+            ).all()
+        return [
+            JobStatusReport(
+                job_id=job_id, status=JobStatus.ERROR, status_details=details
+            )
+            for job_id, details in rows
+        ]
+
     def set_job_worker(self, job_id: str | uuid.UUID, worker_id: int) -> None:
         """Record which worker is running the job."""
         with Session(self._engine) as sesh:
