@@ -126,6 +126,10 @@ def _create_job_submitter(
         new_job_id = sbatch(job, None)
         if config.inherit_dependencies:
             _add_dependency(new_job_id, job_deps_to_update=job_dependencies)
+            # `scontrol update Dependency=` replaces the whole list, so the next
+            # child must be added to a list which includes this one
+            for dependent, deps in job_dependencies.items():
+                job_dependencies[dependent] = [*deps, new_job_id]
 
     return submit_fn
 
