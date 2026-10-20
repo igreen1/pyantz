@@ -15,7 +15,7 @@ from pydantic import AfterValidator, BeforeValidator, ConfigDict
 
 from pyantz.infrastructure.config.parameters import is_virtual
 
-from .abtrast_job import AbstractJobConfig
+from .abstract_job import AbstractJobConfig
 from .fn_utils import import_module_item_by_name
 
 if TYPE_CHECKING:

@@ -11,14 +11,15 @@ also creates per-run output directories and injects ``output_dir`` and
 """
 
 import itertools
+import math
 import os
 import uuid
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import polars as pl
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from pyantz.infrastructure.config import (
     JobConfig,
@@ -28,10 +29,14 @@ from pyantz.infrastructure.config import (
     add_parameters,
     no_submit_fn,
 )
+from pyantz.infrastructure.config.abstract_job import AbstractJobConfig
 from pyantz.infrastructure.runner.job_manager import JobVariables
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+# values of float ranges are rounded to this many places to hide float noise
+FLOAT_DECIMALS = 12
 
 
 class CaseMatrixExpansionParams(BaseModel):
@@ -43,13 +48,13 @@ class CaseMatrixExpansionParams(BaseModel):
 
     # if provided, these columns will not be read by the job
     # useful if you have large columns just for human readability
-    cols_to_exclude: tuple[str] | None = None
+    cols_to_exclude: tuple[str, ...] | None = None
 
     pipeline_template: JobPipeline
 
 
 class ContinuousRange[S: int | float](BaseModel):
-    """Range of values like numpy arange."""
+    """Range of values like numpy arange: ``min_value`` up to, excluding, the max."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -59,12 +64,25 @@ class ContinuousRange[S: int | float](BaseModel):
 
     step: S
 
+    @model_validator(mode="after")
+    def _check_step_is_positive(self) -> Self:
+        """Ensure that the range makes progress, instead of looping forever."""
+        if self.step <= 0:  # type: ignore[operator]
+            msg = f"step must be greater than 0, got {self.step}"
+            raise ValueError(msg)
+        return self
+
     def get_values(self) -> Generator[S]:
-        """Generate values from this range."""
-        curr_value: S = self.min_value
-        while curr_value < self.max_value:  # type: ignore[operator]
-            yield curr_value
-            curr_value += self.step  # type: ignore[assignment,operator] # ty: ignore[unsupported-operator]
+        """Generate values from this range.
+
+        Each value is computed as ``min_value + i * step`` (rather than by repeatedly
+        adding the step) so floating point errors don't build up.
+        """
+        # the epsilon stops 0.7/0.1-style rounding noise from including the max
+        count = math.ceil((self.max_value - self.min_value) / self.step - 1e-9)  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+        for index in range(max(count, 0)):
+            value = self.min_value + index * self.step  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+            yield round(value, FLOAT_DECIMALS) if isinstance(value, float) else value  # type: ignore[misc]  # ty: ignore[invalid-yield]
 
 
 class DiscreteRange[S](BaseModel):
@@ -72,7 +90,18 @@ class DiscreteRange[S](BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    possible_values: set[S]
+    # values are used in the order given, with repeated values removed
+    possible_values: list[S]
+
+    @field_validator("possible_values", mode="after")
+    @classmethod
+    def _remove_repeats(cls, values: list[S]) -> list[S]:
+        """Drop repeated values keeping the first of each (works for unhashable)."""
+        unique: list[S] = []
+        for value in values:
+            if value not in unique:
+                unique.append(value)
+        return unique
 
     def get_values(self) -> Generator[S]:
         """Generate values from the user defined range."""
@@ -94,7 +123,7 @@ class CaseMatrixCreator(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    variables: Mapping[str, VariableDefinition]
+    variables: Mapping[str, VariableDefinition] = Field(min_length=1)
 
     # parquet file to save to
     save_file: str
@@ -114,14 +143,14 @@ def pipeline_expansion_with_output_dir(
 ) -> bool:
     """Add variables `output_dir` and `pipeline_id` for each child pipeline."""
     output_dir = Path(params.output_dir)
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     # if a pipeline runs in a pipeline running in a pipeline
     # we want it to have pipeline_id, its parent pipeline id, and its "grand parent" id
     # to do this, we look at our current context
     # if, in our current context, we are in a pipeline
     # we create variables like "parent_pipeline_id"
-    # rather than "grandparent", we just keep pre-pending parent for simplicity
+    # rather than "grandparent", we just keep prepending parent for simplicity
     # so great-grand-parent pipeline id = parent_parent_parent_pipeline_id
     parent_variables = JobVariables.get()
     if parent_variables:
@@ -142,10 +171,12 @@ def pipeline_expansion_with_output_dir(
         if hasattr(child_job, "variables") and "pipeline_id" in child_job.variables:  # type: ignore  # noqa: PGH003
             pipeline_id: int = child_job.variables["pipeline_id"]  # type: ignore  # noqa: PGH003
             run_dir = output_dir / f"run_{pipeline_id}"
-            run_dir.mkdir(exist_ok=True)
+            run_dir.mkdir(parents=True, exist_ok=True)
 
         wrapped_job = JobWithContext.from_config(child_job).inherit_context(
             {
+                # the job's own variables (like its pipeline_id) still take priority
+                **new_variables,
                 "output_dir": os.fspath(output_dir / "run_%{pipeline_id}"),
             }
         )
@@ -175,6 +206,7 @@ def create_case_matrix(
         left = left.join(
             right,
             how="cross",
+            maintain_order="left_right",
         )
 
     left.sink_parquet(params.save_file)
@@ -204,8 +236,72 @@ def pipeline_expansion(
     return True
 
 
-# Function which acceps a submit function and submits a pipeline.
+# Function which accepts a submit function and submits a pipeline.
 type PipelineSubmitter = Callable[[SubmissionFnType], None]
+
+
+def _nested_jobs(value: Any) -> list[Any]:  # noqa: ANN401
+    """Find the job configs (objects or raw dicts) inside *value*, at any depth."""
+    if isinstance(value, AbstractJobConfig):
+        return [value, *_nested_jobs(value.parameters)]
+    if isinstance(value, Mapping):
+        found: list[Any] = [value] if "function" in value else []
+        for item in value.values():
+            found.extend(_nested_jobs(item))
+        return found
+    if isinstance(value, (list, tuple)):
+        return [job for item in value for job in _nested_jobs(item)]
+    return []
+
+
+def _rewrite_ids(value: Any, id_map: Mapping[str, str]) -> Any:  # noqa: ANN401
+    """Replace job ids and the dependencies on them, in the jobs nested in *value*."""
+    if isinstance(value, AbstractJobConfig):
+        return value.model_copy(
+            update={
+                "job_id": id_map.get(value.job_id, value.job_id),
+                "depends_on": (
+                    None
+                    if value.depends_on is None
+                    else {id_map.get(dep, dep) for dep in value.depends_on}
+                ),
+                "parameters": _rewrite_ids(value.parameters, id_map),
+            },
+        )
+    if isinstance(value, Mapping):
+        result = {key: _rewrite_ids(item, id_map) for key, item in value.items()}
+        if "function" in result:
+            old_id = result.get("job_id")
+            if isinstance(old_id, str):
+                result["job_id"] = id_map.get(old_id, old_id)
+            if isinstance(result.get("depends_on"), (list, tuple, set)):
+                result["depends_on"] = [
+                    id_map.get(dep, dep) for dep in result["depends_on"]
+                ]
+        return result
+    if isinstance(value, (list, tuple)):
+        return type(value)(_rewrite_ids(item, id_map) for item in value)
+    return value
+
+
+def _regenerate_nested_ids(parameters: Any) -> Any:  # noqa: ANN401
+    """Give every job nested in *parameters* a new id, keeping their dependencies.
+
+    Jobs in a template are cloned for every row, so nested jobs with fixed ids would
+    collide in the queue. Dependencies between the nested jobs follow their new ids.
+    Ids written as templates (containing ``%{``) are left alone as variables make
+    them unique per clone.
+    """
+    old_ids = {
+        nested.job_id if isinstance(nested, AbstractJobConfig) else nested.get("job_id")
+        for nested in _nested_jobs(parameters)
+    }
+    id_map = {
+        old_id: str(uuid.uuid4())
+        for old_id in old_ids
+        if isinstance(old_id, str) and "%{" not in old_id
+    }
+    return _rewrite_ids(parameters, id_map) if id_map else parameters
 
 
 def _pipeline_factory_factory(
@@ -229,18 +325,29 @@ def _pipeline_factory_factory(
     # get the original ids to erase them
     ids_in_pipeline = {job.job_id for job in pipeline_template}
 
-    def reset_job_template(job: JobConfig) -> JobConfig:
-        """Give the job a fresh UUID and drop any intra-template dependency ids."""
+    # old id -> id for this clone, rebuilt for every clone
+    def reset_job_template(job: JobConfig, id_map: Mapping[str, str]) -> JobConfig:
+        """Give the job a fresh id, pointing its dependencies at the new ids.
+
+        Dependencies on jobs outside of the template are kept, and jobs nested in the
+        parameters (like the branches of an `if_else`) get new ids too.
+        """
         return job.model_copy(
             update={
-                "job_id": str(uuid.uuid4()),
-                "depends_on": (
-                    dep
-                    for dep in (job.depends_on or set())
-                    if dep not in ids_in_pipeline
-                ),
+                "job_id": id_map[job.job_id],
+                "depends_on": {
+                    id_map.get(dep, dep) for dep in (job.depends_on or set[str]())
+                },
+                "parameters": _regenerate_nested_ids(job.parameters),
             }
         )
+
+    # if the template says nothing about the order of its jobs, run them in list order
+    template_has_structure = any(
+        dep in ids_in_pipeline
+        for job in pipeline_template
+        for dep in (job.depends_on or set[str]())
+    )
 
     def string_pipeline(pipeline: list[JobConfig]) -> list[JobConfig]:
         """Add sequential dependencies so jobs execute in list order."""
@@ -251,10 +358,10 @@ def _pipeline_factory_factory(
             nonlocal prev
             updated = curr.model_copy(
                 update={
-                    "depends_on": [
-                        *(curr.depends_on or []),
+                    "depends_on": {
+                        *(curr.depends_on or set[str]()),
                         *([prev.job_id] if prev else []),
-                    ]
+                    }
                 }
             )
             prev = updated
@@ -277,9 +384,11 @@ def _pipeline_factory_factory(
     def create_pipeline(pipeline_vars: Mapping[str, Any]) -> PipelineSubmitter:
         """Clone the template, wire it up, and bind the given variable row."""
         # first, create a "clone" of our pipeline, which requires wiping the ids
-        child_pipeline = [reset_job_template(job) for job in pipeline_template]
-        # then string it together so the dependencies work right
-        child_pipeline = string_pipeline(child_pipeline)
+        id_map = {job.job_id: str(uuid.uuid4()) for job in pipeline_template}
+        child_pipeline = [reset_job_template(job, id_map) for job in pipeline_template]
+        # then, if the template has no structure of its own, run the jobs in order
+        if not template_has_structure:
+            child_pipeline = string_pipeline(child_pipeline)
         # now add our variables to the child pipeline
         # first, update our pipeline id!
         pipeline_id = next(pipeline_id_counter)
