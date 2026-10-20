@@ -1,0 +1,47 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+PyAntz is a local-first DAG pipeline runner. Pipelines are JSON/dict configs whose jobs reference Python functions by import path. They run via local multiprocessing (SQLite-backed queue) or SLURM `sbatch`, optionally on a remote host (SSH or Docker/Podman container). Requires Python >= 3.14 (uses PEP 695 syntax such as `def f[T: ...]`). Package manager is `uv`; source is in `src/pyantz`.
+
+## Commands
+
+```bash
+uv sync                                   # install deps (incl. dev group)
+uv run pytest                             # full test suite
+uv run pytest tests/jobs/test_x.py::test_name   # single test
+uv run pytest -n auto                     # parallel (pytest-xdist)
+uv run ruff format                        # format (enforced by tests/test_formatting.py)
+uv run ruff check                         # lint (select = ALL, see pyproject.toml)
+uv run ty check                           # primary type checker; get this passing first
+uv run mypy src                           # secondary type checker; run once ty passes
+make test                                 # sphinx doctests (docs/) + pytest
+make doc                                  # build sphinx html docs
+cd frontend/pyantz && npm run dev -- --host   # web UI (React/Vite); API via `pyantz-dev` / `pyantz-prod`
+```
+
+Entry points: `pyantz <config.json>`, `pyantz-status`, `pyantz-dev`, `pyantz-prod`.
+
+Pytest markers `docker`, `ssh`, `slow` mark tests that need a docker daemon / ssh server / long runtime (skipped when unavailable). `tests/` also contains meta-tests: formatting (ruff), spelling (codespell), and job registration (checks in a fresh interpreter that `import pyantz.jobs` registers everything and has no circular imports). Docstrings in `src` are executed as Sphinx doctests (`.. testcode::`), so keep them runnable.
+
+## Architecture
+
+Flow: `pyantz.start(config)` (`infrastructure/runner/starter.py`) validates into `InitialConfig` and routes on `host.type_` (local / ssh / container) then `submitter.type_` (`local_proc` / `slurm_sbatch`).
+
+- **`infrastructure/config/`** — pydantic models. `InitialConfig` (`initial.py`) is the root: jobs + submitter + host + variables. Its `jobs` validator `make_and_compile` builds typed job configs, then runs `infrastructure/virtual/compile.py` to expand *virtual jobs* (compile-time constructs) into concrete jobs. `graph_validation.py` checks the job dependency graph. `runners/` holds submitter configs; `host_config.py` holds host configs.
+- **Job registry** — `parameters/decorators.py` provides `@add_parameters` (and `no_submit_fn`), which registers a job function into the global `PYANTZ_REGISTERED_FUNCTION` and ties it to a pydantic parameters model; `compile_check.py` validates params at compile time. Jobs are referenced in configs by full import path, and the registry is only populated when the module is imported — hence `pyantz/jobs/__init__.py` must import every job module (tests enforce this).
+- **`infrastructure/runner/`** — `local/` (multiprocessing runner), `slurm/` (sbatch submission), `_remotes/` (ssh, container, file transfers), `job_manager.py`.
+- **`infrastructure/distributed_queue/`** — queue interface (`common/`) with a SQLAlchemy/SQLite implementation (`sql/`) used for job fan-out and status; `JobsReport` return types live in `common/return_types.py`.
+- **`jobs/`** — built-in job library grouped by area (`files`, `analysis`, `branching`, `subproc`, `wrappers` for loop/submit, `testing`). Jobs receive their params plus a submit function so they can enqueue follow-on jobs.
+- **`virtual/`** — built-in virtual job definitions (e.g. `add_variables`). Configs support `%{var}` template substitution.
+- **`api/`** — FastAPI backend for the optional web UI; `frontend/pyantz` is the React app.
+
+Note: both `config/abstract_job.py` and `config/abtrast_job.py` exist; import `AbstractJobConfig` from `abstract_job`.
+
+## Conventions
+
+- Ruff runs with `select = ["ALL"]` (ignoring D203, D213, COM812): all public code needs Google-style docstrings and full type hints; asserts are only allowed under `tests/`. Imports used only for typing go under `TYPE_CHECKING` (pydantic models are treated as runtime-evaluated).
+- Version lives in `src/pyantz/__init__.py` and `pyproject.toml`, bumped via `bumpver` (`make build`) — don't edit by hand.
+- More user-facing docs: `README.md`, `TUTORIAL.md`, `docs/source`.
