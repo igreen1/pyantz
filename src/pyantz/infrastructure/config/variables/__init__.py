@@ -2,10 +2,13 @@
 
 import logging
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from typing import Any, cast
 
 VARIABLE_REGEX = re.compile(r"(%{[^%{}]+})")
+
+# maximum nesting of variables referring to other variables
+MAX_RESOLUTION_DEPTH = 32
 
 
 def resolve_parameters(
@@ -18,7 +21,7 @@ def resolve_parameters(
 
     Args:
         job_parameters (Mapping[str, Any]): parameters to be passed to the function
-        variables (Mapping[str, Any]): variables to put in the paramters
+        variables (Mapping[str, Any]): variables to put in the parameters
 
     Returns:
         Mapping[str, Any]: parameters with the variables eagerly replaced
@@ -26,7 +29,7 @@ def resolve_parameters(
 
     """
     logger = logging.getLogger(__name__)
-    logger.info("Resolving parameters")
+    logger.debug("Resolving parameters")
     logger.debug("Pre resolution: %s", job_parameters)
     result = resolve_var_any(job_parameters, variables=variables)
     logger.debug("Post resolution %s", result)
@@ -45,46 +48,65 @@ def resolve_var_any[T](
     if isinstance(some_val, str):
         return cast("tuple[T, bool]", _resolve_var_str(some_val, variables))  # type: ignore[return-value]
     if isinstance(some_val, Mapping):
-        resolved_variables_and_var_flag: dict[str, tuple[Any, bool]] = {
+        resolved_items = {
             k: resolve_var_any(v, variables)  # pyright: ignore[reportUnknownArgumentType]
-            for k, v in cast("dict[str, Any]", some_val).items()  # pyright: ignore[reportUnknownVariableType]
+            for k, v in cast("Mapping[str, Any]", some_val).items()  # pyright: ignore[reportUnknownVariableType]
         }
-        resolved_variables = {
-            k: v[0] for k, v in resolved_variables_and_var_flag.items()
-        }
-        remaining_variable_flag = any(
-            v[1] for v in resolved_variables_and_var_flag.values()
+        return (
+            cast("T", {k: v[0] for k, v in resolved_items.items()}),
+            any(v[1] for v in resolved_items.values()),
         )
-        return cast("T", resolved_variables), remaining_variable_flag  # type: ignore[return-value]
-    if isinstance(some_val, Iterable):
-        iter_cls: type[T] = type(some_val)  # type: ignore[assignment] # pyright: ignore[reportUnknownVariableType]
-        result: list[tuple[Any, bool]] = [
+    if isinstance(some_val, _SEQUENCE_AND_SET_TYPES):
+        resolved_list = [
             resolve_var_any(i, variables) for i in cast("Iterable[Any]", some_val)
         ]
-
-        some_val_variables_resolved: Iterable[Any]
-        if not result:
-            some_val_variables_resolved = []
-            unmade_edits = [False]
-        else:
-            some_val_variables_resolved, unmade_edits = tuple(zip(*result, strict=True))
-        unresolved_variables = any(unmade_edits)
-        return iter_cls(some_val_variables_resolved), unresolved_variables  # type: ignore[return-value,call-arg]
+        items = [item for item, _ in resolved_list]
+        container = _rebuild(some_val, items)
+        return cast("T", container), any(unresolved for _, unresolved in resolved_list)
+    # anything else (numbers, bytes, paths, models, generators, ...) is left as is
     return some_val, False
 
 
-def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[str, bool]:
+# containers whose items are searched for variables
+_SEQUENCE_AND_SET_TYPES = (list, tuple, set, frozenset)
+
+
+def _rebuild(original: Iterable[Any], items: list[Any]) -> Any:  # noqa: ANN401
+    """Make a container like *original* from *items*."""
+    base = next(base for base in _SEQUENCE_AND_SET_TYPES if isinstance(original, base))
+    try:
+        return cast("Callable[[list[Any]], Any]", type(original))(items)
+    except TypeError:  # for example, a namedtuple needs separate arguments
+        return base(items)
+
+
+def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[Any, bool]:
     """Resolve the string by replacing variables.
+
+    If the whole string is exactly one reference (``"%{n}"``) to a non-string
+    variable, the variable's value is returned as is, preserving its type.
+    Otherwise, values are converted to strings and interpolated.
 
     Returns the string with variables interleaved
         AND a boolean. If the boolean is true, then a variable substring was found
         but could not be replaced because the variable isn't set.
     """
+    whole_reference = VARIABLE_REGEX.fullmatch(v)
+    if whole_reference is not None:
+        name = whole_reference.group(1)[2:-1]
+        if name in variables and not isinstance(variables[name], str):
+            return variables[name], False
+
     s = v
 
     unmade_change = False
     variable_detected = True
+    passes = 0
     while variable_detected:
+        passes += 1
+        if passes > MAX_RESOLUTION_DEPTH:
+            msg = f"Recursive variable reference while resolving {v!r}"
+            raise ValueError(msg)
         variable_detected = False
         for match in VARIABLE_REGEX.finditer(s):
             start = match.start()
