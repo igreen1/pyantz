@@ -17,7 +17,7 @@ from typing import (
 
 from pydantic import BaseModel, ValidationError
 
-from pyantz.infrastructure.config.abtrast_job import AbstractJobConfig
+from pyantz.infrastructure.config.abstract_job import AbstractJobConfig
 from pyantz.infrastructure.config.parameters.decorators import get_parameters
 
 if TYPE_CHECKING:

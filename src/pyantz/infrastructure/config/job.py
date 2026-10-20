@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from .abtrast_job import AbstractJobConfig
+from .abstract_job import AbstractJobConfig
 from .fn_utils import (
     import_function_by_name,
     import_module_item_by_name,
