@@ -160,6 +160,25 @@ The **host** controls where the pipeline controller itself runs before dispatchi
 
 ---
 
+## Security: configurations are code
+
+A configuration names Python functions by their dotted path (`function`,
+`external_function`, `setter_job`, ...) and PyAntz imports and calls them, and jobs
+such as `dispatch` run arbitrary commands. Only run configurations you trust, like
+you would only run a script you trust.
+
+If configurations can come from someone else (for example through the API), restrict
+what they can import with the `PYANTZ_ALLOWED_MODULES` environment variable, a comma
+separated list of module prefixes:
+
+```bash
+export PYANTZ_ALLOWED_MODULES=pyantz,my_company_jobs
+```
+
+A name outside of those modules is refused before anything is imported. This limits
+which functions can be named, it is not a sandbox: the allowed functions (including
+`dispatch` from `pyantz`) still do whatever they do.
+
 ## Built-in Jobs Reference
 
 ### File Operations

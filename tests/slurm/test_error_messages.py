@@ -13,14 +13,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-def test_missing_config_variable_is_named(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A node without the config variable says which variable is missing."""
-    monkeypatch.delenv(slurm_runner.CONFIG_FILE_ENVIRON_VAR_NAME, raising=False)
-
-    with pytest.raises(RuntimeError, match=slurm_runner.CONFIG_FILE_ENVIRON_VAR_NAME):
-        slurm_runner._load_slurm_config()  # noqa: SLF001
-
-
 def test_submitting_outside_slurm_is_explained(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -31,6 +23,7 @@ def test_submitting_outside_slurm_is_explained(
     with pytest.raises(RuntimeError, match="SLURM_JOB_ID"):
         slurm_runner._create_job_submitter(  # noqa: SLF001
             SlurmRunnerConfig(working_dir=tmp_path),
+            tmp_path / "slurm_config.json",
         )
 
 
