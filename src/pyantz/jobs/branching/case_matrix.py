@@ -43,7 +43,7 @@ class CaseMatrixExpansionParams(BaseModel):
 
     # if provided, these columns will not be read by the job
     # useful if you have large columns just for human readability
-    cols_to_exclude: tuple[str] | None = None
+    cols_to_exclude: tuple[str, ...] | None = None
 
     pipeline_template: JobPipeline
 
