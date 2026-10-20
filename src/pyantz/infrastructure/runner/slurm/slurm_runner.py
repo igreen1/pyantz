@@ -190,7 +190,10 @@ def _create_sbatch(
 
         file_path.write_text(job.model_dump_json(), encoding="utf-8")
 
-        slurm_args: list[str] = list({*config.slurm_args, "--parsable"})
+        # keep the arguments as given: flags and their values must stay together
+        slurm_args: list[str] = [*config.slurm_args]
+        if "--parsable" not in slurm_args:
+            slurm_args.append("--parsable")
         curr_job_id = _get_slurm_env_variables()["job_id"]
         if curr_job_id is not None:
             # may be sbatching from a local terminal so no guarantee curr job id exists
