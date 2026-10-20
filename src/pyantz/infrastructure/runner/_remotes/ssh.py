@@ -8,6 +8,7 @@ setup tarball via SFTP, extracts it, and runs ``uvx pyantz config.json``
 import getpass
 import logging
 import os
+import shlex
 import subprocess
 import tempfile
 from typing import TYPE_CHECKING, Any, cast
@@ -18,6 +19,49 @@ from ._transfers import get_cmd, get_project_dir, get_setup_tar
 
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
+
+
+def _build_remote_command(
+    host_config: SshConfig,
+    working_dir: str,
+    addl_requirements: list[str],
+) -> str:
+    """Build the shell command which runs pyantz in the remote working directory."""
+    cmd = get_cmd(host_config, working_dir, addl_requirements)
+    if host_config.run_async:
+        cmd.insert(0, "nohup")  # let our ssh client terminate
+    # every value is quoted, only the operators written here are shell syntax
+    remote_cmd = " ".join(
+        [
+            "cd",
+            shlex.quote(working_dir),
+            "&&",
+            *map(shlex.quote, cmd),
+            *(["&"] if host_config.run_async else []),
+        ],
+    )
+    logging.getLogger(__name__).debug(
+        "Will run the following on %s: cmd=%s",
+        host_config.remote_host,
+        remote_cmd,
+    )
+    return remote_cmd
+
+
+def _sync_output(host_config: SshConfig, working_dir: str) -> None:
+    """Copy the remote working directory to the local output directory."""
+    if host_config.output_dir is None:
+        raise RuntimeError  # checked by validation of model, just for type checking
+    # run rsync to output directory
+    subprocess.run(  # noqa: S603
+        [
+            "/usr/bin/rsync",
+            "-avz",
+            f"{host_config.remote_user}@{host_config.remote_host}:{working_dir}",
+            host_config.output_dir,
+        ],
+        check=True,
+    )
 
 
 def _prepare_working_dir(
@@ -113,7 +157,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
             )
     # perform our setup by untaring
     _stdin, stdout, stderr = ssh.exec_command(
-        f"tar -xvzf {remote_setup_tar_path} -C {working_dir}"
+        f"tar -xvzf {shlex.quote(remote_setup_tar_path)} -C {shlex.quote(working_dir)}"
     )
     logger.debug(
         "Untar setup files,\n\tstdout=%s\n\tstderr=%s",
@@ -122,7 +166,7 @@ def run_ssh(config: InitialConfig[Any]) -> None:
     )
     if host_config.copy_project_dir:
         _, stdout, stderr = ssh.exec_command(
-            f"tar -xzvf {remote_pyantz_file} -C {working_dir}"
+            f"tar -xzvf {shlex.quote(remote_pyantz_file)} -C {shlex.quote(working_dir)}"
         )
         logger.debug(
             "Untar project files,\n\tstdout=%s\n\tstderr=%s",
@@ -134,14 +178,8 @@ def run_ssh(config: InitialConfig[Any]) -> None:
     addl_requirements = []
     if host_config.copy_project_dir:
         addl_requirements = ["--with", f"{working_dir}/pyantz"]
-    cmd = get_cmd(host_config, working_dir, addl_requirements)
-    if host_config.run_async:
-        cmd.insert(0, "nohup")  # let our ssh client terminate
-        cmd.append("&")
-    cd_cmd = ["cd", working_dir]
-    cmd = [*cd_cmd, "&&", *cmd]
-    logger.debug("Will run the following on %s: cmd=%s", host_config.remote_host, cmd)
-    _, stdout, stderr = ssh.exec_command(" ".join(cmd))
+    remote_cmd = _build_remote_command(host_config, working_dir, addl_requirements)
+    _, stdout, stderr = ssh.exec_command(remote_cmd)
     logger.debug(
         "Output from command:\n\tstdout=%s\n\tstderr=%s",
         stdout.read().decode(),
@@ -150,15 +188,4 @@ def run_ssh(config: InitialConfig[Any]) -> None:
     logger.debug("Finished submission, exiting submitter on local machine.")
 
     if host_config.sync_data_at_end:
-        if host_config.output_dir is None:
-            raise RuntimeError  # checked by validation of model, just for type checking
-        # run rsync to output directory
-        subprocess.run(  # noqa: S603
-            [
-                "/usr/bin/rsync",
-                "-avz",
-                f"{host_config.remote_user}@{host_config.remote_host}:{working_dir}",
-                host_config.output_dir,
-            ],
-            check=True,
-        )
+        _sync_output(host_config, working_dir)
