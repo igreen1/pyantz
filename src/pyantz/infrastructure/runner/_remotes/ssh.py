@@ -9,6 +9,7 @@ import getpass
 import logging
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -117,11 +118,21 @@ def _sync_output(host_config: SshConfig, working_dir: str) -> None:
     """Copy the remote working directory to the local output directory."""
     if host_config.output_dir is None:
         raise RuntimeError  # checked by validation of model, just for type checking
+    rsync = shutil.which("rsync")
+    if rsync is None:
+        msg = (
+            "rsync was not found on this machine, which is needed to copy the "
+            "results back (sync_data_at_end); install it or set "
+            "sync_data_at_end to false"
+        )
+        raise RuntimeError(msg)
     # run rsync to output directory
     subprocess.run(  # noqa: S603
         [
-            "/usr/bin/rsync",
+            rsync,
             "-avz",
+            "-e",
+            f"ssh -p {host_config.remote_port}",
             f"{host_config.remote_user}@{host_config.remote_host}:{working_dir}",
             host_config.output_dir,
         ],
