@@ -35,18 +35,35 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         job.job_id: cast("RealJobConfig", job) for job in jobs if not job.virtual
     }
 
+    graph = {job.job_id: job.depends_on or set[str]() for job in jobs}
+    try:
+        compilation_order = reversed(
+            list(graphlib.TopologicalSorter(graph).static_order()),
+        )
+    except graphlib.CycleError as exc:
+        msg = f"Dependency cycle: {' -> '.join(exc.args[1])}"
+        raise ValueError(msg) from exc
+
     if not virtual_job_lookup:
         return _compile_parameters([*real_job_lookup.values()])
+
+    unknown_dependencies = {
+        job.job_id: sorted(job.depends_on - graph.keys())
+        for job in jobs
+        if job.depends_on and job.depends_on - graph.keys()
+    }
+    if unknown_dependencies:
+        msg = f"Jobs depend on unknown job ids (job -> missing): {unknown_dependencies}"
+        raise ValueError(msg)
 
     def get_uncompiled_job_config(job_id: str) -> AnyJobConfig:
         """Look up a job by id from either the real or virtual lookup tables."""
         lookup_val = real_job_lookup.get(job_id, virtual_job_lookup.get(job_id))
         if lookup_val is None:
-            raise ValueError
+            msg = f"No job with id {job_id!r}"
+            raise ValueError(msg)
         return lookup_val
 
-    graph = {job.job_id: job.depends_on or set[str]() for job in jobs}
-    compilation_order = reversed(list(graphlib.TopologicalSorter(graph).static_order()))
     compiled_jobs: list[RealJobConfig] = []
 
     def get_and_consume_dependencies(job_id: str) -> list[RealJobConfig]:
