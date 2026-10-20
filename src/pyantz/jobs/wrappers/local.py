@@ -10,7 +10,7 @@ when you need to share in-memory state between steps without a file system.
 
 from typing import TYPE_CHECKING, Any, Final
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from pyantz.infrastructure.config import (
     JobConfig,
@@ -33,7 +33,9 @@ class LocalPipelineParameters(BaseModel):
     # The job's first parameter will be a dictionary
     jobs: JobPipeline
 
-    inter_job_named_pipes: list[str]
+    # Not implemented: accepted so that existing configurations keep validating,
+    # but the value is ignored
+    inter_job_named_pipes: list[str] = Field(default_factory=list)
 
 
 @add_parameters(LocalPipelineParameters)
