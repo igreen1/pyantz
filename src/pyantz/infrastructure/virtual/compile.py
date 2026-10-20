@@ -147,7 +147,10 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
         )
     for multi_parm_job_field in iterable_job_params:
         sub_jobs = job.parameters[multi_parm_job_field]
-        sub_jobs = type(sub_jobs)([_try_to_validate_job(j) for j in sub_jobs])
+        validated_sub_jobs = [_try_to_validate_job(j) for j in sub_jobs]
+        if any(sub_job is None for sub_job in validated_sub_jobs):
+            continue  # not all jobs, so cannot help this parameter out
+        sub_jobs = type(sub_jobs)(validated_sub_jobs)
         job = job.model_copy(
             update={
                 "parameters": {
@@ -182,7 +185,7 @@ def _try_to_validate_job(
 
     try:
         return make_job(possible_job)
-    except ValidationError:
+    except ValidationError, TypeError, ValueError:
         return None
 
 
