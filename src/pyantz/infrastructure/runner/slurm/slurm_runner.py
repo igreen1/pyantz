@@ -5,6 +5,7 @@ import io
 import logging
 import os
 import subprocess
+import sys
 import uuid
 from graphlib import TopologicalSorter
 from pathlib import Path
@@ -34,11 +35,14 @@ def start(config: InitialConfig[SlurmRunnerConfig]) -> None:
     logger.debug("Starting slurm with config %s", config)
 
     # store our global configuration in an environment variable
-    _save_slurm_config(config)
-    _initial_submit(config)
+    slurm_config_path = _save_slurm_config(config)
+    _initial_submit(config, slurm_config_path)
 
 
-def _initial_submit(config: InitialConfig[SlurmRunnerConfig]) -> None:
+def _initial_submit(
+    config: InitialConfig[SlurmRunnerConfig],
+    slurm_config_path: Path,
+) -> None:
     """Submit our initial set of jobs.
 
     Done differently because rather than depending on current, the initial jobs
@@ -53,7 +57,7 @@ def _initial_submit(config: InitialConfig[SlurmRunnerConfig]) -> None:
     # directly call sbatch instead of submitter
     # because our parent node may not be a slurm job
     # so we don't want to make the child depend on the current
-    sbatch = _create_sbatch(config.submitter)
+    sbatch = _create_sbatch(config.submitter, slurm_config_path)
 
     def _submit(job: JobConfig, job_to_slurm_id_map: dict[str, str]) -> str:
         """Resolve context, compute dependencies, and call sbatch for one job."""
@@ -83,26 +87,24 @@ def _initial_submit(config: InitialConfig[SlurmRunnerConfig]) -> None:
         job_to_slurm_id_map[job_id_s] = _submit(job, job_to_slurm_id_map)
 
 
-def _save_slurm_config(config: InitialConfig[SlurmRunnerConfig]) -> None:
-    """Save the slurm configuration in a global location and store in environment."""
+def _save_slurm_config(config: InitialConfig[SlurmRunnerConfig]) -> Path:
+    """Save the slurm configuration in a global location and store in environment.
+
+    Returns:
+        Path: where the slurm configuration was saved
+
+    """
     uid = str(uuid.uuid4())  # to reduce collisions if a user re-uses a working_dir
     save_path = config.submitter.working_dir / f"global_slurm_config_{uid!s}.json"
     save_path.write_text(config.submitter.model_dump_json())
     os.environ[CONFIG_FILE_ENVIRON_VAR_NAME] = os.fspath(save_path)
+    return save_path
 
 
-def _load_slurm_config() -> SlurmRunnerConfig:
-    """Load our slurm runner configuration from the global json."""
-    save_path = os.environ.get(CONFIG_FILE_ENVIRON_VAR_NAME)
-    if not save_path:
-        raise RuntimeError
-    config_file = Path(save_path)
-    return SlurmRunnerConfig.model_validate_json(
-        config_file.read_text(encoding="utf-8")
-    )
-
-
-def _create_job_submitter(config: SlurmRunnerConfig) -> SubmissionFnType:
+def _create_job_submitter(
+    config: SlurmRunnerConfig,
+    slurm_config_path: Path,
+) -> SubmissionFnType:
     """Create a method to accept a job config and submit it."""
     slurm_vars = _get_slurm_env_variables()
     curr_job_id = slurm_vars["job_id"]
@@ -111,7 +113,7 @@ def _create_job_submitter(config: SlurmRunnerConfig) -> SubmissionFnType:
 
     job_dependencies = _get_dependent_jobs(curr_job_id=curr_job_id)
 
-    sbatch = _create_sbatch(config)
+    sbatch = _create_sbatch(config, slurm_config_path)
 
     def submit_fn(job: JobConfig) -> None:
         """Submit a new job to slurm, inheriting dependencies from the current node."""
@@ -168,6 +170,7 @@ def _add_dependency_to_sbatch(args: list[str], dependencies: list[str]) -> list[
 
 def _create_sbatch(
     config: SlurmRunnerConfig,
+    slurm_config_path: Path,
 ) -> Callable[[JobConfig, list[str] | None], str]:
     """Sbatch the provided job config and return its new job id."""
 
@@ -203,6 +206,8 @@ def _create_sbatch(
             *slurm_args,
             os.fspath(ENTRY_BASH_FILE_PATH),
             os.fspath(__file__),  # this job is the main entry point!
+            "-i",
+            os.fspath(slurm_config_path),
             "-c",
             os.fspath(file_path),
         ]
@@ -261,7 +266,7 @@ def _get_slurm_env_variables() -> dict[str, str | None]:
     }
 
 
-def _load_job_config() -> JobWithContext:
+def _load_job_config() -> tuple[JobWithContext, SlurmRunnerConfig, Path]:
     """Load our job config from shared storage using sys args."""
     logger = logging.getLogger(__name__)
 
@@ -286,8 +291,8 @@ def _load_job_config() -> JobWithContext:
         "-c",
         "--job_config",
         required=True,
-        help="Path, relative to the working directory of this pyantz submission,"
-        " of the config to be used for this job."
+        help="Path of the config to be used for this job; either absolute or"
+        " relative to the working directory of this pyantz submission."
         " Must be valid JSON for a **JobWithContext**",
     )
 
@@ -311,19 +316,24 @@ def _load_job_config() -> JobWithContext:
         logger.error("No such job config: %s", config_file_path)
         raise ValueError
 
-    return JobWithContext.model_validate_json(
+    job_config = JobWithContext.model_validate_json(
         config_file_path.read_text(
             encoding="utf-8",
         ),
     )
+    return job_config, slurm_config, slurm_config_path
 
 
-def _run_on_node() -> None:
-    """Run the job on this node."""
-    job_config = _load_job_config()
-    slurm_config = _load_slurm_config()
+def _run_on_node() -> bool:
+    """Run the job on this node.
 
-    submit_fn = _create_job_submitter(slurm_config)
+    Returns:
+        bool: True if the job succeeded
+
+    """
+    job_config, slurm_config, slurm_config_path = _load_job_config()
+
+    submit_fn = _create_job_submitter(slurm_config, slurm_config_path)
 
     def wrapped_submitter(
         job_to_submit: JobConfig,
@@ -334,9 +344,10 @@ def _run_on_node() -> None:
         """Adapter that ignores the parent_id, using the SLURM env var instead."""
         submit_fn(job_to_submit)
 
-    run_job(job_config=job_config, submitter_fn=wrapped_submitter)
+    return run_job(job_config=job_config, submitter_fn=wrapped_submitter)
 
 
 if __name__ == "__main__":
     # running a child job!!! neat
-    _run_on_node()
+    # a non-zero exit makes `afterok` dependents of a failed job never run
+    sys.exit(0 if _run_on_node() else 1)
