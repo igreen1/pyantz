@@ -59,6 +59,7 @@ def test_external_extract_args(
         ],
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": working_dir,
         },
     }
@@ -100,6 +101,7 @@ def test_external_extract_kwargs(
         ],
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": working_dir,
         },
     }
@@ -136,6 +138,7 @@ def test_external_simple_args(tmp_path: Path) -> None:
         ],
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": working_dir,
         },
     }
@@ -178,6 +181,7 @@ def test_external_simple_kwargs(tmp_path: Path) -> None:
         ],
         "submitter": {
             "type_": "local_proc",
+            "use_same_proc": True,
             "working_directory": working_dir,
         },
     }

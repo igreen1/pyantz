@@ -68,4 +68,4 @@ def test_successful_run_does_not_raise(
 
     ssh_module.run_ssh(config)
 
-    assert len(commands(fake)) == 2  # noqa: PLR2004
+    assert len(commands(fake)) == 3  # noqa: PLR2004
