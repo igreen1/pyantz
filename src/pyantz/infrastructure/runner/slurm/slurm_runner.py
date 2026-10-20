@@ -219,6 +219,11 @@ def _create_sbatch(
         if dependencies is not None:
             slurm_args = _add_dependency_to_sbatch(slurm_args, dependencies)
 
+        # if a dependency fails, cancel the dependents rather than leaving them
+        # pending forever; this matches how the local runner fails them
+        if not any(arg.startswith("--kill-on-invalid-dep") for arg in slurm_args):
+            slurm_args.append("--kill-on-invalid-dep=yes")
+
         # now, we have the file path to be run
         cmd: list[str] = [
             "sbatch",
