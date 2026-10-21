@@ -1,15 +1,22 @@
 """Test the endpoint returning the parameter schema of a job."""
 
+import subprocess
+import sys
 from http import HTTPStatus
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
+import pytest
 from fastapi.testclient import TestClient
 
+import pyantz.jobs  # noqa: F401  # registers the jobs
 from pyantz.api.backend import app
 from pyantz.api.endpoints.get_parameters import endpoints
+from pyantz.infrastructure.config.fn_utils import serialize_function
+from pyantz.infrastructure.config.parameters.decorators import get_registered_functions
 
 if TYPE_CHECKING:
-    import pytest
+    from collections.abc import Callable
 
 client = TestClient(app)
 
@@ -52,3 +59,45 @@ def test_known_job_returns_its_schema() -> None:
     body = response.json()
     assert body["fn_path"] == "pyantz.jobs.subproc.dispatch.dispatch"
     assert "cmd" in body["json_schema"]["properties"]
+
+
+# The jobs of pyantz only: other tests register jobs of their own in this process,
+# which differ between the workers of pytest-xdist, which need to collect the same
+# tests. Sorted, since the order of registration is not always the same either.
+PYANTZ_JOBS = sorted(
+    (
+        fn
+        for fn in get_registered_functions()
+        if fn.__module__.startswith("pyantz.jobs.")
+    ),
+    key=serialize_function,
+)
+
+
+@pytest.mark.parametrize("fn", PYANTZ_JOBS, ids=serialize_function)
+def test_every_registered_job_has_a_schema(fn: Callable[..., Any]) -> None:
+    """The frontend fetches the schema of every job, so none may be an error."""
+    response = client.get(f"/api/v1.0/jobs/schema/{serialize_function(fn)}")
+
+    assert response.status_code == HTTPStatus.OK
+    assert isinstance(response.json()["json_schema"], dict)
+
+
+def test_schema_dump_matches_the_fixture_of_the_frontend_tests() -> None:
+    """The frontend tests read a dump of the schemas; regenerate it if this fails.
+
+    Run ``uv run python -m pyantz.api.dump_schemas
+    frontend/pyantz/src/__fixtures__/job-schemas.json``.
+    """
+    fixture = (
+        Path(__file__).parents[2] / "frontend/pyantz/src/__fixtures__/job-schemas.json"
+    )
+    # in a new interpreter: the jobs which other tests register are not in it
+    dumped = subprocess.run(
+        [sys.executable, "-m", "pyantz.api.dump_schemas"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
+
+    assert fixture.read_text(encoding="utf-8") == dumped

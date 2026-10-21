@@ -171,3 +171,55 @@ def test_remote_bind_needs_a_token(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setenv("PYANTZ_API_TOKEN", "secret")
     check_safe_to_bind(get_settings())
+
+
+def _start_run(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> str:
+    monkeypatch.setenv("PYANTZ_ALLOWED_MODULES", "pyantz")
+    run_id: str = client.post("/api/v1.0/runs", json=_config()).json()["run_id"]
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        if client.get(f"/api/v1.0/runs/{run_id}").json()["state"] != "running":
+            break
+        time.sleep(0.2)
+    return run_id
+
+
+def test_run_log_is_the_end_of_the_output(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The log can be read, and a limit keeps the end of it."""
+    run_id = _start_run(client, monkeypatch)
+    (tmp_path / "runs" / run_id / "run.log").write_text("first\nsecond\nthird\n")
+
+    whole = client.get(f"/api/v1.0/runs/{run_id}/log").json()
+    tail = client.get(f"/api/v1.0/runs/{run_id}/log", params={"max_bytes": 6}).json()
+
+    assert whole == {
+        "run_id": run_id,
+        "log": "first\nsecond\nthird\n",
+        "truncated": False,
+    }
+    assert tail["log"] == "third\n"
+    assert tail["truncated"] is True
+
+
+@pytest.mark.parametrize("max_bytes", [0, 1_000_001])
+def test_run_log_limits_the_size(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch, max_bytes: int
+) -> None:
+    """A request can't ask for more than the limit, or for nothing."""
+    run_id = _start_run(client, monkeypatch)
+
+    response = client.get(
+        f"/api/v1.0/runs/{run_id}/log", params={"max_bytes": max_bytes}
+    )
+
+    assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.parametrize("run_id", ["nope", "../../etc", "0" * 32])
+def test_run_log_of_unknown_runs_is_not_found(client: TestClient, run_id: str) -> None:
+    """Ids which are not runs, or try to leave the runs directory, are not found."""
+    response = client.get(f"/api/v1.0/runs/{run_id}/log")
+
+    assert response.status_code == HTTPStatus.NOT_FOUND

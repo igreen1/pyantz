@@ -1,0 +1,62 @@
+{
+  "level": {
+    "nodes": [
+      {
+        "id": "n1", "type": "jobNode", "position": {"x": 0, "y": 0},
+        "data": {
+          "job": {
+            "job_id": "first", "name": "first", "function": "pyantz.jobs.files.simple.create",
+            "parameters": {"path": "%TMP%/first.txt", "contents": "one"}
+          },
+          "nested": {}
+        }
+      },
+      {
+        "id": "n2", "type": "jobNode", "position": {"x": 0, "y": 160},
+        "data": {
+          "job": {
+            "name": "second", "function": "pyantz.jobs.files.simple.create",
+            "parameters": {"path": "%TMP%/second.txt", "contents": "two"}
+          },
+          "nested": {}
+        }
+      },
+      {
+        "id": "n3", "type": "jobNode", "position": {"x": 0, "y": 320},
+        "data": {
+          "job": {
+            "job_id": "wrapper", "function": "pyantz.jobs.wrappers.local.run_pipeline",
+            "parameters": {}
+          },
+          "nested": {
+            "jobs": {
+              "kind": "list",
+              "nodes": [
+                {
+                  "id": "n4", "type": "jobNode", "position": {"x": 0, "y": 0},
+                  "data": {
+                    "job": {
+                      "job_id": "inside", "function": "pyantz.jobs.files.simple.create",
+                      "parameters": {"path": "%TMP%/inside.txt", "contents": "three"}
+                    },
+                    "nested": {}
+                  }
+                }
+              ],
+              "edges": []
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      {"id": "en1->n2", "source": "n1", "target": "n2"},
+      {"id": "en2->n3", "source": "n2", "target": "n3"}
+    ]
+  },
+  "pipeline": {
+    "submitter": {"type_": "local_proc", "working_directory": "%TMP%/work", "use_same_proc": true},
+    "variables": {"who": "world"},
+    "extra": {}
+  }
+}

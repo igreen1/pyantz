@@ -30,7 +30,7 @@ def test_description_is_the_first_paragraph() -> None:
         More detail which is not wanted.
         """
 
-    assert endpoint._describe(job) == "...and so it begins."  # noqa: SLF001
+    assert endpoint.describe_job(job) == "...and so it begins."
 
 
 def test_missing_docstring_has_a_placeholder() -> None:
@@ -39,4 +39,4 @@ def test_missing_docstring_has_a_placeholder() -> None:
     def job() -> None:
         return None
 
-    assert endpoint._describe(job) == endpoint.NO_DESCRIPTION  # noqa: SLF001
+    assert endpoint.describe_job(job) == endpoint.NO_DESCRIPTION
