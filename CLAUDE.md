@@ -20,6 +20,9 @@ uv run mypy src                           # secondary type checker; run once ty 
 make test                                 # sphinx doctests (docs/) + pytest
 make doc                                  # build sphinx html docs
 cd frontend/pyantz && npm run dev -- --host   # web UI (React/Vite); API via `pyantz-dev` / `pyantz-prod`
+make frontend-check                       # web UI: lint, typecheck, unit tests, build
+make e2e                                  # web UI: Playwright tests against real servers
+uv run pytest tests/frontend              # the UI's model agrees with the python models (needs node >= 22.18)
 ```
 
 Entry points: `pyantz <config.json>`, `pyantz-status`, `pyantz-dev`, `pyantz-prod`.
@@ -36,7 +39,7 @@ Flow: `pyantz.start(config)` (`infrastructure/runner/starter.py`) validates into
 - **`infrastructure/distributed_queue/`** — queue interface (`common/`) with a SQLAlchemy/SQLite implementation (`sql/`) used for job fan-out and status; `JobsReport` return types live in `common/return_types.py`.
 - **`jobs/`** — built-in job library grouped by area (`files`, `analysis`, `branching`, `subproc`, `wrappers` for loop/submit, `testing`). Jobs receive their params plus a submit function so they can enqueue follow-on jobs.
 - **`virtual/`** — built-in virtual job definitions (e.g. `add_variables`). Configs support `%{var}` template substitution.
-- **`api/`** — FastAPI backend for the optional web UI; `frontend/pyantz` is the React app.
+- **`api/`** — FastAPI backend for the optional web UI; `frontend/pyantz` is the React app (see its README). `PYANTZ_FRONTEND_DIR` makes the server serve the built app. `python -m pyantz.api.dump_schemas` regenerates `frontend/pyantz/src/__fixtures__/job-schemas.json`, which a test checks. The UI's `src/model/types.ts` lists the config fields and `tests/frontend` compares them with the pydantic models: change both when you add a field.
 
 Note: both `config/abstract_job.py` and `config/abtrast_job.py` exist; import `AbstractJobConfig` from `abstract_job`.
 

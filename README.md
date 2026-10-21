@@ -301,12 +301,54 @@ Use `@no_submit_fn` when your job does not need to enqueue child jobs. Omit it (
 # Run a pipeline from a config file
 pyantz config.json
 
-# Start the development API server (hot reload)
+# Start the development API server (see "Web UI" below)
 pyantz-dev
 
-# Start the production API server
+# Start the production API server (also serves the web UI if you built it)
 pyantz-prod
 ```
+
+---
+
+## Web UI
+
+A visual pipeline builder: add jobs from a searchable list, connect them to set
+dependencies, edit their parameters in forms made from their schemas, open the jobs
+inside loops and branches, check the pipeline against the server, see what virtual
+jobs compile to, and run it and watch each job. It reads and writes the same JSON
+as `pyantz config.json` (*Import JSON* / *Export JSON*).
+
+**Development** (two terminals):
+
+```bash
+uv run pyantz-dev                               # the api, on http://127.0.0.1:8000
+cd frontend/pyantz && npm ci && npm run dev     # the UI, on http://localhost:5173
+```
+
+**One server** (the api serves the built UI at `/`):
+
+```bash
+cd frontend/pyantz && npm ci && npm run build
+PYANTZ_FRONTEND_DIR=frontend/pyantz/dist uv run pyantz-prod   # http://127.0.0.1:8000
+```
+
+Both servers read their settings from the environment:
+
+| Variable | Meaning |
+| --- | --- |
+| `PYANTZ_HOST`, `PYANTZ_PORT` | Where the server listens (default `127.0.0.1:8000`). A host other than localhost needs a token. |
+| `PYANTZ_API_TOKEN` | If set, the api needs `Authorization: Bearer <token>`; the UI asks for it and keeps it for the tab. |
+| `PYANTZ_ALLOWED_MODULES` | Comma separated module prefixes which configs may run functions from, e.g. `pyantz`. **Runs from the UI are refused until this is set**, since a config is code. |
+| `PYANTZ_RUNS_DIR` | Where runs started from the UI keep their files (default: a directory in the system's temp directory). |
+| `PYANTZ_FRONTEND_DIR` | The built UI (`frontend/pyantz/dist`) to serve at `/`. The page itself is served without the token, so that it can ask for it. |
+| `PYANTZ_CORS_ORIGINS` | Origins allowed to call the api from another address. |
+| `PYANTZ_API_URL` | For the Vite dev server only: where the api is, if not on port 8000. |
+
+`pyantz-dev` does not reload when the code changes.
+
+A run from the UI always uses a local process and a working directory chosen by the
+server; the working directory in the pipeline settings is for when you run the
+exported file yourself. See `frontend/pyantz/README.md` for the tests.
 
 ---
 
