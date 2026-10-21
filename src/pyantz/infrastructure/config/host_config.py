@@ -12,6 +12,8 @@ After reaching the remote host, the ``subsequent_host`` field lets you
 chain hops (e.g. SSH into a bastion, then exec into a container).
 """
 
+from __future__ import annotations
+
 import getpass
 from collections.abc import Mapping
 from typing import Annotated, Literal, Self

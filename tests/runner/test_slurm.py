@@ -1,5 +1,7 @@
 """Test the slurm runner against a fake sbatch/squeue/scontrol (no slurm needed)."""
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys

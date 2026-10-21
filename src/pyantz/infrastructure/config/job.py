@@ -1,5 +1,7 @@
 """Configuration of a single job to be run."""
 
+from __future__ import annotations
+
 from collections.abc import Callable, Mapping
 from typing import Annotated, Any, Literal, Self, cast
 

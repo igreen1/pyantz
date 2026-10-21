@@ -1,5 +1,7 @@
 """Test touching a file."""
 
+from __future__ import annotations
+
 import os
 from copy import deepcopy
 from pathlib import Path

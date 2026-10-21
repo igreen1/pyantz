@@ -1,5 +1,7 @@
 """Serve the api and the built web ui from one server (``pyantz-frontend``)."""
 
+from __future__ import annotations
+
 import sys
 from importlib import import_module
 from typing import TYPE_CHECKING

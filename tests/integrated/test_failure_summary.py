@@ -1,5 +1,7 @@
 """Test the summary of failed jobs printed at the end of a local run."""
 
+from __future__ import annotations
+
 import logging
 import os
 from typing import TYPE_CHECKING, Any

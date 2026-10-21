@@ -1,5 +1,7 @@
 """Test the abstract job module name."""
 
+from __future__ import annotations
+
 import importlib
 import pathlib
 

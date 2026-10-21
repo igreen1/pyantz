@@ -7,6 +7,8 @@ jobs).  It provides the common ``job_id``, ``depends_on``, ``parameters``,
 and ``strict`` fields.
 """
 
+from __future__ import annotations
+
 import uuid
 from collections.abc import Mapping
 from typing import Annotated, Any

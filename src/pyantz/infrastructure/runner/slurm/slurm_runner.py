@@ -1,5 +1,7 @@
 """Submit jobs to a slurm HPC grid."""
 
+from __future__ import annotations
+
 import argparse
 import logging
 import math

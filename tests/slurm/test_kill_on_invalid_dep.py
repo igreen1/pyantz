@@ -1,5 +1,7 @@
 """Test dependents of failed slurm jobs are cancelled rather than left pending."""
 
+from __future__ import annotations
+
 import os
 import subprocess
 from typing import TYPE_CHECKING, Any

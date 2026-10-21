@@ -1,5 +1,7 @@
 """Test the endpoint returning the parameter schema of a job."""
 
+from __future__ import annotations
+
 import subprocess
 import sys
 from http import HTTPStatus

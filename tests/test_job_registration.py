@@ -1,5 +1,7 @@
 """Test that importing the jobs package registers every job."""
 
+from __future__ import annotations
+
 import subprocess
 import sys
 

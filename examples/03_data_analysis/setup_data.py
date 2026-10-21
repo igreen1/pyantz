@@ -1,5 +1,7 @@
 """Create sample CSV files needed by the data analysis example."""
 
+from __future__ import annotations
+
 import polars as pl
 
 data_dir = "/tmp/pyantz_data"

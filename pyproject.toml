@@ -74,6 +74,11 @@ dev = [
     "types-docker>=7.1.0.20260402",
 ]
 
+[tool.ruff.lint.isort]
+# python 3.13 evaluates annotations eagerly; this keeps type-checking-only
+# imports in annotations working there as they do with 3.14's deferred ones
+required-imports = ["from __future__ import annotations"]
+
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 

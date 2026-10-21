@@ -1,5 +1,7 @@
 """Test that job-typed parameters containing non-jobs don't crash compilation."""
 
+from __future__ import annotations
+
 from typing import Any
 
 import pytest

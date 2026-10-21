@@ -1,5 +1,7 @@
 """Test results copied out of a container can't escape the output directory."""
 
+from __future__ import annotations
+
 import contextlib
 import io
 import tarfile

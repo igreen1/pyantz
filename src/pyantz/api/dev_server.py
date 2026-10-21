@@ -1,5 +1,7 @@
 """Primary server to run."""
 
+from __future__ import annotations
+
 import uvicorn
 
 from .settings import check_safe_to_bind, get_settings

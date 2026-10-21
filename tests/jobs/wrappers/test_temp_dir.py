@@ -1,5 +1,7 @@
 """Test running jobs with a temporary directory."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

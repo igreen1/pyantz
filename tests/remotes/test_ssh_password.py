@@ -1,5 +1,7 @@
 """Test the password fallback only prompts when a person can answer."""
 
+from __future__ import annotations
+
 import getpass
 import io
 from typing import TYPE_CHECKING, Any

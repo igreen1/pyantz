@@ -1,5 +1,7 @@
 """Test errors when a function path can't be imported are clear."""
 
+from __future__ import annotations
+
 import pytest
 
 from pyantz.infrastructure.config.fn_utils import import_module_item_by_name

@@ -1,5 +1,7 @@
 """Test coercion and the extra operators of the if/else jobs."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

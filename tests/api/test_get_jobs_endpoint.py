@@ -1,5 +1,7 @@
 """Test the endpoint listing the available jobs."""
 
+from __future__ import annotations
+
 from http import HTTPStatus
 
 from fastapi.testclient import TestClient

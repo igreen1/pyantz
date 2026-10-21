@@ -1,5 +1,7 @@
 """Test the default local runner mode: a pool of separate worker processes."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

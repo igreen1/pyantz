@@ -3,6 +3,8 @@
 Pretty much just check syntax and whatnot, no logic checks really.
 """
 
+from __future__ import annotations
+
 import json
 import os
 import subprocess

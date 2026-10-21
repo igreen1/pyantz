@@ -1,5 +1,7 @@
 """Test checking if a file contains some text."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pytest

@@ -1,5 +1,7 @@
 """The frontend's idea of the config models matches the backend's."""
 
+from __future__ import annotations
+
 import pytest
 
 from pyantz.infrastructure.config import InitialConfig, JobConfig

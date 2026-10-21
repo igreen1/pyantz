@@ -1,5 +1,7 @@
 """Test the iteration index and failure handling of the local for loop."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

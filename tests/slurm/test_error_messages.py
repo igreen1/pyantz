@@ -1,5 +1,7 @@
 """Test the SLURM runner explains what went wrong."""
 
+from __future__ import annotations
+
 import os
 import sys
 from typing import TYPE_CHECKING

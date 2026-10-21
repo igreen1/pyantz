@@ -1,5 +1,7 @@
 """Test finding the jobs which depend on the current slurm job."""
 
+from __future__ import annotations
+
 import subprocess
 from typing import Any
 

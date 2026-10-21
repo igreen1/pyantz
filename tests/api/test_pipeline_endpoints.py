@@ -1,5 +1,7 @@
 """Test the endpoints to validate, preview and run configurations."""
 
+from __future__ import annotations
+
 import time
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any

@@ -1,5 +1,7 @@
 """Test how the value returned by a job function is interpreted."""
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Any
 

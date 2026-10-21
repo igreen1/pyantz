@@ -9,6 +9,8 @@ returned Polars DataFrame to a Parquet file.
 frames, then passes them as keyword arguments to a user function.
 """
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Callable, Mapping
 from pathlib import Path

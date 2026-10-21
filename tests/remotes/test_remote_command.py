@@ -1,5 +1,7 @@
 """Test the command run on remote hosts."""
 
+from __future__ import annotations
+
 from typing import Any, cast
 
 import pytest

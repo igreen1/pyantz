@@ -1,5 +1,7 @@
 """Test variables are resolved in a job's id, name and dependencies."""
 
+from __future__ import annotations
+
 from pyantz.infrastructure.config import JobConfig, JobWithContext
 
 NOP = "pyantz.jobs.testing.nop.do_nothing"

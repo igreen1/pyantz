@@ -10,6 +10,8 @@ Both jobs support template variables in ``left_side`` and ``right_side``,
 making them useful for dynamic branching based on runtime state.
 """
 
+from __future__ import annotations
+
 import math
 import operator
 import re

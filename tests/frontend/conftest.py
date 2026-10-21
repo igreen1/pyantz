@@ -1,5 +1,7 @@
 """Run the typescript of the frontend with node, as the tests of it need."""
 
+from __future__ import annotations
+
 import json
 import re
 import shutil

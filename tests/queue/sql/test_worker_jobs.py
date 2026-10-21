@@ -1,5 +1,7 @@
 """Test failing the jobs of a worker."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pyantz.infrastructure.config import JobWithContext

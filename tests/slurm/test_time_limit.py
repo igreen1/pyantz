@@ -1,5 +1,7 @@
 """Test the maximum job time is given to slurm."""
 
+from __future__ import annotations
+
 import os
 import subprocess
 from typing import TYPE_CHECKING, Any

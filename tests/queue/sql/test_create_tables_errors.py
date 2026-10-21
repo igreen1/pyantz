@@ -1,5 +1,7 @@
 """Test errors creating the queue tables are not hidden."""
 
+from __future__ import annotations
+
 import os
 import sqlite3
 from typing import TYPE_CHECKING

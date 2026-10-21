@@ -1,5 +1,7 @@
 """Test values are quoted when building the shell commands for the remote."""
 
+from __future__ import annotations
+
 import io
 import shlex
 from typing import TYPE_CHECKING

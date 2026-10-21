@@ -1,5 +1,7 @@
 """Test the working directory is created on the remote in a way that can repeat."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pytest

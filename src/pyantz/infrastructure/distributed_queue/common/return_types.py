@@ -12,6 +12,8 @@ It wraps one of three payload types:
 debugging and progress monitoring.
 """
 
+from __future__ import annotations
+
 import uuid
 from enum import IntEnum
 from typing import Literal

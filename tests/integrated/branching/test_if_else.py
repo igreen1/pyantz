@@ -1,5 +1,7 @@
 """Test branching with an if statement."""
 
+from __future__ import annotations
+
 import itertools
 import random
 from typing import TYPE_CHECKING

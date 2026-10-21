@@ -1,5 +1,7 @@
 """Test environment variables from the host config reach the remote command."""
 
+from __future__ import annotations
+
 import shlex
 from typing import TYPE_CHECKING, Any
 

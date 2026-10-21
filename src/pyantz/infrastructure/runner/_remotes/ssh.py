@@ -5,6 +5,8 @@ setup tarball via SFTP, extracts it, and runs ``uvx pyantz config.json``
 — either synchronously or as a background process (``nohup … &``).
 """
 
+from __future__ import annotations
+
 import getpass
 import logging
 import os

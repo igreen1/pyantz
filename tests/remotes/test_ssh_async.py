@@ -1,5 +1,7 @@
 """Test running in the background on a remote host returns without waiting."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pyantz.infrastructure.runner._remotes import ssh as ssh_module

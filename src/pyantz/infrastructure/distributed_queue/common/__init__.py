@@ -1,5 +1,7 @@
 """Common types across queue implementations."""
 
+from __future__ import annotations
+
 from .interface import QueueInterface
 from .return_types import (
     CompleteReturn,
