@@ -234,7 +234,8 @@ def join_parquets(params: JoinParquetParams) -> bool:
         }
         start(config)
 
-        result = pl.read_parquet("output.parquet")
+        # a join doesn't keep the order of the rows
+        result = pl.read_parquet("output.parquet").sort("idx")
         print(result)
 
     Output:

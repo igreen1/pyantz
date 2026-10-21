@@ -121,9 +121,10 @@ class GetJobReturn(BaseModel):
     This is used like a Rust enum return to return a "union" type.
 
     Rather than always returning a job, `get_job` can return either
+
     1. Job: Successfully dequeue a job
     2. Pending: either jobs are ready and awaiting dependencies
-        or a job is running and it may still submit something
+       or a job is running and it may still submit something
     3. Complete: the queue is empty and the worker should kill itself
     """
 
