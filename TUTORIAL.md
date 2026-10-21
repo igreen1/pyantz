@@ -8,7 +8,7 @@ This tutorial walks through PyAntz from first install to advanced patterns. Each
 
 ```bash
 pip install pyantz
-# or with uv (recommended for Python 3.14+):
+# or with uv (recommended):
 uv add pyantz
 ```
 
