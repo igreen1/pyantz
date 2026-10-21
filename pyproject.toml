@@ -20,12 +20,15 @@ dependencies = [
 [project.optional-dependencies]
 # reading excel files (pyantz.jobs.files.reformat.excel_to_csv)
 excel = ["fastexcel>=0.12.0"]
+# the web ui, built (packages/pyantz-frontend); start it with `pyantz-frontend`
+frontend = ["pyantz-frontend==2.0.0"]
 
 [project.scripts]
 pyantz = "pyantz.__main__:main"
 pyantz-status = "pyantz.status:main"
 pyantz-dev = "pyantz.api.dev_server:start_dev_server"
 pyantz-prod = "pyantz.api.backend:start_prod_server"
+pyantz-frontend = "pyantz.api.frontend_server:start_frontend_server"
 
 [build-system]
 requires = ["hatchling"]
@@ -37,9 +40,16 @@ path = "src/pyantz/__init__.py"
 [tool.hatch.build]
 exclude = [
   "/frontend",
+  "/packages",
   "/slurm_setup",
   "/tests",           # Exclude a top-level directory
 ]
+
+[tool.uv.workspace]
+members = ["packages/pyantz-frontend"]
+
+[tool.uv.sources]
+pyantz-frontend = { workspace = true }
 
 [dependency-groups]
 api = [
@@ -70,6 +80,8 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 [tool.ruff.lint.per-file-ignores]
 # Ignore S101 (assert statements) in the "tests" directory and all subdirectories
 "tests/**/*.py" = ["S101", "S607", "S603"]
+# a hatch build hook is a script next to the pyproject, not part of a package
+"packages/*/hatch_build.py" = ["INP001"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -96,6 +108,10 @@ push = true
 [tool.bumpver.file_patterns]
 "pyproject.toml" = [
     'current_version = "{version}"',
+    '"pyantz-frontend=={version}"',
+]
+"packages/pyantz-frontend/pyproject.toml" = [
+    '^version = "{version}"$',
 ]
 "src/pyantz/__init__.py" = [
     '^__version__ = "{version}"$',
