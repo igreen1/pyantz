@@ -1,5 +1,7 @@
 """Test the archive of the project directory sent to remote hosts."""
 
+from __future__ import annotations
+
 import tarfile
 from typing import TYPE_CHECKING
 

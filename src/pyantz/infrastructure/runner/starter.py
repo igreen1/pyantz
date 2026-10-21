@@ -4,6 +4,8 @@ Check if we're in the right execution environment,
 the point to the correct local runner.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config import InitialConfig as _InitialConfig

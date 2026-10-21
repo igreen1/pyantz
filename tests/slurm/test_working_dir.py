@@ -1,5 +1,7 @@
 """Test the slurm working directory is only required where slurm runs."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

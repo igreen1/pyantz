@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import inspect
 import os
 import sys
 
@@ -40,16 +41,29 @@ html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 
 
-def skip_model_config(app, what, name, obj, skip, options):
+def skip_member(app, what, name, obj, skip, options):
     if name == "model_config":
+        return True
+    # sqlalchemy adds these to the orm base class, with sqlalchemy's docs
+    if what == "class" and name in {"metadata", "registry"}:
+        return True
+    # autodoc drops imported classes and functions only after processing their
+    # docstrings, which fails or warns for some of other packages' docstrings
+    if (
+        what == "module"
+        and (inspect.isclass(obj) or inspect.isroutine(obj))
+        and not (getattr(obj, "__module__", None) or "").startswith("pyantz")
+    ):
         return True
     return skip
 
 
 def setup(app):
-    app.connect("autodoc-skip-member", skip_model_config)
+    app.connect("autodoc-skip-member", skip_member)
 
 
+# document each object in its own module only, not again where it is re-exported
+autodoc_default_options = {"ignore-module-all": True}
 autodoc_typehints = "description"
 typehints_use_signature = True
 

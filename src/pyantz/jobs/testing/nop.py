@@ -1,5 +1,7 @@
 """Job that does nothing, mostly for debugging and testing."""
 
+from __future__ import annotations
+
 from typing import Any
 
 

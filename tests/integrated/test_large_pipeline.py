@@ -1,5 +1,7 @@
 """A large pipeline of jobs to be run."""
 
+from __future__ import annotations
+
 import os
 import uuid
 from pathlib import Path

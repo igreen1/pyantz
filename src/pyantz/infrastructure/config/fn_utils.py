@@ -6,6 +6,8 @@ converts a callable back to that string, and :func:`import_module_item_by_name`
 dynamically imports it again at runtime.
 """
 
+from __future__ import annotations
+
 import importlib
 import os
 from typing import TYPE_CHECKING

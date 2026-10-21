@@ -1,5 +1,7 @@
 """Test the local for loop stops at the first failure."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config import JobWithContext

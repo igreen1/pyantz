@@ -5,6 +5,8 @@ the current process.  All jobs in the inner pipeline share the same
 variable context from the enclosing scope.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict

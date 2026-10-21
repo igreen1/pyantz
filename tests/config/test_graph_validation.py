@@ -1,5 +1,7 @@
 """Test that all structural problems of a configuration are reported together."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

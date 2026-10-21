@@ -1,5 +1,7 @@
 """Test running a pipeline repeatedly with the same working directory."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

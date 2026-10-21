@@ -1,5 +1,7 @@
 """Test the reason a job failed is stored with its status."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import pytest

@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [
     { name = "igreen1", email = "pyantz@iangreen.dev" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 dependencies = [
     "docker>=7.1.0",
     "fastapi[standard]>=0.127.0",
@@ -68,11 +68,16 @@ dev = [
     "pytest-xdist>=3.8.0",
     "ruff>=0.14.10",
     "sphinx>=9.1.0",
-    "sphinx-autodoc-typehints>=3.9.9",
+    "sphinx-autodoc-typehints>=3.13.8",
     "sphinx-book-theme>=1.2.0",
     "ty>=0.0.4",
     "types-docker>=7.1.0.20260402",
 ]
+
+[tool.ruff.lint.isort]
+# python 3.13 evaluates annotations eagerly; this keeps type-checking-only
+# imports in annotations working there as they do with 3.14's deferred ones
+required-imports = ["from __future__ import annotations"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]

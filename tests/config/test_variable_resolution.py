@@ -1,5 +1,7 @@
 """Test variables are resolved in parameters correctly."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pyantz.infrastructure.config.variables import resolve_parameters

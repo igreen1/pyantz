@@ -1,5 +1,7 @@
 """Test the variables of the running job are restored after it finishes."""
 
+from __future__ import annotations
+
 from typing import Any
 
 from pyantz.infrastructure.config import JobWithContext

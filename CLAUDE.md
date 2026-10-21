@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-PyAntz is a local-first DAG pipeline runner. Pipelines are JSON/dict configs whose jobs reference Python functions by import path. They run via local multiprocessing (SQLite-backed queue) or SLURM `sbatch`, optionally on a remote host (SSH or Docker/Podman container). Requires Python >= 3.14 (uses PEP 695 syntax such as `def f[T: ...]`). Package manager is `uv`; source is in `src/pyantz`.
+PyAntz is a local-first DAG pipeline runner. Pipelines are JSON/dict configs whose jobs reference Python functions by import path. They run via local multiprocessing (SQLite-backed queue) or SLURM `sbatch`, optionally on a remote host (SSH or Docker/Podman container). Requires Python >= 3.13 (uses PEP 695 syntax such as `def f[T: ...]`); development defaults to 3.14 (`.python-version`). Package manager is `uv`; source is in `src/pyantz`.
 
 ## Commands
 
@@ -47,5 +47,6 @@ Note: both `config/abstract_job.py` and `config/abtrast_job.py` exist; import `A
 ## Conventions
 
 - Ruff runs with `select = ["ALL"]` (ignoring D203, D213, COM812): all public code needs Google-style docstrings and full type hints; asserts are only allowed under `tests/`. Imports used only for typing go under `TYPE_CHECKING` (pydantic models are treated as runtime-evaluated).
+- Code must run on Python 3.13: every module starts with `from __future__ import annotations` (ruff `required-imports` adds it) because 3.13 has no deferred annotations (PEP 649); no 3.14-only syntax such as unparenthesized `except A, B` (PEP 758) or modules such as `annotationlib`. To test on 3.13: `UV_PROJECT_ENVIRONMENT=.venv-3.13 uv run --python 3.13 pytest`.
 - Version lives in `src/pyantz/__init__.py` and `pyproject.toml`, bumped via `bumpver` (`make build`) — don't edit by hand.
 - More user-facing docs: `README.md`, `TUTORIAL.md`, `docs/source`.

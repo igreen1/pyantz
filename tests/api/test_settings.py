@@ -1,5 +1,7 @@
 """Test the api server settings."""
 
+from __future__ import annotations
+
 import importlib
 import sys
 from typing import Any

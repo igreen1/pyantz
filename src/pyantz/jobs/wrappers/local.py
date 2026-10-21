@@ -8,6 +8,8 @@ Use this when you want to avoid queue overhead for a tight inner loop, or
 when you need to share in-memory state between steps without a file system.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Final
 
 from pydantic import BaseModel, ConfigDict, Field

@@ -1,5 +1,7 @@
 """Test that bad dependency graphs give clear errors when compiling."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

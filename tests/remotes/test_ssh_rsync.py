@@ -1,5 +1,7 @@
 """Test copying the results back from the remote host with rsync."""
 
+from __future__ import annotations
+
 import subprocess
 from typing import TYPE_CHECKING, Any
 

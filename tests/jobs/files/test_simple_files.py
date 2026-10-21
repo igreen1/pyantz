@@ -1,5 +1,7 @@
 """Test the basic file operations."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from pyantz.jobs.files import simple

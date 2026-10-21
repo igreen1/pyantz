@@ -2,6 +2,7 @@
 
 # regression tests for issue #21
 
+from __future__ import annotations
 import pytest
 
 from pyantz.infrastructure.config.variables import resolve_var_any

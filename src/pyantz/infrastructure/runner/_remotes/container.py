@@ -5,6 +5,8 @@ copies the setup tarball into it, starts it, waits for completion, and
 optionally copies results back to the host.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import tarfile

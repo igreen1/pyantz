@@ -25,13 +25,16 @@ For example, consider the same pipeline but imagine that C was submitting jobs.
 It doesn't matter than C will spawn "dependency-less" children, it is the last job.
 So any execution order is find for the spawned chains to execute.
 
-Something like the below is possible, which fits many use cases.
-              C1
-            /
-A -> B -> C
-            \ C2
+Something like the below is possible, which fits many use cases::
+
+                  C1
+                /
+    A -> B -> C
+                \ C2
 
 """
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal

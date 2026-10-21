@@ -1,5 +1,7 @@
 """Test putting a job back in the queue with a changed config."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pyantz.infrastructure.config import JobWithContext

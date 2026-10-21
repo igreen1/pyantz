@@ -1,5 +1,7 @@
 """Test deleting directories which have content."""
 
+from __future__ import annotations
+
 import contextlib
 from typing import TYPE_CHECKING
 

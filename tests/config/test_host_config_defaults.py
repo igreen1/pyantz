@@ -1,5 +1,7 @@
 """Test the defaults of the host configs."""
 
+from __future__ import annotations
+
 import getpass
 import subprocess
 import sys

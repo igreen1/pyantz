@@ -1,5 +1,7 @@
 """A local runner executes code on the device."""
 
+from __future__ import annotations
+
 import contextlib
 import logging
 import multiprocessing as mp
@@ -39,9 +41,18 @@ WORKER_STOP_TIMEOUT = 10.0
 STARTUP_WAIT_SECONDS = 60.0
 STOP_WAIT_SECONDS = 5.0
 
+# python 3.14 starts processes with forkserver by default on POSIX except macOS;
+# 3.13 forks, which is unsafe once the parent has threads (and warns about it)
+_POOL_CONTEXT = (
+    mp.get_context("forkserver")
+    if sys.platform != "darwin" and "forkserver" in mp.get_all_start_methods()
+    else mp.get_context()
+)
+
 if TYPE_CHECKING:
     import uuid
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Generator, Sequence
+    from multiprocessing.process import BaseProcess
     from multiprocessing.synchronize import Event as SyncEvent
 
 
@@ -132,7 +143,7 @@ def _start_pool(runner_config: LocalRunnerConfig, queue_file: Path) -> None:
 
     logger.debug("Starting local runners")
     procs = [
-        mp.Process(
+        _POOL_CONTEXT.Process(
             target=_worker_process,
             args=(
                 queue_file,
@@ -162,7 +173,7 @@ def _start_pool(runner_config: LocalRunnerConfig, queue_file: Path) -> None:
 
 
 def _wait_for_workers(
-    procs: list[mp.Process],
+    procs: Sequence[BaseProcess],
     queue_file: Path,
     progress_interval: float | None = None,
 ) -> None:
@@ -218,7 +229,7 @@ def _log_progress(queue: SqliteQueue) -> None:
     )
 
 
-def _stop_workers(procs: list[mp.Process]) -> None:
+def _stop_workers(procs: Sequence[BaseProcess]) -> None:
     """Ask the workers to stop (they mark their job as failed), then force them."""
     for p in procs:
         if p.is_alive():
@@ -263,7 +274,7 @@ def _worker_process(queue_file: Path, poll_time: float, timeout: float | None) -
     signal.signal(signal.SIGTERM, _handler)
     try:
         _worker(queue_file, poll_time, timeout)
-    except KeyboardInterrupt, WorkerTerminatedError:
+    except (KeyboardInterrupt, WorkerTerminatedError):
         logging.getLogger(__name__).warning("Worker process interrupted, exiting")
 
 
@@ -445,7 +456,7 @@ def _worker(
                         success=False,
                         details=f"{type(exc).__name__}: {exc}",
                     )
-                except KeyboardInterrupt, WorkerTerminatedError:
+                except (KeyboardInterrupt, WorkerTerminatedError):
                     # don't leave the job RUNNING forever
                     logger.warning(
                         "Interrupted while running job %s", job_config.job_id

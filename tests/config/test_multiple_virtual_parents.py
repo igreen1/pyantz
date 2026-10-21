@@ -1,5 +1,7 @@
 """Test a job depending on more than one virtual job."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

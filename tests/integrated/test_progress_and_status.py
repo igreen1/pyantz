@@ -1,5 +1,7 @@
 """Test progress reports and the status command."""
 
+from __future__ import annotations
+
 import logging
 import os
 import sys
