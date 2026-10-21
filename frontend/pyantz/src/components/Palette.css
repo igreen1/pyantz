@@ -1,0 +1,64 @@
+.palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  height: 100%;
+  min-height: 0;
+  border-right: 1px solid var(--bs-border-color);
+  background: var(--bs-tertiary-bg);
+}
+
+.palette-note {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.palette-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.palette-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.palette-group {
+  margin: 10px 0 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--bs-secondary-color);
+}
+
+.palette-job {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 6px 8px;
+  text-align: left;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  cursor: grab;
+}
+
+.palette-job:hover,
+.palette-job:focus-visible {
+  border-color: var(--bs-primary);
+}
+
+.palette-job-path,
+.palette-job-description {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--bs-secondary-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

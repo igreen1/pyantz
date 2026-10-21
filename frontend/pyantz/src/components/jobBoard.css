@@ -1,108 +1,113 @@
-/* Taken from reactflow.dev */
-
-/* xyflow theme files. Delete these to start from our base */
+/* xyflow theme variables; see reactflow.dev/learn/customization/theming */
 
 .react-flow {
-  /* Custom Variables */
-  --xy-theme-selected: #f57dbd;
-  --xy-theme-hover: #c5c5c5;
-  --xy-theme-edge-hover: black;
-  --xy-theme-color-focus: #e8e8e8;
-
-  /* Built-in Variables see https://reactflow.dev/learn/customization/theming */
-  --xy-node-border-default: 1px solid #ededed;
-
-  --xy-node-boxshadow-default:
-    0px 3.54px 4.55px 0px #00000005, 0px 3.54px 4.55px 0px #0000000d,
-    0px 0.51px 1.01px 0px #0000001a;
-
+  --xy-theme-selected: var(--bs-primary);
+  --xy-node-border-default: 1px solid var(--bs-border-color);
+  --xy-node-boxshadow-default: 0 1px 3px rgba(0, 0, 0, 0.15);
   --xy-node-border-radius-default: 8px;
-
-  --xy-handle-background-color-default: #ffffff;
-  --xy-handle-border-color-default: #aaaaaa;
-
-  --xy-edge-label-color-default: #505050;
+  --xy-handle-border-color-default: var(--bs-secondary-color);
 }
 
+/* the rest of the board's colours are react flow's own dark/light, picked by its colorMode */
 .react-flow.dark {
-  --xy-node-boxshadow-default:
-    0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.05),
-    /* light shadow */ 0px 3.54px 4.55px 0px rgba(255, 255, 255, 0.13),
-    /* medium shadow */ 0px 0.51px 1.01px 0px rgba(255, 255, 255, 0.2); /* smallest shadow */
-  --xy-theme-color-focus: #535353;
+  --xy-handle-background-color-default: var(--bs-body-bg);
 }
 
-/* Customizing Default Theming */
-
-.react-flow__node {
-  box-shadow: var(--xy-node-boxshadow-default);
-  border-radius: var(--xy-node-border-radius-default);
-  background-color: var(--xy-node-background-color-default);
+.job-board-wrapper {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  padding: 10px;
-  font-size: 12px;
   flex-direction: column;
-  border: var(--xy-node-border-default);
-  color: var(--xy-node-color, var(--xy-node-color-default));
+  width: 100%;
+  height: 100%;
+  min-height: 0;
 }
 
-.react-flow__node.selectable:focus {
-  box-shadow: 0px 0px 0px 4px var(--xy-theme-color-focus);
-  border-color: #d9d9d9;
+.job-board-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }
 
-.react-flow__node.selectable:focus:active {
+.breadcrumbs {
+  padding: 6px 12px;
+  background: var(--bs-tertiary-bg);
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+/* nodes are drawn by FancyJobNode; react flow's own node chrome is not wanted */
+.react-flow__node-jobNode {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.job-node {
+  width: 220px;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 12px;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
   box-shadow: var(--xy-node-boxshadow-default);
 }
 
-.react-flow__node.selectable:hover,
-.react-flow__node.draggable:hover {
-  border-color: var(--xy-theme-hover);
+.job-node.selected {
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 3px rgba(var(--bs-primary-rgb), 0.25);
 }
 
-.react-flow__node.selectable.selected {
-  border-color: var(--xy-theme-selected);
-  box-shadow: var(--xy-node-boxshadow-default);
+.job-node.virtual {
+  border-style: dashed;
 }
 
-.react-flow__node-group {
-  background-color: rgba(207, 182, 255, 0.4);
-  border-color: #9e86ed;
+.job-node-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
-.react-flow__edge.selectable:hover .react-flow__edge-path,
-.react-flow__edge.selectable.selected .react-flow__edge-path {
-  stroke: var(--xy-theme-edge-hover);
+.job-node-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.react-flow__handle {
-  background-color: var(--xy-handle-background-color-default);
+.job-node-function {
+  color: var(--bs-secondary-color);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.react-flow__handle.connectionindicator:hover {
-  pointer-events: all;
-  border-color: var(--xy-theme-edge-hover);
-  background-color: white;
+.nested-chip {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  text-align: left;
+  font-size: 12px;
 }
 
-.react-flow__handle.connectionindicator:focus,
-.react-flow__handle.connectingfrom,
-.react-flow__handle.connectingto {
-  border-color: var(--xy-theme-edge-hover);
+/* the compiled view colours a job by how the run is going */
+.job-node[data-status="success"] {
+  background: var(--bs-success-bg-subtle);
+  border-color: var(--bs-success);
 }
-
-.react-flow__node-resizer {
-  border-radius: 0;
-  border: none;
+.job-node[data-status="error"] {
+  background: var(--bs-danger-bg-subtle);
+  border-color: var(--bs-danger);
 }
-
-.react-flow__resize-control.handle {
-  background-color: #ffffff;
-  border-color: #9e86ed;
-  border-radius: 0;
-  width: 5px;
-  height: 5px;
+.job-node[data-status="running"] {
+  background: var(--bs-primary-bg-subtle);
+  border-color: var(--bs-primary);
+}
+.job-node[data-status="ready"] {
+  background: var(--bs-warning-bg-subtle);
+  border-color: var(--bs-warning);
+}
+.job-node[data-status="pending"] {
+  background: var(--bs-secondary-bg);
+  border-color: var(--bs-secondary-color);
 }

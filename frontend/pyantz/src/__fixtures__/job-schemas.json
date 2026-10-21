@@ -1,0 +1,3290 @@
+{
+  "pyantz.jobs.analysis.external.external_analysis": {
+    "description": "Call some external function with the data loaded into polars.",
+    "json_schema": {
+      "description": "Params to pass to an external function which will perform analysis on data.",
+      "properties": {
+        "external_function": {
+          "title": "External Function",
+          "type": "string"
+        },
+        "function_args": {
+          "items": {},
+          "title": "Function Args",
+          "type": "array"
+        },
+        "function_kwargs": {
+          "additionalProperties": true,
+          "title": "Function Kwargs",
+          "type": "object"
+        },
+        "lazy_or_eager": {
+          "anyOf": [
+            {
+              "enum": [
+                "lazy",
+                "eager"
+              ],
+              "type": "string"
+            },
+            {
+              "additionalProperties": {
+                "enum": [
+                  "lazy",
+                  "eager"
+                ],
+                "type": "string"
+              },
+              "type": "object"
+            }
+          ],
+          "title": "Lazy Or Eager"
+        },
+        "variable_names_to_parquets": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Variable Names To Parquets",
+          "type": "object"
+        }
+      },
+      "required": [
+        "variable_names_to_parquets",
+        "lazy_or_eager",
+        "external_function"
+      ],
+      "title": "ExternalAnalysisParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.analysis.external.external_simple": {
+    "description": "Call the external function.",
+    "json_schema": {
+      "description": "Call an external function.",
+      "properties": {
+        "external_function": {
+          "title": "External Function",
+          "type": "string"
+        },
+        "function_args": {
+          "items": {},
+          "title": "Function Args",
+          "type": "array"
+        },
+        "function_kwargs": {
+          "additionalProperties": true,
+          "title": "Function Kwargs",
+          "type": "object"
+        }
+      },
+      "required": [
+        "external_function"
+      ],
+      "title": "ExternalSimpleParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.analysis.external.save_from_external_extraction": {
+    "description": "Call a user defined function and save the results off.",
+    "json_schema": {
+      "description": "Parameters to call an external function returning a polars dataframe.",
+      "properties": {
+        "external_function": {
+          "title": "External Function",
+          "type": "string"
+        },
+        "function_args": {
+          "items": {},
+          "title": "Function Args",
+          "type": "array"
+        },
+        "function_kwargs": {
+          "additionalProperties": true,
+          "title": "Function Kwargs",
+          "type": "object"
+        },
+        "result_parquet_location": {
+          "title": "Result Parquet Location",
+          "type": "string"
+        }
+      },
+      "required": [
+        "external_function",
+        "result_parquet_location"
+      ],
+      "title": "ExternalExtractParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.analysis.simple.columnar_operation": {
+    "description": "Perform a simple operation between two columns.",
+    "json_schema": {
+      "description": "Perform an operation and save the resulting dataframe in a parquet.",
+      "properties": {
+        "left_col": {
+          "title": "Left Col",
+          "type": "string"
+        },
+        "operation": {
+          "enum": [
+            "+",
+            "-",
+            "*",
+            "/"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "result_col": {
+          "title": "Result Col",
+          "type": "string"
+        },
+        "result_parquet_file": {
+          "title": "Result Parquet File",
+          "type": "string"
+        },
+        "right_col": {
+          "title": "Right Col",
+          "type": "string"
+        },
+        "source_parquet_file": {
+          "title": "Source Parquet File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_parquet_file",
+        "result_parquet_file",
+        "left_col",
+        "right_col",
+        "result_col",
+        "operation"
+      ],
+      "title": "ColumnarOperationParameters",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.analysis.simple.join_parquets": {
+    "description": "Join two dataframes read from a parquet.",
+    "json_schema": {
+      "description": "Parameters to join the dataframes from parquet files.",
+      "properties": {
+        "how": {
+          "default": "inner",
+          "enum": [
+            "inner",
+            "left",
+            "right",
+            "full",
+            "semi",
+            "anti",
+            "cross"
+          ],
+          "title": "How",
+          "type": "string"
+        },
+        "left_parquet": {
+          "title": "Left Parquet",
+          "type": "string"
+        },
+        "on_": {
+          "title": "On",
+          "type": "string"
+        },
+        "output_parquet": {
+          "title": "Output Parquet",
+          "type": "string"
+        },
+        "right_parquet": {
+          "title": "Right Parquet",
+          "type": "string"
+        }
+      },
+      "required": [
+        "left_parquet",
+        "right_parquet",
+        "output_parquet",
+        "on_"
+      ],
+      "title": "JoinParquetParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.branching.case_matrix.create_case_matrix": {
+    "description": "Create a case matrix as a cartesian product of the variables.",
+    "json_schema": {
+      "$defs": {
+        "ContinuousRange_Any_": {
+          "properties": {
+            "max_value": {
+              "title": "Max Value"
+            },
+            "min_value": {
+              "title": "Min Value"
+            },
+            "step": {
+              "title": "Step"
+            }
+          },
+          "required": [
+            "min_value",
+            "max_value",
+            "step"
+          ],
+          "title": "ContinuousRange[Any]",
+          "type": "object"
+        },
+        "DiscreteRange_Any_": {
+          "properties": {
+            "possible_values": {
+              "items": {},
+              "title": "Possible Values",
+              "type": "array"
+            }
+          },
+          "required": [
+            "possible_values"
+          ],
+          "title": "DiscreteRange[Any]",
+          "type": "object"
+        },
+        "VariableDefinition": {
+          "description": "Defines how to create a range of values for the case matrix.",
+          "properties": {
+            "range": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ContinuousRange_Any_"
+                },
+                {
+                  "$ref": "#/$defs/DiscreteRange_Any_"
+                }
+              ],
+              "title": "Range"
+            }
+          },
+          "required": [
+            "range"
+          ],
+          "title": "VariableDefinition",
+          "type": "object"
+        }
+      },
+      "description": "Parameters to create a case matrix from a set of variables.\n\nProduces the cartesian products (aka all possible permutations) of the variables\nto create an expansive dense case matrix.",
+      "properties": {
+        "save_file": {
+          "title": "Save File",
+          "type": "string"
+        },
+        "variables": {
+          "additionalProperties": {
+            "$ref": "#/$defs/VariableDefinition"
+          },
+          "minProperties": 1,
+          "title": "Variables",
+          "type": "object"
+        }
+      },
+      "required": [
+        "variables",
+        "save_file"
+      ],
+      "title": "CaseMatrixCreator",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.branching.case_matrix.pipeline_expansion": {
+    "description": "Submit a set of pipelines based on the case matrix.",
+    "json_schema": {
+      "$defs": {
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "JobPipeline": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JobConfig"
+              },
+              {
+                "$ref": "#/$defs/VirtualJobConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "VirtualJobConfig": {
+          "description": "A job which is only used to create an ordered set of 'real' jobs.",
+          "properties": {
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "title": "Function"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "virtual": {
+              "const": true,
+              "default": true,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "VirtualJobConfig",
+          "type": "object"
+        }
+      },
+      "description": "Parameters to create many pipelines from a case matrix.",
+      "properties": {
+        "case_matrix_parquet": {
+          "title": "Case Matrix Parquet",
+          "type": "string"
+        },
+        "cols_to_exclude": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cols To Exclude"
+        },
+        "pipeline_template": {
+          "$ref": "#/$defs/JobPipeline"
+        }
+      },
+      "required": [
+        "case_matrix_parquet",
+        "pipeline_template"
+      ],
+      "title": "CaseMatrixExpansionParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir": {
+    "description": "Add variables `output_dir` and `pipeline_id` for each child pipeline.",
+    "json_schema": {
+      "$defs": {
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "JobPipeline": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JobConfig"
+              },
+              {
+                "$ref": "#/$defs/VirtualJobConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "VirtualJobConfig": {
+          "description": "A job which is only used to create an ordered set of 'real' jobs.",
+          "properties": {
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "title": "Function"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "virtual": {
+              "const": true,
+              "default": true,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "VirtualJobConfig",
+          "type": "object"
+        }
+      },
+      "description": "Create a case matrix and provide each sub-pipeline with an output directory.",
+      "properties": {
+        "case_matrix_parquet": {
+          "title": "Case Matrix Parquet",
+          "type": "string"
+        },
+        "cols_to_exclude": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cols To Exclude"
+        },
+        "output_dir": {
+          "title": "Output Dir",
+          "type": "string"
+        },
+        "pipeline_template": {
+          "$ref": "#/$defs/JobPipeline"
+        }
+      },
+      "required": [
+        "case_matrix_parquet",
+        "pipeline_template",
+        "output_dir"
+      ],
+      "title": "CaseMatrixRunSetup",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.branching.if_else.conditionally_execute": {
+    "description": "Execute a job iff a condition is true.",
+    "json_schema": {
+      "$defs": {
+        "Coercion": {
+          "enum": [
+            "auto",
+            "str",
+            "float"
+          ],
+          "type": "string"
+        },
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "ValidOperators": {
+          "enum": [
+            "=",
+            "==",
+            "<",
+            "<=",
+            ">",
+            ">=",
+            "!=",
+            "~=",
+            "in",
+            "not in",
+            "=~"
+          ],
+          "type": "string"
+        }
+      },
+      "description": "Execute a job iff a condition is true.",
+      "properties": {
+        "abs_tol": {
+          "default": 0.0,
+          "title": "Abs Tol",
+          "type": "number"
+        },
+        "coerce": {
+          "$ref": "#/$defs/Coercion",
+          "default": "auto"
+        },
+        "comparator": {
+          "$ref": "#/$defs/ValidOperators"
+        },
+        "if_true": {
+          "$ref": "#/$defs/JobConfig"
+        },
+        "left_side": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Left Side"
+        },
+        "rel_tol": {
+          "default": 1e-06,
+          "title": "Rel Tol",
+          "type": "number"
+        },
+        "right_side": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Right Side"
+        }
+      },
+      "required": [
+        "left_side",
+        "right_side",
+        "comparator",
+        "if_true"
+      ],
+      "title": "ConditionalExecution",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.branching.if_else.if_else": {
+    "description": "Submit a job based on a conditional value.",
+    "json_schema": {
+      "$defs": {
+        "Coercion": {
+          "enum": [
+            "auto",
+            "str",
+            "float"
+          ],
+          "type": "string"
+        },
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "ValidOperators": {
+          "enum": [
+            "=",
+            "==",
+            "<",
+            "<=",
+            ">",
+            ">=",
+            "!=",
+            "~=",
+            "in",
+            "not in",
+            "=~"
+          ],
+          "type": "string"
+        }
+      },
+      "description": "Parameters for the if/else job.",
+      "properties": {
+        "abs_tol": {
+          "default": 0.0,
+          "title": "Abs Tol",
+          "type": "number"
+        },
+        "coerce": {
+          "$ref": "#/$defs/Coercion",
+          "default": "auto"
+        },
+        "comparator": {
+          "$ref": "#/$defs/ValidOperators"
+        },
+        "if_false": {
+          "$ref": "#/$defs/JobConfig"
+        },
+        "if_true": {
+          "$ref": "#/$defs/JobConfig"
+        },
+        "left_side": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Left Side"
+        },
+        "rel_tol": {
+          "default": 1e-06,
+          "title": "Rel Tol",
+          "type": "number"
+        },
+        "right_side": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Right Side"
+        }
+      },
+      "required": [
+        "left_side",
+        "right_side",
+        "comparator",
+        "if_true",
+        "if_false"
+      ],
+      "title": "IfElseParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.check.file_contains": {
+    "description": "Check if a file contains a substring.",
+    "json_schema": {
+      "description": "Parameters to check if a file contains a substring.",
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "substring": {
+          "title": "Substring",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file",
+        "substring"
+      ],
+      "title": "FileContentsParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.check.file_exists": {
+    "description": "Check if a file exists.",
+    "json_schema": {
+      "description": "Parameters needed to check if a file exists.",
+      "properties": {
+        "file": {
+          "title": "File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "file"
+      ],
+      "title": "ExistsParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.edit.edit_external_method": {
+    "description": "Edit a file using user-provided functionality.",
+    "json_schema": {
+      "$defs": {
+        "_ExtraField": {
+          "enum": [
+            "ignore",
+            "overwrite",
+            "force_object"
+          ],
+          "type": "string"
+        },
+        "_FunctionDefinition_Callable_________JsonValue__": {
+          "properties": {
+            "args": {
+              "items": {},
+              "title": "Args",
+              "type": "array"
+            },
+            "func": {
+              "title": "Func",
+              "type": "string"
+            },
+            "kwargs": {
+              "additionalProperties": true,
+              "title": "Kwargs",
+              "type": "object"
+            }
+          },
+          "required": [
+            "func"
+          ],
+          "title": "_FunctionDefinition[Callable[..., JsonValue]]",
+          "type": "object"
+        },
+        "_FunctionDefinition_Callable_________NoneType__": {
+          "properties": {
+            "args": {
+              "items": {},
+              "title": "Args",
+              "type": "array"
+            },
+            "func": {
+              "title": "Func",
+              "type": "string"
+            },
+            "kwargs": {
+              "additionalProperties": true,
+              "title": "Kwargs",
+              "type": "object"
+            }
+          },
+          "required": [
+            "func"
+          ],
+          "title": "_FunctionDefinition[Callable[..., NoneType]]",
+          "type": "object"
+        }
+      },
+      "description": "Edit a file using an external function to extract and to save off.",
+      "properties": {
+        "extra_field": {
+          "$ref": "#/$defs/_ExtraField",
+          "default": "force_object"
+        },
+        "extract_function": {
+          "$ref": "#/$defs/_FunctionDefinition_Callable_________JsonValue__"
+        },
+        "save_function": {
+          "$ref": "#/$defs/_FunctionDefinition_Callable_________NoneType__"
+        },
+        "updates": {
+          "additionalProperties": true,
+          "title": "Updates",
+          "type": "object"
+        }
+      },
+      "required": [
+        "extract_function",
+        "save_function",
+        "updates"
+      ],
+      "title": "EditExternalParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.edit.edit_json": {
+    "description": "Edit a .json file in place.",
+    "json_schema": {
+      "$defs": {
+        "_ExtraField": {
+          "enum": [
+            "ignore",
+            "overwrite",
+            "force_object"
+          ],
+          "type": "string"
+        }
+      },
+      "description": "Parameters to edit json.",
+      "properties": {
+        "extra_field": {
+          "$ref": "#/$defs/_ExtraField",
+          "default": "force_object"
+        },
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "updates": {
+          "additionalProperties": true,
+          "title": "Updates",
+          "type": "object"
+        }
+      },
+      "required": [
+        "file",
+        "updates"
+      ],
+      "title": "EditJsonParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.edit.edit_yaml": {
+    "description": "Edit a .yaml file in place.",
+    "json_schema": {
+      "$defs": {
+        "_ExtraField": {
+          "enum": [
+            "ignore",
+            "overwrite",
+            "force_object"
+          ],
+          "type": "string"
+        }
+      },
+      "description": "Parameters to edit a yaml file.",
+      "properties": {
+        "extra_field": {
+          "$ref": "#/$defs/_ExtraField",
+          "default": "force_object"
+        },
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "updates": {
+          "additionalProperties": true,
+          "title": "Updates",
+          "type": "object"
+        }
+      },
+      "required": [
+        "file",
+        "updates"
+      ],
+      "title": "EditYamlParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.moving.copy": {
+    "description": "Use python shutil to copy directories and files.",
+    "json_schema": {
+      "description": "Copy parameters to copy from location to location.",
+      "properties": {
+        "destination": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Destination"
+        },
+        "overwrite": {
+          "default": true,
+          "title": "Overwrite",
+          "type": "boolean"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Source"
+        }
+      },
+      "required": [
+        "source",
+        "destination"
+      ],
+      "title": "CopyParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.moving.move": {
+    "description": "Move from a source to a destination.",
+    "json_schema": {
+      "description": "Parameters to move a file or directory.",
+      "properties": {
+        "destination": {
+          "title": "Destination",
+          "type": "string"
+        },
+        "overwrite": {
+          "default": true,
+          "title": "Overwrite",
+          "type": "boolean"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "destination"
+      ],
+      "title": "MoveParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.moving.rsync": {
+    "description": "Use rsync to copy from source to destination.",
+    "json_schema": {
+      "description": "Rsync parameters to copy from location to location.",
+      "properties": {
+        "destination": {
+          "title": "Destination",
+          "type": "string"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "destination"
+      ],
+      "title": "RsyncParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.reformat.csv_to_parquet": {
+    "description": "Use polars to load a csv and dump it into a parquet.",
+    "json_schema": {
+      "description": "Load a csv and dump it into a parquet.",
+      "properties": {
+        "csv_file": {
+          "title": "Csv File",
+          "type": "string"
+        },
+        "parquet_file": {
+          "title": "Parquet File",
+          "type": "string"
+        }
+      },
+      "required": [
+        "csv_file",
+        "parquet_file"
+      ],
+      "title": "FromCsvToParquetParameters",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.reformat.excel_to_csv": {
+    "description": "Use polars to load an excel and dump it into a csv.",
+    "json_schema": {
+      "description": "Load a page from an excel and dump it into a csv.",
+      "properties": {
+        "csv_file": {
+          "title": "Csv File",
+          "type": "string"
+        },
+        "excel_file": {
+          "title": "Excel File",
+          "type": "string"
+        },
+        "sheet_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sheet Name"
+        }
+      },
+      "required": [
+        "excel_file",
+        "csv_file"
+      ],
+      "title": "FromExcelToCsvParameters",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.simple.copy": {
+    "description": "Copy from src to destination.",
+    "json_schema": {
+      "description": "Parameters to copy file.",
+      "properties": {
+        "dst": {
+          "title": "Dst",
+          "type": "string"
+        },
+        "src": {
+          "title": "Src",
+          "type": "string"
+        }
+      },
+      "required": [
+        "src",
+        "dst"
+      ],
+      "title": "CopyParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.simple.create": {
+    "description": "Create the file as requested and write contents if provided.",
+    "json_schema": {
+      "description": "Required inputs to create a file.",
+      "properties": {
+        "contents": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contents"
+        },
+        "overwrite": {
+          "default": true,
+          "title": "Overwrite",
+          "type": "boolean"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "CreateFileParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.simple.delete": {
+    "description": "Delete the file passed in delete params.",
+    "json_schema": {
+      "description": "Parameters to define what to delete.",
+      "properties": {
+        "missing_ok": {
+          "default": true,
+          "title": "Missing Ok",
+          "type": "boolean"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "recursive": {
+          "default": false,
+          "title": "Recursive",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "DeleteParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.simple.mkdir": {
+    "description": "Create the directory, and any missing parents (it may already exist).",
+    "json_schema": {
+      "description": "Required input to create a directory.",
+      "properties": {
+        "dir_path": {
+          "title": "Dir Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dir_path"
+      ],
+      "title": "Mkdirparams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.files.simple.move": {
+    "description": "Move `src` to `dest`.",
+    "json_schema": {
+      "description": "Parameters to copy file.",
+      "properties": {
+        "dst": {
+          "title": "Dst",
+          "type": "string"
+        },
+        "src": {
+          "title": "Src",
+          "type": "string"
+        }
+      },
+      "required": [
+        "src",
+        "dst"
+      ],
+      "title": "MoveParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.subproc.dispatch.dispatch": {
+    "description": "Dispatch a command in a subprocess.",
+    "json_schema": {
+      "description": "Parameters for dispatching jobs.",
+      "properties": {
+        "cmd": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Cmd",
+          "type": "array"
+        },
+        "cwd": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cwd"
+        },
+        "env": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Env"
+        },
+        "input_stream": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Stream"
+        },
+        "stderr_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stderr File"
+        },
+        "stdout_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stdout File"
+        },
+        "timeout": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Timeout"
+        }
+      },
+      "required": [
+        "cmd"
+      ],
+      "title": "DispatchParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.testing.touch_file.touch_file": {
+    "description": "Touch a file (create it with no values).",
+    "json_schema": {
+      "description": "Touch a file (create it).",
+      "properties": {
+        "exist_ok": {
+          "default": true,
+          "title": "Exist Ok",
+          "type": "boolean"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "TouchFileParameters",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.wrappers.local.run_pipeline": {
+    "description": "Run the pipeline of jobs sequentially.",
+    "json_schema": {
+      "$defs": {
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "JobPipeline": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JobConfig"
+              },
+              {
+                "$ref": "#/$defs/VirtualJobConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "VirtualJobConfig": {
+          "description": "A job which is only used to create an ordered set of 'real' jobs.",
+          "properties": {
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "title": "Function"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "virtual": {
+              "const": true,
+              "default": true,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "VirtualJobConfig",
+          "type": "object"
+        }
+      },
+      "description": "Parameters for running jobs sequentially within this job without submitting.",
+      "properties": {
+        "inter_job_named_pipes": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Inter Job Named Pipes",
+          "type": "array"
+        },
+        "jobs": {
+          "$ref": "#/$defs/JobPipeline"
+        }
+      },
+      "required": [
+        "jobs"
+      ],
+      "title": "LocalPipelineParameters",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.wrappers.loops.local_for_loop": {
+    "description": "Run a series of jobs locally for a set of iterations.",
+    "json_schema": {
+      "$defs": {
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "JobPipeline": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JobConfig"
+              },
+              {
+                "$ref": "#/$defs/VirtualJobConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "VirtualJobConfig": {
+          "description": "A job which is only used to create an ordered set of 'real' jobs.",
+          "properties": {
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "title": "Function"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "virtual": {
+              "const": true,
+              "default": true,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "VirtualJobConfig",
+          "type": "object"
+        }
+      },
+      "description": "Run a loop of jobs locally.",
+      "properties": {
+        "index_variable": {
+          "default": "loop_index",
+          "title": "Index Variable",
+          "type": "string"
+        },
+        "jobs": {
+          "$ref": "#/$defs/JobPipeline"
+        },
+        "num_iterations": {
+          "title": "Num Iterations",
+          "type": "integer"
+        },
+        "stop_on_failure": {
+          "default": true,
+          "title": "Stop On Failure",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "num_iterations",
+        "jobs"
+      ],
+      "title": "LocalForLoopParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.wrappers.submit.new_host": {
+    "description": "Run a set of jobs on a new host.",
+    "json_schema": {
+      "$defs": {
+        "AnyRunner": {
+          "discriminator": {
+            "mapping": {
+              "local_proc": "#/$defs/LocalRunnerConfig",
+              "slurm_sbatch": "#/$defs/SlurmRunnerConfig"
+            },
+            "propertyName": "type_"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LocalRunnerConfig"
+            },
+            {
+              "$ref": "#/$defs/SlurmRunnerConfig"
+            }
+          ]
+        },
+        "ContainerConfig": {
+          "description": "Execute in a docker container that is running on the machine.",
+          "properties": {
+            "container_service": {
+              "default": "docker",
+              "enum": [
+                "podman",
+                "docker"
+              ],
+              "title": "Container Service",
+              "type": "string"
+            },
+            "copy_project_dir": {
+              "default": false,
+              "title": "Copy Project Dir",
+              "type": "boolean"
+            },
+            "environment_variables": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "title": "Environment Variables",
+              "type": "object"
+            },
+            "environment_variables_file": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Environment Variables File"
+            },
+            "image": {
+              "default": "ghcr.io/astral-sh/uv:alpine",
+              "title": "Image",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "output_dir": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Output Dir"
+            },
+            "requirements": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Requirements"
+            },
+            "subsequent_host": {
+              "$ref": "#/$defs/HostConfig",
+              "default": {
+                "type_": "local"
+              }
+            },
+            "type_": {
+              "const": "container",
+              "default": "container",
+              "title": "Type",
+              "type": "string"
+            },
+            "working_dir": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Working Dir"
+            }
+          },
+          "title": "ContainerConfig",
+          "type": "object"
+        },
+        "HostConfig": {
+          "discriminator": {
+            "mapping": {
+              "container": "#/$defs/ContainerConfig",
+              "local": "#/$defs/LocalConfig",
+              "ssh": "#/$defs/SshConfig"
+            },
+            "propertyName": "type_"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/SshConfig"
+            },
+            {
+              "$ref": "#/$defs/ContainerConfig"
+            },
+            {
+              "$ref": "#/$defs/LocalConfig"
+            }
+          ]
+        },
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "LocalConfig": {
+          "description": "Execute the submitter locally.",
+          "properties": {
+            "type_": {
+              "const": "local",
+              "default": "local",
+              "title": "Type",
+              "type": "string"
+            }
+          },
+          "title": "LocalConfig",
+          "type": "object"
+        },
+        "LocalRunnerConfig": {
+          "description": "Configuration for the local runner.",
+          "properties": {
+            "number_processes": {
+              "default": 2,
+              "title": "Number Processes",
+              "type": "integer"
+            },
+            "poll_timeout": {
+              "default": 1.0,
+              "title": "Poll Timeout",
+              "type": "number"
+            },
+            "progress_interval": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 30.0,
+              "title": "Progress Interval"
+            },
+            "timeout": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout"
+            },
+            "type_": {
+              "const": "local_proc",
+              "default": "local_proc",
+              "title": "Type",
+              "type": "string"
+            },
+            "use_same_proc": {
+              "default": false,
+              "title": "Use Same Proc",
+              "type": "boolean"
+            },
+            "working_directory": {
+              "title": "Working Directory",
+              "type": "string"
+            }
+          },
+          "required": [
+            "working_directory"
+          ],
+          "title": "LocalRunnerConfig",
+          "type": "object"
+        },
+        "SlurmRunnerConfig": {
+          "description": "Configuration used by the slurm submitters.",
+          "properties": {
+            "inherit_dependencies": {
+              "default": true,
+              "title": "Inherit Dependencies",
+              "type": "boolean"
+            },
+            "max_job_time_seconds": {
+              "default": 10000,
+              "title": "Max Job Time Seconds",
+              "type": "integer"
+            },
+            "slurm_args": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Slurm Args",
+              "type": "array"
+            },
+            "type_": {
+              "const": "slurm_sbatch",
+              "default": "slurm_sbatch",
+              "title": "Type",
+              "type": "string"
+            },
+            "working_dir": {
+              "title": "Working Dir",
+              "type": "string"
+            }
+          },
+          "required": [
+            "working_dir"
+          ],
+          "title": "SlurmRunnerConfig",
+          "type": "object"
+        },
+        "SshConfig": {
+          "description": "Execute using ssh to access a remote machine.",
+          "properties": {
+            "connect_timeout": {
+              "default": 30,
+              "title": "Connect Timeout",
+              "type": "number"
+            },
+            "copy_project_dir": {
+              "default": false,
+              "title": "Copy Project Dir",
+              "type": "boolean"
+            },
+            "environment_variables": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "title": "Environment Variables",
+              "type": "object"
+            },
+            "environment_variables_file": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Environment Variables File"
+            },
+            "key_filename": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Key Filename"
+            },
+            "known_hosts_policy": {
+              "default": "reject",
+              "enum": [
+                "reject",
+                "warn",
+                "auto_add"
+              ],
+              "title": "Known Hosts Policy",
+              "type": "string"
+            },
+            "output_dir": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Output Dir"
+            },
+            "remote_host": {
+              "title": "Remote Host",
+              "type": "string"
+            },
+            "remote_port": {
+              "default": 22,
+              "title": "Remote Port",
+              "type": "integer"
+            },
+            "remote_user": {
+              "title": "Remote User",
+              "type": "string"
+            },
+            "requirements": {
+              "anyOf": [
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Requirements"
+            },
+            "run_async": {
+              "default": true,
+              "title": "Run Async",
+              "type": "boolean"
+            },
+            "subsequent_host": {
+              "$ref": "#/$defs/HostConfig",
+              "default": {
+                "type_": "local"
+              }
+            },
+            "sync_data_at_end": {
+              "default": false,
+              "title": "Sync Data At End",
+              "type": "boolean"
+            },
+            "type_": {
+              "const": "ssh",
+              "default": "ssh",
+              "title": "Type",
+              "type": "string"
+            },
+            "working_dir": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Working Dir"
+            }
+          },
+          "required": [
+            "remote_host"
+          ],
+          "title": "SshConfig",
+          "type": "object"
+        }
+      },
+      "description": "Parameters to submit a job through a new submitter.",
+      "properties": {
+        "host_config": {
+          "$ref": "#/$defs/HostConfig"
+        },
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/JobConfig"
+          },
+          "title": "Jobs",
+          "type": "array"
+        },
+        "submit_config": {
+          "$ref": "#/$defs/AnyRunner"
+        }
+      },
+      "required": [
+        "host_config",
+        "submit_config",
+        "jobs"
+      ],
+      "title": "HostParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.wrappers.submit.submit": {
+    "description": "Wrap a set of jobs in a new submitter.",
+    "json_schema": {
+      "$defs": {
+        "AnyRunner": {
+          "discriminator": {
+            "mapping": {
+              "local_proc": "#/$defs/LocalRunnerConfig",
+              "slurm_sbatch": "#/$defs/SlurmRunnerConfig"
+            },
+            "propertyName": "type_"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LocalRunnerConfig"
+            },
+            {
+              "$ref": "#/$defs/SlurmRunnerConfig"
+            }
+          ]
+        },
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "LocalRunnerConfig": {
+          "description": "Configuration for the local runner.",
+          "properties": {
+            "number_processes": {
+              "default": 2,
+              "title": "Number Processes",
+              "type": "integer"
+            },
+            "poll_timeout": {
+              "default": 1.0,
+              "title": "Poll Timeout",
+              "type": "number"
+            },
+            "progress_interval": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 30.0,
+              "title": "Progress Interval"
+            },
+            "timeout": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout"
+            },
+            "type_": {
+              "const": "local_proc",
+              "default": "local_proc",
+              "title": "Type",
+              "type": "string"
+            },
+            "use_same_proc": {
+              "default": false,
+              "title": "Use Same Proc",
+              "type": "boolean"
+            },
+            "working_directory": {
+              "title": "Working Directory",
+              "type": "string"
+            }
+          },
+          "required": [
+            "working_directory"
+          ],
+          "title": "LocalRunnerConfig",
+          "type": "object"
+        },
+        "SlurmRunnerConfig": {
+          "description": "Configuration used by the slurm submitters.",
+          "properties": {
+            "inherit_dependencies": {
+              "default": true,
+              "title": "Inherit Dependencies",
+              "type": "boolean"
+            },
+            "max_job_time_seconds": {
+              "default": 10000,
+              "title": "Max Job Time Seconds",
+              "type": "integer"
+            },
+            "slurm_args": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Slurm Args",
+              "type": "array"
+            },
+            "type_": {
+              "const": "slurm_sbatch",
+              "default": "slurm_sbatch",
+              "title": "Type",
+              "type": "string"
+            },
+            "working_dir": {
+              "title": "Working Dir",
+              "type": "string"
+            }
+          },
+          "required": [
+            "working_dir"
+          ],
+          "title": "SlurmRunnerConfig",
+          "type": "object"
+        }
+      },
+      "description": "Parameters to submit a job through a new submitter.",
+      "properties": {
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/JobConfig"
+          },
+          "title": "Jobs",
+          "type": "array"
+        },
+        "runner_config": {
+          "$ref": "#/$defs/AnyRunner"
+        }
+      },
+      "required": [
+        "runner_config",
+        "jobs"
+      ],
+      "title": "SubmitParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.wrappers.variables.run_jobs_in_context": {
+    "description": "Submit the set of jobs with the shared variables. Not really anything fancy.",
+    "json_schema": {
+      "$defs": {
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "JobPipeline": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JobConfig"
+              },
+              {
+                "$ref": "#/$defs/VirtualJobConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "VirtualJobConfig": {
+          "description": "A job which is only used to create an ordered set of 'real' jobs.",
+          "properties": {
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "title": "Function"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "virtual": {
+              "const": true,
+              "default": true,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "VirtualJobConfig",
+          "type": "object"
+        }
+      },
+      "description": "Parameters for running jobs sequentially within this job without submitting.",
+      "properties": {
+        "jobs": {
+          "$ref": "#/$defs/JobPipeline"
+        },
+        "shared_variables": {
+          "additionalProperties": true,
+          "title": "Shared Variables",
+          "type": "object"
+        }
+      },
+      "required": [
+        "jobs",
+        "shared_variables"
+      ],
+      "title": "VariableContextParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.wrappers.variables.run_jobs_with_temp_dir": {
+    "description": "Run jobs with a temporary directory.",
+    "json_schema": {
+      "$defs": {
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "JobPipeline": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JobConfig"
+              },
+              {
+                "$ref": "#/$defs/VirtualJobConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "VirtualJobConfig": {
+          "description": "A job which is only used to create an ordered set of 'real' jobs.",
+          "properties": {
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "title": "Function"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "virtual": {
+              "const": true,
+              "default": true,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "VirtualJobConfig",
+          "type": "object"
+        }
+      },
+      "description": "Params for providing a set of jobs a temporary directory.",
+      "properties": {
+        "jobs": {
+          "$ref": "#/$defs/JobPipeline"
+        },
+        "shared_working_dir": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shared Working Dir"
+        },
+        "submit_type": {
+          "default": "local",
+          "enum": [
+            "local",
+            "remote"
+          ],
+          "title": "Submit Type",
+          "type": "string"
+        },
+        "variable_name": {
+          "title": "Variable Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "jobs",
+        "variable_name"
+      ],
+      "title": "TemporaryDirectoryParams",
+      "type": "object"
+    }
+  },
+  "pyantz.jobs.wrappers.variables.set_variables": {
+    "description": "Set the variables for subsequent defined jobs.",
+    "json_schema": {
+      "$defs": {
+        "JobConfig": {
+          "description": "A job to be run.",
+          "properties": {
+            "dependency_type": {
+              "default": "afterok",
+              "enum": [
+                "afterok",
+                "afterany",
+                "afternotok"
+              ],
+              "title": "Dependency Type",
+              "type": "string"
+            },
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "type": "string"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "max_retries": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Max Retries",
+              "type": "integer"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "num_attempted_runs": {
+              "default": 0,
+              "title": "Num Attempted Runs",
+              "type": "integer"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "timeout_seconds": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Timeout Seconds"
+            },
+            "virtual": {
+              "const": false,
+              "default": false,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "JobConfig",
+          "type": "object"
+        },
+        "JobPipeline": {
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/JobConfig"
+              },
+              {
+                "$ref": "#/$defs/VirtualJobConfig"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "VirtualJobConfig": {
+          "description": "A job which is only used to create an ordered set of 'real' jobs.",
+          "properties": {
+            "depends_on": {
+              "default": null,
+              "items": {
+                "type": "string"
+              },
+              "title": "Depends On",
+              "type": "array"
+            },
+            "function": {
+              "title": "Function"
+            },
+            "job_id": {
+              "title": "Job Id",
+              "type": "string"
+            },
+            "name": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "title": "Name"
+            },
+            "parameters": {
+              "additionalProperties": true,
+              "title": "Parameters",
+              "type": "object"
+            },
+            "strict": {
+              "default": false,
+              "title": "Strict",
+              "type": "boolean"
+            },
+            "virtual": {
+              "const": true,
+              "default": true,
+              "title": "Virtual",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "function"
+          ],
+          "title": "VirtualJobConfig",
+          "type": "object"
+        }
+      },
+      "description": "Parameters for running a job which sets variables.",
+      "properties": {
+        "jobs": {
+          "$ref": "#/$defs/JobPipeline"
+        },
+        "set_job_kwargs": {
+          "additionalProperties": true,
+          "title": "Set Job Kwargs",
+          "type": "object"
+        },
+        "setter_job": {
+          "title": "Setter Job",
+          "type": "string"
+        }
+      },
+      "required": [
+        "setter_job",
+        "set_job_kwargs",
+        "jobs"
+      ],
+      "title": "SetVariables",
+      "type": "object"
+    }
+  }
+}

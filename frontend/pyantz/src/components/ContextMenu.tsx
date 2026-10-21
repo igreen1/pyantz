@@ -3,69 +3,75 @@
 import "./ContextMenu.css";
 
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { hideContextMenu } from "../store/slices/uiSlice";
-import { deleteJobNode } from "../store/slices/graphSlice";
+import {
+  deleteJobNode,
+  selectAddJobBlock,
+  selectNode,
+} from "../store/slices/graphSlice";
+import {
+  focusSearch,
+  hideContextMenu,
+  setNextJobPosition,
+  setSideTab,
+} from "../store/slices/uiSlice";
 
-export interface ContextMenuItem {
-  name: string;
-  onClick: () => void;
-}
-
-interface ContextMenuProps {
-  items: ContextMenuItem[];
-}
-
-// ContextMenu.component.jsx
-export default function ContextMenu({ items }: ContextMenuProps) {
+export default function ContextMenu() {
   const dispatch = useAppDispatch();
+  const menu = useAppSelector((state) => state.uiOptions.contextMenu);
+  const blocked = useAppSelector(selectAddJobBlock);
 
-  const visible = useAppSelector(
-    (state) => state.uiOptions.contextMenu.showContextMenu,
-  );
-  const x = useAppSelector(
-    (state) => state.uiOptions.contextMenu.contextMenuPosition.x,
-  );
-  const y = useAppSelector(
-    (state) => state.uiOptions.contextMenu.contextMenuPosition.y,
-  );
-  const editJobId = useAppSelector(
-    (state) => state.uiOptions.contextMenu.editJobId,
-  );
+  if (!menu.showContextMenu) return null;
+  const { editJobId, boardPosition } = menu;
 
-  if (!visible) return null;
-
-  let dynamicItems = [];
+  const items: { name: string; onClick: () => void; disabled?: string }[] = [
+    {
+      name: "Add Job",
+      disabled: blocked ?? undefined,
+      onClick: () => {
+        // the next job from the palette goes where the menu was opened
+        dispatch(setNextJobPosition(boardPosition));
+        dispatch(focusSearch());
+      },
+    },
+  ];
   if (editJobId !== null) {
-    dynamicItems.push({
-      name: `Edit Job (${editJobId})`,
-      onClick: () => {
-        // TODO
+    items.push(
+      {
+        name: "Edit Job",
+        onClick: () => {
+          dispatch(selectNode(editJobId));
+          dispatch(setSideTab("job"));
+        },
       },
-    });
-    dynamicItems.push({
-      name: `Delete Job (${editJobId})`,
-      onClick: () => {
-        dispatch(hideContextMenu());
-        dispatch(deleteJobNode(editJobId));
-      },
-    });
+      { name: "Delete Job", onClick: () => dispatch(deleteJobNode(editJobId)) },
+    );
   }
-
-  const finalItems = [...items, ...dynamicItems];
 
   return (
     <div
       className="job-board-context-menu"
-      style={{ top: `${y}px`, left: `${x}px`, position: "absolute" }}
+      role="menu"
+      style={{
+        top: `${menu.contextMenuPosition.y}px`,
+        left: `${menu.contextMenuPosition.x}px`,
+        position: "fixed",
+      }}
     >
-      {finalItems.map((item, idx) => (
-        <div
-          key={idx}
-          onClick={item.onClick}
+      {items.map((item) => (
+        <button
+          key={item.name}
+          type="button"
+          role="menuitem"
+          disabled={item.disabled !== undefined}
+          title={item.disabled}
+          onClick={() => {
+            item.onClick();
+            dispatch(hideContextMenu());
+          }}
           className="job-board-context-menu-item"
         >
           {item.name}
-        </div>
+        </button>
       ))}
     </div>
   );

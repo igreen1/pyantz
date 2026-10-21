@@ -1,21 +1,26 @@
 .job-board-context-menu {
-  color: white;
   min-width: 200px;
   text-align: left;
-  text-shadow: 0px 0px 10px #000000;
+  z-index: 1000;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  background: var(--bs-body-bg);
 }
 
 .job-board-context-menu-item {
-  background-color: #646cff;
-  padding: 10px;
+  display: block;
+  width: 100%;
+  border: 0;
+  background: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  padding: 8px 14px;
+  text-align: left;
+  font-size: 0.95rem;
 }
 
-.job-board-context-menu-item:hover {
-  background-color: #535bf2;
-}
-
-/* Not a perfect animation, but makes it feel slightly responsive easily */
-.job-board-context-menu-item:active {
-  transform: scale(1.01); /* Shrinks the button while clicked */
-  transition: transform 0.1s; /* Smooth transition for the effect */
+.job-board-context-menu-item:hover,
+.job-board-context-menu-item:focus-visible {
+  background: var(--bs-secondary-bg);
 }

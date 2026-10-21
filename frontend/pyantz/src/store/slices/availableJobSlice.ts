@@ -8,7 +8,8 @@ import {
   createAsyncThunk,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import api from "../../services/api";
+import api, { errorMessage } from "../../services/api";
+import { tokenForgotten, tokenSupplied } from "../actions";
 
 interface AvailableJobsState {
   items: string[];
@@ -24,12 +25,36 @@ const initialState: AvailableJobsState = {
   error: null,
 };
 
+/**
+ * Async thunk to fetch available jobs from the API
+ */
+export const fetchAvailableJobs = createAsyncThunk<
+  { items: string[]; descriptions: string[] },
+  void,
+  { rejectValue: string }
+>("availableJobs/fetchAvailableJobs", async (_arg, { rejectWithValue }) => {
+  try {
+    const response = await api.get("/jobs/get_all_jobs");
+    const jobs = response.data.jobs as { name: string; description: string }[];
+    return {
+      items: jobs.map((job) => job.name),
+      descriptions: jobs.map((job) => job.description),
+    };
+  } catch (error) {
+    return rejectWithValue(errorMessage(error));
+  }
+});
+
 export const availableJobSlice = createSlice({
   name: "availableJobs",
   initialState,
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // a new token may open what was closed, and the old one may have loaded
+      // what the new one may not see
+      .addCase(tokenSupplied, () => initialState)
+      .addCase(tokenForgotten, () => initialState)
       .addCase(fetchAvailableJobs.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -48,24 +73,9 @@ export const availableJobSlice = createSlice({
       )
       .addCase(fetchAvailableJobs.rejected, (state, action) => {
         state.status = "failed";
-        state.error = action.payload as string;
+        state.error = action.payload ?? action.error.message ?? "Unknown error";
       });
   },
 });
-
-/**
- * Async thunk to fetch available jobs from the API
- */
-export const fetchAvailableJobs = createAsyncThunk(
-  "availableJobs/fetchAvailableJobs",
-  async () => {
-    const response = await api.get("/api/v1.0/jobs/get_all_jobs");
-    const jobs = response.data.jobs as { name: string; description: string }[];
-    return {
-      items: jobs.map((job) => job.name),
-      descriptions: jobs.map((job) => job.description),
-    };
-  },
-);
 
 export default availableJobSlice.reducer;

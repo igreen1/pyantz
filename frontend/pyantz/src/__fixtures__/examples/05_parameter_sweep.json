@@ -1,0 +1,63 @@
+{
+  "submitter": {
+    "type_": "local_proc",
+    "working_directory": "/tmp/pyantz_sweep",
+    "number_processes": 4
+  },
+  "variables": {
+    "sweep_dir": "/tmp/pyantz_sweep"
+  },
+  "jobs": [
+    {
+      "job_id": "setup",
+      "function": "pyantz.jobs.files.simple.mkdir",
+      "parameters": {
+        "dir_path": "/tmp/pyantz_sweep"
+      }
+    },
+    {
+      "job_id": "create_matrix",
+      "name": "Build the case matrix parquet",
+      "depends_on": ["setup"],
+      "function": "pyantz.jobs.branching.case_matrix.create_case_matrix",
+      "parameters": {
+        "save_file": "/tmp/pyantz_sweep/matrix.parquet",
+        "variables": {
+          "learning_rate": {
+            "range": {
+              "type_": "ContinuousRange",
+              "min_value": 0.001,
+              "max_value": 0.01,
+              "step": 0.003
+            }
+          },
+          "batch_size": {
+            "range": {
+              "type_": "DiscreteRange",
+              "possible_values": [32, 64, 128]
+            }
+          }
+        }
+      }
+    },
+    {
+      "job_id": "run_sweep",
+      "name": "Launch one pipeline per parameter combination",
+      "depends_on": ["create_matrix"],
+      "function": "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir",
+      "parameters": {
+        "case_matrix_parquet": "/tmp/pyantz_sweep/matrix.parquet",
+        "output_dir": "/tmp/pyantz_sweep/runs",
+        "pipeline_template": [
+          {
+            "function": "pyantz.jobs.files.simple.create",
+            "parameters": {
+              "path": "%{output_dir}/params.txt",
+              "contents": "lr=%{learning_rate} batch=%{batch_size} run=%{pipeline_id}\n"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

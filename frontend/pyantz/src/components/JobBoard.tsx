@@ -2,119 +2,217 @@
  * This is where the user will edit their pipeline flow diagrams.
  */
 
-import { useCallback, type MouseEvent } from "react";
+import { useCallback, useState, type DragEvent, type MouseEvent } from "react";
 import {
   ReactFlow,
   MiniMap,
   Controls,
+  Background,
+  useReactFlow,
   type Connection,
-  type NodeChange,
   type EdgeChange,
+  type NodeChange,
   type NodeTypes,
-  MarkerType,
+  type OnConnectEnd,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./jobBoard.css";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
-// import JobNode from "./JobNode";
-import FancyJobNode from "./FancyJobNode";
-import ContextMenu, { type ContextMenuItem } from "./ContextMenu";
+import { useAddJob } from "../hooks/useAddJob";
+import { canConnect } from "../model/connect";
+import type { JobNode } from "../model/graph";
+import { useAppDispatch, useAppSelector, useAppStore } from "../store/hooks";
 import {
-  showJobOptions,
-  showContextMenu,
+  connectNodes,
+  deleteElements,
+  selectAddJobBlock,
+  selectOpenLevel,
+  updateEdges,
+  updateNodes,
+} from "../store/slices/graphSlice";
+import {
   hideContextMenu,
+  showContextMenu,
+  showNotice,
 } from "../store/slices/uiSlice";
-import { updateNodes, updateEdges, addEdge } from "../store/slices/graphSlice";
+import { useColorScheme } from "../theme";
+import Breadcrumbs from "./Breadcrumbs";
+import ContextMenu from "./ContextMenu";
+import FancyJobNode from "./FancyJobNode";
+
+// defined outside the component so react flow sees the same object every render
+const nodeTypes: NodeTypes = {
+  jobNode: FancyJobNode,
+};
+
+/** What a job dragged from the palette carries. */
+export const JOB_DRAG_TYPE = "application/x-pyantz-job";
 
 /**
  * React component to edit the jobs dynamically.
  */
-export default function JobBoard() {
+function Board() {
   const dispatch = useAppDispatch();
+  const store = useAppStore();
+  const addJob = useAddJob();
+  const { screenToFlowPosition } = useReactFlow();
+  const colorMode = useColorScheme();
 
-  const nodes = useAppSelector((state) => state.jobGraph.nodes);
-  const edges = useAppSelector((state) => state.jobGraph.edges);
-
-  const nodeTypes: NodeTypes = {
-    jobNode: FancyJobNode,
-  };
+  const level = useAppSelector(selectOpenLevel);
+  // Fit the view when the board is opened with jobs on it. This is decided once:
+  // react flow fits again when the prop turns on, so a job added to an empty board
+  // would move the view, and the next one would land somewhere else.
+  const [fitOnOpen] = useState(level.nodes.length > 0);
 
   // Callbacks used by the reactflow library
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      dispatch(updateNodes(changes));
-    },
+    (changes: NodeChange<JobNode>[]) => dispatch(updateNodes(changes)),
     [dispatch],
   );
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      dispatch(updateEdges(changes));
-    },
+    (changes: EdgeChange[]) => dispatch(updateEdges(changes)),
     [dispatch],
+  );
+  const isValidConnection = useCallback(
+    (connection: Connection | { source: string; target: string }) =>
+      canConnect(
+        selectOpenLevel(store.getState()),
+        connection.source,
+        connection.target,
+      ).ok,
+    [store],
   );
   const onConnect = useCallback(
     (params: Connection) => {
-      let dep_id = params.source!;
-      let job_id = params.target!;
-      let con = {
-        id: `e${dep_id}->${job_id}`,
-        source: dep_id,
-        target: job_id,
-        animated: true,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-        },
-      };
-      dispatch(addEdge(con));
+      const check = canConnect(
+        selectOpenLevel(store.getState()),
+        params.source,
+        params.target,
+      );
+      if (check.ok) {
+        dispatch(
+          connectNodes({ source: params.source, target: params.target }),
+        );
+      } else {
+        dispatch(showNotice({ kind: "error", text: check.reason }));
+      }
+    },
+    [dispatch, store],
+  );
+  // react flow does not call onConnect for a connection which is not valid, so
+  // the user would not be told why nothing happened
+  const onConnectEnd = useCallback<OnConnectEnd>(
+    (_event, state) => {
+      const { fromNode, toNode, isValid } = state;
+      if (isValid !== false || !fromNode || !toNode) return;
+      const check = canConnect(
+        selectOpenLevel(store.getState()),
+        fromNode.id,
+        toNode.id,
+      );
+      if (!check.ok)
+        dispatch(showNotice({ kind: "error", text: check.reason }));
+    },
+    [dispatch, store],
+  );
+  // deleting is one step of the history: jobs and their dependencies together
+  const onBeforeDelete = useCallback(
+    async ({
+      nodes,
+      edges,
+    }: {
+      nodes: { id: string }[];
+      edges: { id: string }[];
+    }) => {
+      dispatch(
+        deleteElements({
+          nodeIds: nodes.map((node) => node.id),
+          edgeIds: edges.map((edge) => edge.id),
+        }),
+      );
+      return false;
     },
     [dispatch],
   );
   // End callbacks used by the flow library
 
-  const handleContextMenu = (right_click: MouseEvent<HTMLDivElement>) => {
+  const handleContextMenu = (
+    right_click: MouseEvent | globalThis.MouseEvent,
+  ) => {
     right_click.preventDefault();
-    const position = { x: right_click.clientX, y: right_click.clientY };
     dispatch(
       showContextMenu({
-        position,
+        position: { x: right_click.clientX, y: right_click.clientY },
+        boardPosition: screenToFlowPosition({
+          x: right_click.clientX,
+          y: right_click.clientY,
+        }),
+        nodeId:
+          (right_click.target as HTMLElement)
+            .closest(".react-flow__node")
+            ?.getAttribute("data-id") ?? undefined,
       }),
     );
   };
 
-  const closeContextMenu = () => {
-    dispatch(hideContextMenu());
+  const onDragOver = (event: DragEvent) => {
+    if (
+      event.dataTransfer.types.includes(JOB_DRAG_TYPE) &&
+      !selectAddJobBlock(store.getState())
+    ) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+    }
+  };
+  const onDrop = (event: DragEvent) => {
+    const fn = event.dataTransfer.getData(JOB_DRAG_TYPE);
+    if (!fn) return;
+    event.preventDefault();
+    addJob(fn, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
   };
 
-  const contextMenuItems: ContextMenuItem[] = [
-    {
-      name: "Add Job",
-      onClick: () => {
-        dispatch(showJobOptions());
-        closeContextMenu();
-      },
-    },
-  ];
-
   return (
-    <div
-      className="job-board-wrapper"
-      style={{ width: "100%", height: "100%", border: "2px solid black" }}
-    >
+    <div className="job-board-canvas" onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={level.nodes}
+        edges={level.edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onConnectEnd={onConnectEnd}
+        onBeforeDelete={onBeforeDelete}
+        isValidConnection={isValidConnection}
         nodeTypes={nodeTypes}
-        fitView
+        colorMode={colorMode}
+        deleteKeyCode={["Backspace", "Delete"]}
+        fitView={fitOnOpen}
+        fitViewOptions={{ maxZoom: 1 }}
         onContextMenu={handleContextMenu}
-        onClick={closeContextMenu}
+        onNodeContextMenu={(event) => handleContextMenu(event)}
+        onPaneClick={() => dispatch(hideContextMenu())}
+        onMoveStart={() => dispatch(hideContextMenu())}
       >
-        <MiniMap />
+        <Background />
+        <MiniMap pannable zoomable />
         <Controls />
       </ReactFlow>
-      <ContextMenu items={contextMenuItems} />
+      <ContextMenu />
+    </div>
+  );
+}
+
+export default function JobBoard() {
+  // a fresh board for each level and each loaded pipeline, so that it fits its jobs
+  const boardKey = useAppSelector(
+    (state) =>
+      `${state.graph.generation}:` +
+      state.graph.path
+        .map((entry) => `${entry.nodeId}/${entry.param}`)
+        .join(">"),
+  );
+  return (
+    <div className="job-board-wrapper">
+      <Breadcrumbs />
+      <Board key={boardKey} />
     </div>
   );
 }

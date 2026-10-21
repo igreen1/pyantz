@@ -1,113 +1,92 @@
 /**
- * Show fancier job nodes, including allowing nodes within nodes
+ * A job on the board: its name, whether it is in order, and the jobs inside it.
  */
 
-import { useCallback, useEffect, useState, type MouseEvent } from "react";
+import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { useNodeProblems } from "../hooks/useNodeProblems";
+import { useSchema } from "../hooks/useSchema";
+import { shortName } from "../model/newJob";
+import type { JobNode } from "../model/graph";
 import { useAppDispatch } from "../store/hooks";
-import {
-  Handle,
-  Position,
-  NodeResizer,
-  type NodeProps,
-  type Node,
-} from "@xyflow/react";
-import { addJobToContextMenu } from "../store/slices/uiSlice";
-import JobParameterEditor from "./JobParameterEditor";
-import type { Job } from "../store/slices/pipelineTypes";
-import { updateJobNode } from "../store/slices/graphSlice";
+import { enterNested } from "../store/slices/graphSlice";
+import { setSideTab } from "../store/slices/uiSlice";
 
-type IFancyJobNodeProps = NodeProps<Node<{ job: Job; label: string }>>;
-
-export default function FancyJobNode({ id, data }: IFancyJobNodeProps) {
+export default function FancyJobNode({
+  id,
+  data,
+  selected,
+}: NodeProps<JobNode>) {
   const dispatch = useAppDispatch();
+  const { job, nested } = data;
+  const { kinds } = useSchema(job.function);
+  const problems = useNodeProblems(id, data);
+  const count = problems.own.length + problems.fromServer.length;
+  const state = count > 0 ? "invalid" : problems.inside > 0 ? "inside" : "ok";
 
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
-
-  const handleContextMenu = (right_click: MouseEvent<HTMLDivElement>) => {
-    right_click.preventDefault();
-    dispatch(addJobToContextMenu(id));
-  };
+  const badge = {
+    ok: { text: "✓", label: "In order", className: "text-bg-success" },
+    invalid: {
+      text: `✗ ${count}`,
+      label: `${count} problem${count === 1 ? "" : "s"}`,
+      className: "text-bg-danger",
+    },
+    inside: {
+      text: `! ${problems.inside}`,
+      label: `${problems.inside} problem${problems.inside === 1 ? "" : "s"} in the jobs inside`,
+      className: "text-bg-warning",
+    },
+  }[state];
 
   return (
     <div
-      className={`job-node ${isExpanded ? "expanded" : "collapsed"}`}
-      onContextMenu={handleContextMenu}
-      style={{
-        height: "100%",
-        width: "100%",
-        overflow: "scroll",
-      }}
+      className={`job-node ${selected ? "selected" : ""} ${job.virtual ? "virtual" : ""}`}
+      data-testid="job-node"
+      data-state={state}
+      onDoubleClick={() => dispatch(setSideTab("job"))}
     >
-      <NodeResizer />
       <Handle type="target" position={Position.Top} />
 
       <div className="job-node-header">
-        <EditableLabel id={id} field_name="name" job={data.job} />
+        <strong className="job-node-name">
+          {job.name || shortName(job.function)}
+        </strong>
         <span
-          className="job-node-toggle"
-          onClick={() => setIsExpanded(!isExpanded)}
-          style={{
-            fontSize: "20px",
-            cursor: "default",
-          }}
+          className={`badge ${badge.className}`}
+          role="img"
+          aria-label={badge.label}
+          title={[...problems.own, ...problems.fromServer].join("\n")}
         >
-          {isExpanded ? "-" : "+"}
+          {badge.text}
         </span>
       </div>
-      {isExpanded ? <JobParameterEditor job={data.job} id={id} /> : <></>}
+      <div className="job-node-function" title={job.function}>
+        {shortName(job.function)}
+      </div>
+
+      {Object.keys(kinds).map((param) => {
+        const inner = nested[param];
+        const label =
+          inner === undefined
+            ? `${param}: none`
+            : kinds[param] === "list"
+              ? `${param}: ${inner.nodes.length} job${inner.nodes.length === 1 ? "" : "s"}`
+              : `${param}: ${inner.nodes.length === 0 ? "none" : "1 job"}`;
+        return (
+          <button
+            key={param}
+            type="button"
+            className="btn btn-sm btn-outline-secondary nested-chip nodrag"
+            onClick={(event) => {
+              event.stopPropagation();
+              dispatch(enterNested({ nodeId: id, param, kind: kinds[param] }));
+            }}
+          >
+            {label} ▸
+          </button>
+        );
+      })}
+
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }
-
-interface IEditableLabelProps {
-  id: string;
-  field_name: "function_name" | "name" | "job_id";
-  job: Job;
-}
-
-const EditableLabel = ({ id, field_name, job }: IEditableLabelProps) => {
-  const dispatch = useAppDispatch();
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [currValue, setCurrValue] = useState(job[field_name]);
-
-  const handleUpdate = (newValue: string) => {
-    setCurrValue(newValue);
-  };
-
-  // make sure changes made elsewhere are reflected here
-  // todo: how to better sync state? should we just dispatch on
-  useEffect(() => {
-    setCurrValue(job[field_name]);
-  }, [job[field_name]]);
-
-  const saveChanges = useCallback(() => {
-    // dispatch changes to the simulation
-    const newJob = {
-      ...job,
-      [field_name]: currValue,
-    };
-    dispatch(updateJobNode({ id, job: newJob }));
-    setIsEditing(false);
-  }, [dispatch, id, job, field_name]);
-
-  return (
-    <div className="editable-text" onDoubleClick={() => setIsEditing(true)}>
-      {isEditing ? (
-        <>
-          <input
-            type="text"
-            value={currValue}
-            onKeyDown={(e) => {
-              if (e.key == "Escape") setIsEditing(false);
-            }}
-            onChange={(e) => handleUpdate(e.target.value)}
-            onBlur={() => saveChanges()}
-          />
-        </>
-      ) : (
-        currValue
-      )}
-    </div>
-  );
-};

@@ -1,21 +1,119 @@
-#root {
-  width: 100%;
-  height: 100%;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
 #root,
 body,
 html {
+  width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden; /* Hide both vertical and horizontal scrollbars and disable scrolling */
+  overflow: hidden; /* the panels scroll, and the board pans and zooms itself */
 }
-.job-board-body,
-.job-board-flow,
-.job-board-popup {
+
+.app {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 340px;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "header header header"
+    "palette main side";
   width: 100%;
   height: 100%;
+}
+
+.app-header {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+}
+
+.app-logo {
+  height: 28px;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 20px;
+  background: var(--bs-border-color);
+}
+
+.app-palette {
+  grid-area: palette;
+  min-height: 0;
+}
+
+.app-main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.app-main-view {
+  flex: 1;
+  min-height: 0;
+}
+
+.app-side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--bs-border-color);
+  background: var(--bs-body-bg);
+  overflow: hidden;
+}
+
+.app-side-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.notice {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 2000;
+  max-width: min(640px, 90vw);
+  margin: 0;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.dialog {
+  width: min(640px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.run-log {
+  max-height: 300px;
+  overflow: auto;
+  margin-top: 8px;
+  padding: 8px;
+  font-size: 0.75rem;
+  background: var(--bs-tertiary-bg);
+  color: var(--bs-body-color);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 6px;
+  white-space: pre-wrap;
+}
+
+.job-node-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
