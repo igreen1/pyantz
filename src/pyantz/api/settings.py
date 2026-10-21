@@ -50,6 +50,7 @@ def get_settings() -> Settings:
 CORS_ORIGINS_VARIABLE = "PYANTZ_CORS_ORIGINS"
 API_TOKEN_VARIABLE = "PYANTZ_API_TOKEN"  # noqa: S105
 RUNS_DIR_VARIABLE = "PYANTZ_RUNS_DIR"
+FRONTEND_DIR_VARIABLE = "PYANTZ_FRONTEND_DIR"
 LOCAL_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
 
@@ -75,6 +76,17 @@ def get_runs_dir() -> Path:
     if RUNS_DIR_VARIABLE in os.environ:
         return Path(os.environ[RUNS_DIR_VARIABLE])
     return Path(tempfile.gettempdir()) / "pyantz-runs"
+
+
+def get_frontend_dir() -> Path | None:
+    """Get the directory with the built web ui, if `PYANTZ_FRONTEND_DIR` is set.
+
+    Build it with ``npm run build`` in ``frontend/pyantz``, which makes ``dist``.
+    The server serves it at ``/`` next to the api, without asking for the token:
+    the page has to load to ask the user for it.
+    """
+    directory = os.environ.get(FRONTEND_DIR_VARIABLE, "").strip()
+    return Path(directory) if directory else None
 
 
 def check_safe_to_bind(settings: Settings) -> None:

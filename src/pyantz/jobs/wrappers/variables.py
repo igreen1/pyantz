@@ -15,6 +15,7 @@ from pydantic import (
     BaseModel,
     BeforeValidator,
     ConfigDict,
+    WithJsonSchema,
     model_validator,
 )
 
@@ -41,7 +42,9 @@ class SetVariables(BaseModel):
 
     # job which will edit the variable context
     setter_job: Annotated[
-        Callable[..., Any], BeforeValidator(import_module_item_by_name)
+        Callable[..., Any],
+        BeforeValidator(import_module_item_by_name),
+        WithJsonSchema({"type": "string"}),
     ]
 
     # Kwargs to pass to the setter job

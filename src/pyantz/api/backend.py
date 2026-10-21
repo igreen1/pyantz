@@ -3,14 +3,29 @@
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from . import endpoints
 from .auth import require_token
-from .settings import check_safe_to_bind, get_cors_origins, get_settings
+from .settings import (
+    FRONTEND_DIR_VARIABLE,
+    check_safe_to_bind,
+    get_cors_origins,
+    get_frontend_dir,
+    get_settings,
+)
 
 
 def create_app() -> FastAPI:
-    """Create the application, reading the cors origins from the environment."""
+    """Create the application, reading its settings from the environment.
+
+    The cors origins are read from `PYANTZ_CORS_ORIGINS`, and the built web ui is
+    served at ``/`` if `PYANTZ_FRONTEND_DIR` names it.
+
+    Raises:
+        ValueError: if `PYANTZ_FRONTEND_DIR` is not a directory with an index.html
+
+    """
     application = FastAPI()
     origins = get_cors_origins()
     if origins:
@@ -21,6 +36,18 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
     application.include_router(endpoints.router, dependencies=[Depends(require_token)])
+    frontend_dir = get_frontend_dir()
+    if frontend_dir is not None:
+        if not (frontend_dir / "index.html").is_file():
+            msg = (
+                f"{FRONTEND_DIR_VARIABLE}={str(frontend_dir)!r} has no index.html: "
+                "build the web ui with `npm run build` in frontend/pyantz"
+            )
+            raise ValueError(msg)
+        # last, so that it never hides the api
+        application.mount(
+            "/", StaticFiles(directory=frontend_dir, html=True), name="frontend"
+        )
     return application
 
 

@@ -58,3 +58,15 @@ class RunResponse(BaseModel):
     report: dict[str, Any] | None = None
 
     jobs: list[JobState] = Field(default_factory=list)
+
+
+class RunLogResponse(BaseModel):
+    """The end of what a run printed."""
+
+    run_id: str
+
+    # the last bytes of the log, decoded; may start in the middle of a line
+    log: str
+
+    # True if the log is longer than what is returned
+    truncated: bool

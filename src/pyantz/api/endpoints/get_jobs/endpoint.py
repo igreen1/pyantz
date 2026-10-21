@@ -16,7 +16,7 @@ router = APIRouter(prefix="/jobs")
 NO_DESCRIPTION = "No description available."
 
 
-def _describe(fn: object) -> str:
+def describe_job(fn: object) -> str:
     """Get the first paragraph of the docstring, on one line."""
     doc = inspect.getdoc(fn)
     if not doc:
@@ -29,7 +29,7 @@ def get_jobs() -> GetJobResponse:
     """Get list of all the available jobs."""
     return GetJobResponse(
         jobs=[
-            JobInfo(name=serialize_function(fn), description=_describe(fn))
+            JobInfo(name=serialize_function(fn), description=describe_job(fn))
             for fn in get_registered_functions()
         ]
     )

@@ -9,7 +9,7 @@ import uuid
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Annotated, Any
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import ValidationError
 
 # import jobs so that they are all imported/registered
@@ -26,6 +26,7 @@ from .models import (
     CompiledJob,
     CompileResponse,
     JobState,
+    RunLogResponse,
     RunResponse,
     StartRunResponse,
     ValidateResponse,
@@ -38,6 +39,10 @@ router = APIRouter(prefix="/config")
 runs_router = APIRouter(prefix="/runs")
 
 RUN_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
+
+# the most of a run's log which one request can get
+MAX_LOG_BYTES = 1_000_000
+DEFAULT_LOG_BYTES = 20_000
 
 # the processes started by this server; a restart forgets them
 _PROCESSES: dict[str, subprocess.Popen[bytes]] = {}
@@ -182,4 +187,27 @@ def get_run(run_id: str) -> RunResponse:
         state=state,
         report=report.model_dump() if report else None,
         jobs=jobs,
+    )
+
+
+@runs_router.get("/{run_id}/log")
+def get_run_log(
+    run_id: str,
+    max_bytes: Annotated[int, Query(ge=1, le=MAX_LOG_BYTES)] = DEFAULT_LOG_BYTES,
+) -> RunLogResponse:
+    """Get the end of what a run printed (its standard output and errors)."""
+    run_dir = _run_dir(run_id)
+    log_file = run_dir / "run.log"
+    if not log_file.is_file():
+        raise HTTPException(
+            status_code=HTTPStatus.NOT_FOUND, detail=f"No log for run: {run_id}"
+        ) from None
+    with log_file.open("rb") as log:
+        size = log.seek(0, os.SEEK_END)
+        log.seek(max(0, size - max_bytes))
+        tail = log.read()
+    return RunLogResponse(
+        run_id=run_id,
+        log=tail.decode("utf-8", errors="replace"),
+        truncated=size > max_bytes,
     )
