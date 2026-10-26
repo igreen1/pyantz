@@ -76,8 +76,9 @@ def describe_run(working_directory: Path) -> str:
         msg = f"No run found: {queue_file} does not exist"
         raise FileNotFoundError(msg)
 
-    queue = SqliteQueue(queue_file)
-    report = queue.get_jobs_report()
+    with SqliteQueue(queue_file) as queue:
+        report = queue.get_jobs_report()
+        failed = queue.get_job_ids_with_status(JobStatus.ERROR)
     lines = [
         f"Jobs: {report.total}",
         f"  succeeded: {report.success}",
@@ -86,7 +87,6 @@ def describe_run(working_directory: Path) -> str:
         f"  ready:     {report.ready}",
         f"  waiting:   {report.pending}",
     ]
-    failed = queue.get_job_ids_with_status(JobStatus.ERROR)
     if failed:
         lines.append("Failed jobs:")
         lines.extend(f"  {job_id}" for job_id in failed)

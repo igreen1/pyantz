@@ -345,14 +345,17 @@ def get_run(run_id: str) -> RunResponse:
     report = None
     jobs: list[JobState] = []
     if queue_file.is_file():
-        queue = SqliteQueue(queue_file)
-        report = queue.get_jobs_report()
-        for status in JobStatus:
-            for job_id in queue.get_job_ids_with_status(status):
-                details = queue.get_job_status(job_id).status_details
-                jobs.append(
-                    JobState(job_id=job_id, status=status.name.lower(), details=details)
-                )
+        # closed after reading: the server mustn't keep the run's files open
+        with SqliteQueue(queue_file) as queue:
+            report = queue.get_jobs_report()
+            for status in JobStatus:
+                for job_id in queue.get_job_ids_with_status(status):
+                    details = queue.get_job_status(job_id).status_details
+                    jobs.append(
+                        JobState(
+                            job_id=job_id, status=status.name.lower(), details=details
+                        )
+                    )
 
     process = _PROCESSES.get(run_id)
     if process is not None:

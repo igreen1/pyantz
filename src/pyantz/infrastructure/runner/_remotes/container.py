@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import tarfile
 import tempfile
 from typing import TYPE_CHECKING
@@ -37,7 +38,8 @@ def _make_client(service: str) -> docker.DockerClient:
     """Create a client for the configured container service.
 
     Podman is reached through its docker compatible socket: ``CONTAINER_HOST``
-    if set, otherwise the default rootless socket of the current user.
+    if set, otherwise the default rootless socket of the current user (on
+    Windows, the pipe of the default podman machine).
 
     Args:
         service: ``docker`` or ``podman``.
@@ -50,10 +52,13 @@ def _make_client(service: str) -> docker.DockerClient:
 
     """
     if service == "podman":
-        socket = os.environ.get(
-            "CONTAINER_HOST",
-            f"unix:///run/user/{os.getuid()}/podman/podman.sock",
-        )
+        socket = os.environ.get("CONTAINER_HOST")
+        if socket is None:
+            socket = (
+                "npipe:////./pipe/podman-machine-default"
+                if sys.platform == "win32"
+                else f"unix:///run/user/{os.getuid()}/podman/podman.sock"
+            )
         return docker.DockerClient(base_url=socket)
     return docker.from_env()
 
