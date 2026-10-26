@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 # import jobs so that they are all imported/registered
 import pyantz.jobs  # pyright: ignore[reportUnusedImport] # noqa: F401

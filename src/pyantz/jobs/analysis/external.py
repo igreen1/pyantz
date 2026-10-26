@@ -14,23 +14,17 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Any, Literal
 
 import polars as pl
 from pydantic import (
     BaseModel,
-    BeforeValidator,
     ConfigDict,
     Field,
-    WithJsonSchema,
-    field_serializer,
 )
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
-from pyantz.infrastructure.config.fn_utils import (
-    import_function_by_name,
-    serialize_function,
-)
+from pyantz.infrastructure.config.fn_utils import ImportedCallable
 
 
 class ExternalExtractParams(BaseModel):
@@ -44,40 +38,12 @@ class ExternalExtractParams(BaseModel):
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
     """Keyword arguments to pass directly to the function."""
 
-    external_function: Annotated[
-        Callable[..., pl.DataFrame | pl.LazyFrame],
-        BeforeValidator(import_function_by_name),
-        WithJsonSchema(
-            {
-                "type": "string",
-                "format": "base64",
-            }
-        ),
-    ]
+    external_function: ImportedCallable[Callable[..., pl.DataFrame | pl.LazyFrame]]
     """Fully resolved name of the function, e.g. ``package.module.function``; it
     must return a polars DataFrame or LazyFrame."""
 
     result_parquet_location: str
     """Location to save the result from the function."""
-
-    @field_serializer("external_function")
-    def serialize_job_function(
-        self,
-        fn: Callable[..., pl.DataFrame | pl.LazyFrame],
-    ) -> str:
-        """Serialize the function.
-
-        Args:
-            fn: the function to serialize.
-
-        Returns:
-            str: the function's full import path.
-
-        Raises:
-            ValueError: if the function can't be imported by name, e.g., a lambda.
-
-        """
-        return serialize_function(fn)
 
 
 @add_parameters(ExternalExtractParams)
@@ -180,36 +146,8 @@ class ExternalSimpleParams(BaseModel):
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
     """Keyword arguments to pass directly to the function."""
 
-    external_function: Annotated[
-        Callable[..., Any],
-        BeforeValidator(import_function_by_name),
-        WithJsonSchema(
-            {
-                "type": "string",
-                "format": "base64",
-            }
-        ),
-    ]
+    external_function: ImportedCallable[Callable[..., Any]]
     """Fully resolved name of the function, e.g. ``package.module.function``."""
-
-    @field_serializer("external_function")
-    def serialize_job_function(
-        self,
-        fn: Callable[..., Any],
-    ) -> str:
-        """Serialize the function.
-
-        Args:
-            fn: the function to serialize.
-
-        Returns:
-            str: the function's full import path.
-
-        Raises:
-            ValueError: if the function can't be imported by name, e.g., a lambda.
-
-        """
-        return serialize_function(fn)
 
 
 @add_parameters(ExternalSimpleParams)
@@ -288,36 +226,8 @@ class ExternalAnalysisParams(BaseModel):
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
     """Keyword arguments to pass directly to the function."""
 
-    external_function: Annotated[
-        Callable[..., Any],
-        BeforeValidator(import_function_by_name),
-        WithJsonSchema(
-            {
-                "type": "string",
-                "format": "base64",
-            }
-        ),
-    ]
+    external_function: ImportedCallable[Callable[..., Any]]
     """Fully resolved name of the function, e.g. ``package.module.function``."""
-
-    @field_serializer("external_function")
-    def serialize_job_function(
-        self,
-        fn: Callable[..., Any],
-    ) -> str:
-        """Serialize the function.
-
-        Args:
-            fn: the function to serialize.
-
-        Returns:
-            str: the function's full import path.
-
-        Raises:
-            ValueError: if the function can't be imported by name, e.g., a lambda.
-
-        """
-        return serialize_function(fn)
 
 
 @add_parameters(ExternalAnalysisParams)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import polars as pl
 import pytest
@@ -24,6 +24,13 @@ from pyantz.jobs.analysis.simple import (
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+
+def _loaders(
+    **loaders: Literal["lazy", "eager"],
+) -> dict[str, Literal["lazy", "eager"]]:
+    """Choose lazy or eager loading per variable, typed as the parameters expect."""
+    return loaders
 
 
 def returns_true() -> bool:
@@ -120,7 +127,7 @@ def test_analysis_loads_each_variable_as_asked(tmp_path: Path) -> None:
 
     params = ExternalAnalysisParams(
         variable_names_to_parquets={"data": data},
-        lazy_or_eager={"data": "eager"},
+        lazy_or_eager=_loaders(data="eager"),
         function_kwargs={"extra": 0},
         external_function=total,
     )
@@ -134,7 +141,7 @@ def test_analysis_needs_a_loader_for_every_variable(tmp_path: Path) -> None:
     pl.DataFrame({"a": [1, 2, 3]}).write_parquet(data)
     params = ExternalAnalysisParams(
         variable_names_to_parquets={"data": data},
-        lazy_or_eager={"other": "eager"},
+        lazy_or_eager=_loaders(other="eager"),
         external_function=total,
     )
 
@@ -166,7 +173,7 @@ def _columnar(tmp_path: Path, **changes: Any) -> ColumnarOperationParameters:  #
         "result_col": "c",
         "operation": "+",
     }
-    return ColumnarOperationParameters(**{**values, **changes})
+    return ColumnarOperationParameters.model_validate({**values, **changes})
 
 
 def test_columnar_operation_adds_the_column(tmp_path: Path) -> None:

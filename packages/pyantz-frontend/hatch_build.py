@@ -7,7 +7,10 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from hatchling.builders.hooks.plugin.interface import BuildHookInterface
+# hatchling is only installed in the build environment, not the development one
+from hatchling.builders.hooks.plugin.interface import (  # ty: ignore[unresolved-import]
+    BuildHookInterface,
+)
 
 SOURCE = Path("frontend") / "pyantz"
 """Sources of the web ui, relative to the repository's root."""

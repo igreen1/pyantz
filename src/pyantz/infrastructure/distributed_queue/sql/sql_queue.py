@@ -637,7 +637,7 @@ class SqliteQueue(QueueInterface):
         # if total is not the sum of our states, then we have something
         # deeply wrong in our queue! useful for debugging
         total_job_count = sa.select(
-            sa.func.count(
+            sa.func.count(  # pylint: disable=not-callable
                 sa.func.distinct(
                     JobConfigTable.job_id,
                 ),
@@ -649,7 +649,7 @@ class SqliteQueue(QueueInterface):
         # state rollups
         status_queries = {
             status: sa.select(
-                sa.func.count(
+                sa.func.count(  # pylint: disable=not-callable
                     sa.func.distinct(StatusTable.job_id),
                 ),
             ).where(StatusTable.job_status == status)

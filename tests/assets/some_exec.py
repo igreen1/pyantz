@@ -5,8 +5,10 @@
 #     "polars>=1.39.3",
 # ]
 # ///
+"""Script run by the subprocess tests: writes a parquet as proof it ran."""
 
 from __future__ import annotations
+
 import argparse
 
 import polars as pl
@@ -23,7 +25,7 @@ def main() -> None:
 
 def write_file(output_file: str) -> None:
     """Write a dataframe as "proof" that this ran."""
-    print("Hello from some_exec.py!")
+    print("Hello from some_exec.py!")  # noqa: T201
     pl.DataFrame(
         {
             "a": [1, 2, 3, 4, 5],

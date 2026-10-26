@@ -138,8 +138,8 @@ def test_extra_field_modes(
     """The extra_field option decides what happens to a path that doesn't exist."""
     path = tmp_path / "f.json"
     path.write_text(json.dumps({"a": "hello"}))
-    params = EditJsonParams(
-        file=path, updates={"a.b.c": "bye"}, extra_field=extra_field
+    params = EditJsonParams.model_validate(
+        {"file": path, "updates": {"a.b.c": "bye"}, "extra_field": extra_field}
     ).model_dump()
 
     assert edit_json(params, lambda *_: None) is True
@@ -216,10 +216,12 @@ def save_fails(_contents: Any) -> None:  # noqa: ANN401
 def test_edit_external_method() -> None:
     """The extracted value is edited and given to the save function."""
     SAVED.clear()
-    params = EditExternalParams(
-        extract_function={"func": extract_fixed},  # type: ignore[arg-type]
-        save_function={"func": save_contents},  # type: ignore[arg-type]
-        updates={"a.b": 2, "c": 3},
+    params = EditExternalParams.model_validate(
+        {
+            "extract_function": {"func": extract_fixed},
+            "save_function": {"func": save_contents},
+            "updates": {"a.b": 2, "c": 3},
+        }
     )
 
     assert edit_external_method(params.model_dump(), lambda *_: None) is True
@@ -229,10 +231,12 @@ def test_edit_external_method() -> None:
 
 def test_edit_external_method_failing_save() -> None:
     """A save which fails fails the job."""
-    params = EditExternalParams(
-        extract_function={"func": extract_fixed},  # type: ignore[arg-type]
-        save_function={"func": save_fails},  # type: ignore[arg-type]
-        updates={"a": 1},
+    params = EditExternalParams.model_validate(
+        {
+            "extract_function": {"func": extract_fixed},
+            "save_function": {"func": save_fails},
+            "updates": {"a": 1},
+        }
     )
 
     assert edit_external_method(params.model_dump(), lambda *_: None) is False

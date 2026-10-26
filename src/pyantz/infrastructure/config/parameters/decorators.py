@@ -15,8 +15,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Any
 
-    from pydantic import BaseModel
-
     from pyantz.infrastructure.config.job import (
         JobConfig,
         JobFunctionType,

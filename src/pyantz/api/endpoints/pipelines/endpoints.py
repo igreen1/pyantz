@@ -241,7 +241,8 @@ def start_run(config: ConfigBody) -> StartRunResponse:
     config_file = run_dir / "config.json"
     config_file.write_text(json.dumps({**config, "submitter": submitter}))
     with (run_dir / "run.log").open("wb") as log:
-        _PROCESSES[run_id] = subprocess.Popen(  # noqa: S603
+        # the process outlives the request: get_run polls it, nothing waits for it
+        _PROCESSES[run_id] = subprocess.Popen(  # noqa: S603  # pylint: disable=consider-using-with
             [sys.executable, "-m", "pyantz", str(config_file)],
             cwd=run_dir,
             stdout=log,

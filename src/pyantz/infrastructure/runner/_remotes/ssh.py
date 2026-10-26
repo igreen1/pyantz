@@ -363,7 +363,7 @@ def run_ssh(config: InitialConfig) -> None:
         ssh.close()
 
 
-def _run_on_connection(
+def _run_on_connection(  # pylint: disable=too-many-locals
     ssh: paramiko.SSHClient,
     config: InitialConfig,
     host_config: SshConfig,

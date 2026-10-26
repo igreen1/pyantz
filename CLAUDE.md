@@ -17,6 +17,7 @@ uv run ruff format                        # format (enforced by tests/test_forma
 uv run ruff check                         # lint (select = ALL, see pyproject.toml)
 uv run ty check                           # primary type checker; get this passing first
 uv run mypy src                           # secondary type checker; run once ty passes
+uv run pylint src                         # defers to ruff for the rules both check (pyproject.toml)
 make test                                 # sphinx doctests (docs/) + pytest
 make doc                                  # build sphinx html docs
 cd frontend/pyantz && npm run dev -- --host   # web UI (React/Vite); API via `pyantz-dev` / `pyantz-prod`

@@ -9,11 +9,13 @@ import json
 import os
 import subprocess
 from copy import deepcopy
-from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from pyantz import start
 from pyantz.infrastructure.config import InitialConfig
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MINIMAL_CONFIG: Final[dict[str, Any]] = {
     "jobs": [

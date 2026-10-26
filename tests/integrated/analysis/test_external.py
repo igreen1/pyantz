@@ -15,6 +15,10 @@ if TYPE_CHECKING:
     from typing import Any
 
 
+THIS_MODULE = "tests.integrated.analysis.test_external"
+SAVE_FROM_EXTRACTION = "pyantz.jobs.analysis.external.save_from_external_extraction"
+
+
 def extraction_function(
     cols_names: list[str],
 ) -> pl.DataFrame:
@@ -51,10 +55,10 @@ def test_external_extract_args(
     config: dict[str, Any] = {
         "jobs": [
             {
-                "function": "pyantz.jobs.analysis.external.save_from_external_extraction",
+                "function": SAVE_FROM_EXTRACTION,
                 "parameters": {
                     "function_args": [["a", "b", "c"]],
-                    "external_function": "tests.integrated.analysis.test_external.extraction_function",
+                    "external_function": f"{THIS_MODULE}.extraction_function",
                     "result_parquet_location": os.fspath(output_path),
                 },
             },
@@ -91,12 +95,12 @@ def test_external_extract_kwargs(
     config: dict[str, Any] = {
         "jobs": [
             {
-                "function": "pyantz.jobs.analysis.external.save_from_external_extraction",
+                "function": SAVE_FROM_EXTRACTION,
                 "parameters": {
                     "function_kwargs": {
                         "cols_names": ["a", "b", "c"],
                     },
-                    "external_function": "tests.integrated.analysis.test_external.extraction_function",
+                    "external_function": f"{THIS_MODULE}.extraction_function",
                     "result_parquet_location": os.fspath(output_path),
                 },
             },
@@ -134,7 +138,7 @@ def test_external_simple_args(tmp_path: Path) -> None:
                 "function": "pyantz.jobs.analysis.external.external_simple",
                 "parameters": {
                     "function_args": [["a", "b", "c", "d"], os.fspath(output_path)],
-                    "external_function": "tests.integrated.analysis.test_external.simple_external",
+                    "external_function": f"{THIS_MODULE}.simple_external",
                 },
             },
         ],
@@ -177,7 +181,7 @@ def test_external_simple_kwargs(tmp_path: Path) -> None:
                     "function_kwargs": {
                         "output_path": os.fspath(output_path),
                     },
-                    "external_function": "tests.integrated.analysis.test_external.simple_external",
+                    "external_function": f"{THIS_MODULE}.simple_external",
                 },
             },
         ],

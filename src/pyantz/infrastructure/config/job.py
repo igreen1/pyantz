@@ -283,7 +283,10 @@ class JobWithContext(JobConfig):
         config = config_possibly_without_context
         return JobWithContext.model_validate(
             {
-                **{field: getattr(config, field) for field in JobConfig.model_fields},
+                **{
+                    field: getattr(config, field)
+                    for field in JobConfig.model_fields  # pylint: disable=not-an-iterable
+                },
                 "variables": getattr(config, "variables", None),
             },
         )

@@ -145,7 +145,7 @@ def fan_out(params: FanOutParams, submit_fn: SubmissionFnType) -> bool:
 
     for item in params.items:
         job = JobConfig(
-            function="pyantz.jobs.testing.touch_file.touch_file",  # type: ignore[arg-type]
+            function="pyantz.jobs.testing.touch_file.touch_file",  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
             parameters={"path": str(params.output_dir / f"{item}.done")},
         )
         submit_fn(job)

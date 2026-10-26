@@ -10,12 +10,12 @@ from __future__ import annotations
 
 import importlib
 import os
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Annotated, Any, TypeVar
+
+from pydantic import BeforeValidator, PlainSerializer, WithJsonSchema
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Any
-
     from pyantz.infrastructure.config.job import JobFunctionType
 
 
@@ -235,3 +235,37 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
     mod_name = ".".join(name_components[:-1])
     msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({last_error})"
     raise ValueError(msg) from last_error
+
+
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+# a plain alias rather than a `type` statement: pydantic inlines it in the json
+# schemas (a `type` alias becomes a named definition, losing the field's title)
+ImportedCallable = Annotated[
+    _F,
+    BeforeValidator(import_function_by_name),
+    PlainSerializer(serialize_function, return_type=str),
+    WithJsonSchema({"type": "string", "format": "base64"}),
+]
+"""A field holding a function, given (and serialized) as its full import path.
+
+Example:
+    .. testcode::
+
+        from collections.abc import Callable
+
+        from pydantic import BaseModel
+
+        from pyantz.infrastructure.config.fn_utils import ImportedCallable
+
+        class Call(BaseModel):
+            func: ImportedCallable[Callable[..., object]]
+
+        call = Call(func="json.dumps")
+        print(call.func([1]), call.model_dump())
+
+    .. testoutput::
+
+        [1] {'func': 'json.dumps'}
+
+"""

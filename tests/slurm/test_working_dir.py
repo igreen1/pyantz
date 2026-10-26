@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from pyantz.infrastructure.config import InitialConfig
+from pyantz.infrastructure.config.runners import SlurmRunnerConfig
 from pyantz.infrastructure.runner.slurm import start
 
 if TYPE_CHECKING:
@@ -32,6 +33,7 @@ def test_nonexistent_working_dir_valid_for_ssh_host() -> None:
             {"type_": "ssh", "remote_host": "login.cluster"},
         ),
     )
+    assert isinstance(config.submitter, SlurmRunnerConfig)
     assert os.fspath(config.submitter.working_dir) == "/cluster/only/path"
 
 

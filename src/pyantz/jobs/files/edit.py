@@ -20,25 +20,19 @@ import logging
 import tempfile
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
-from typing import Annotated, Any, Literal, cast
+from typing import Any, Literal, cast
 
 from pydantic import (
     BaseModel,
-    BeforeValidator,
     ConfigDict,
     Field,
     JsonValue,
-    WithJsonSchema,
-    field_serializer,
 )
 from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
 from pyantz.infrastructure.config import add_parameters, no_submit_fn
-from pyantz.infrastructure.config.fn_utils import (
-    import_function_by_name,
-    serialize_function,
-)
+from pyantz.infrastructure.config.fn_utils import ImportedCallable
 
 JSON_INDENT = 2
 """Indentation of the json files which are written."""
@@ -378,36 +372,8 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
     args: tuple[Any, ...] = Field(default_factory=tuple)
     """Positional arguments to call the function with."""
 
-    func: Annotated[
-        T,
-        BeforeValidator(import_function_by_name),
-        WithJsonSchema(
-            {
-                "type": "string",
-                "format": "base64",
-            }
-        ),
-    ]
+    func: ImportedCallable[T]
     """The function to call, given by its full import path."""
-
-    @field_serializer("func")
-    def serialize_job_function(
-        self,
-        fn: T,
-    ) -> str:
-        """Serialize the function.
-
-        Args:
-            fn: the function to serialize.
-
-        Returns:
-            str: the function's full import path.
-
-        Raises:
-            ValueError: if the function can't be imported by name, e.g., a lambda.
-
-        """
-        return serialize_function(fn)
 
 
 class EditExternalParams(BaseModel):
