@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import sys
 from typing import TYPE_CHECKING
 
 import pytest
@@ -24,6 +25,10 @@ def test_missing_directory_raises_immediately(tmp_path: Path) -> None:
 @pytest.mark.skipif(
     hasattr(os, "geteuid") and os.geteuid() == 0,
     reason="root can write to read-only directories",
+)
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="chmod doesn't make a directory read-only on Windows",
 )
 def test_unwritable_directory_raises_immediately(tmp_path: Path) -> None:
     """A queue file in a read-only directory fails when opened."""

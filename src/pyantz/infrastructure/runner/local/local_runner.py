@@ -129,23 +129,25 @@ def start(config: InitialConfig) -> JobsReport:
     runner_config.working_directory.mkdir(parents=True, exist_ok=True)
     _remove_stale_queue(queue_file)
     logger.debug("Creating sqlite queue %s", queue_file)
+    _create_queue_file(queue_file)
 
-    queue = SqliteQueue(queue_file)
-    _fill_queue(config, queue)
-    if runner_config.use_same_proc:
-        _run_within_same_proc(runner_config, queue_file)
-    else:
-        _start_pool(runner_config, queue_file)
+    # closed at the end, so a later run in this process can replace the file
+    with SqliteQueue(queue_file) as queue:
+        _fill_queue(config, queue)
+        if runner_config.use_same_proc:
+            _run_within_same_proc(runner_config, queue_file)
+        else:
+            _start_pool(runner_config, queue_file)
 
-    report = queue.get_jobs_report()
-    logger.info(
-        "Run finished: %d total, %d succeeded, %d errored, %d unfinished",
-        report.total,
-        report.success,
-        report.error,
-        report.total - report.success - report.error,
-    )
-    _log_failures(queue)
+        report = queue.get_jobs_report()
+        logger.info(
+            "Run finished: %d total, %d succeeded, %d errored, %d unfinished",
+            report.total,
+            report.success,
+            report.error,
+            report.total - report.success - report.error,
+        )
+        _log_failures(queue)
     return report
 
 
@@ -172,6 +174,65 @@ def _log_failures(queue: SqliteQueue) -> None:
     width = max(len(job_id) for job_id, _ in rows)
     table = "\n".join(f"  {job_id:<{width}}  {error}" for job_id, error in rows)
     logging.getLogger(__name__).error("%d job(s) failed:\n%s", len(failed), table)
+
+
+def _create_queue_file(queue_file: Path) -> None:
+    """Create the queue's file, with its tables and in WAL mode, all at once.
+
+    It is set up under another name and then renamed, so another process (e.g.
+    the API reading the progress of the run) never opens a half made file:
+    setting it up at the same time fails with "database is locked".
+
+    Args:
+        queue_file: the queue's SQLite file, which doesn't exist yet.
+
+    Returns:
+        None.
+
+    Raises:
+        OSError: if the file can't be created or renamed.
+        sqlalchemy.exc.OperationalError: if the tables can't be created.
+
+    Example:
+        .. testsetup:: local-runner-create-queue
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: local-runner-create-queue
+
+            import os
+            import sqlite3
+            from pathlib import Path
+
+            from pyantz.infrastructure.runner.local.local_runner import (
+                _create_queue_file,
+            )
+
+            _create_queue_file(Path("queue.db"))
+            print(os.listdir())
+            with sqlite3.connect("queue.db") as conn:
+                print(conn.execute("PRAGMA journal_mode").fetchone()[0])
+            conn.close()
+
+        .. testoutput:: local-runner-create-queue
+
+            ['queue.db']
+            wal
+
+        .. testcleanup:: local-runner-create-queue
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
+    partial = queue_file.with_name(queue_file.name + ".new")
+    _remove_stale_queue(partial)
+    # closing the last connection removes the -wal and -shm files
+    SqliteQueue(partial).close()
+    partial.replace(queue_file)
 
 
 def _remove_stale_queue(queue_file: Path) -> None:
@@ -331,33 +392,33 @@ def _wait_for_workers(
 
     """
     logger = logging.getLogger(__name__)
-    queue = SqliteQueue(queue_file)
     handled: set[int] = set()
-    last_report = time.monotonic()
-    while any(p.is_alive() for p in procs):
-        if (
-            progress_interval is not None
-            and time.monotonic() - last_report >= progress_interval
-        ):
-            last_report = time.monotonic()
-            _log_progress(queue)
+    with SqliteQueue(queue_file) as queue:
+        last_report = time.monotonic()
+        while any(p.is_alive() for p in procs):
+            if (
+                progress_interval is not None
+                and time.monotonic() - last_report >= progress_interval
+            ):
+                last_report = time.monotonic()
+                _log_progress(queue)
+            for p in procs:
+                if p.pid is None or p.pid in handled or p.is_alive():
+                    continue
+                handled.add(p.pid)
+                if p.exitcode != 0:
+                    failed = queue.fail_jobs_of_worker(p.pid)
+                    logger.error(
+                        "Worker %d died (exit code %s); failed its jobs: %s",
+                        p.pid,
+                        p.exitcode,
+                        failed,
+                    )
+            time.sleep(DEATH_CHECK_SECONDS)
         for p in procs:
-            if p.pid is None or p.pid in handled or p.is_alive():
-                continue
-            handled.add(p.pid)
-            if p.exitcode != 0:
-                failed = queue.fail_jobs_of_worker(p.pid)
-                logger.error(
-                    "Worker %d died (exit code %s); failed its jobs: %s",
-                    p.pid,
-                    p.exitcode,
-                    failed,
-                )
-        time.sleep(DEATH_CHECK_SECONDS)
-    for p in procs:
-        p.join()
-        if p.pid is not None and p.pid not in handled and p.exitcode != 0:
-            queue.fail_jobs_of_worker(p.pid)
+            p.join()
+            if p.pid is not None and p.pid not in handled and p.exitcode != 0:
+                queue.fail_jobs_of_worker(p.pid)
 
 
 def _log_progress(queue: SqliteQueue) -> None:
@@ -865,49 +926,55 @@ def _worker(
 
     """
     logger = logging.getLogger(__name__)
-    queue = SqliteQueue(queue_file)
-    submit_fn = _make_submit_fn(queue)
+    with SqliteQueue(queue_file) as queue:
+        submit_fn = _make_submit_fn(queue)
 
-    timeout_ctr = 0.0
-    deadlocked_polls = 0
-    while True:
-        # get job from the queue
-        match queue.get_job().payload:
-            case JobReturn(job=job_config):
-                # set job to running
-                try:
-                    queue.update_job_status(job_config.job_id, status=JobStatus.RUNNING)
-                    queue.set_job_worker(job_config.job_id, os.getpid())
-                    if job_config.timeout_seconds is None:
-                        result = run_job_with_details(job_config, submit_fn)
-                    else:
-                        result = _run_with_timeout(
-                            job_config,
-                            queue_file,
-                            job_config.timeout_seconds,
+        timeout_ctr = 0.0
+        deadlocked_polls = 0
+        while True:
+            # get job from the queue
+            match queue.get_job().payload:
+                case JobReturn(job=job_config):
+                    # set job to running
+                    try:
+                        queue.update_job_status(
+                            job_config.job_id, status=JobStatus.RUNNING
                         )
-                except Exception as exc:
-                    logger.exception("Unknown error in job!", exc_info=exc)
-                    result = JobResult(
-                        success=False,
-                        details=f"{type(exc).__name__}: {exc}",
+                        queue.set_job_worker(job_config.job_id, os.getpid())
+                        if job_config.timeout_seconds is None:
+                            result = run_job_with_details(job_config, submit_fn)
+                        else:
+                            result = _run_with_timeout(
+                                job_config,
+                                queue_file,
+                                job_config.timeout_seconds,
+                            )
+                    except Exception as exc:
+                        logger.exception("Unknown error in job!", exc_info=exc)
+                        result = JobResult(
+                            success=False,
+                            details=f"{type(exc).__name__}: {exc}",
+                        )
+                    except (KeyboardInterrupt, WorkerTerminatedError):
+                        # don't leave the job RUNNING forever
+                        logger.warning(
+                            "Interrupted while running job %s", job_config.job_id
+                        )
+                        queue.update_job_status(
+                            job_config.job_id, status=JobStatus.ERROR
+                        )
+                        raise
+                    _record_result(queue, job_config, result)
+                    timeout_ctr = 0.0  # reset timer, we got and did a job :)
+                case PendingReturn(jobs_report=report):
+                    deadlocked_polls = _check_for_deadlock(
+                        queue, report, deadlocked_polls
                     )
-                except (KeyboardInterrupt, WorkerTerminatedError):
-                    # don't leave the job RUNNING forever
-                    logger.warning(
-                        "Interrupted while running job %s", job_config.job_id
-                    )
-                    queue.update_job_status(job_config.job_id, status=JobStatus.ERROR)
-                    raise
-                _record_result(queue, job_config, result)
-                timeout_ctr = 0.0  # reset timer, we got and did a job :)
-            case PendingReturn(jobs_report=report):
-                deadlocked_polls = _check_for_deadlock(queue, report, deadlocked_polls)
-                time.sleep(poll_time)
-                timeout_ctr += poll_time
-            case CompleteReturn():
-                return
+                    time.sleep(poll_time)
+                    timeout_ctr += poll_time
+                case CompleteReturn():
+                    return
 
-        if timeout is not None and timeout_ctr > timeout:
-            logger.warning("Worker died due to timeout - exiting")
-            return
+            if timeout is not None and timeout_ctr > timeout:
+                logger.warning("Worker died due to timeout - exiting")
+                return

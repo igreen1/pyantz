@@ -45,7 +45,8 @@ def test_non_empty_files_are_unchanged(
 ) -> None:
     """Searching real content works as before, including across lines."""
     path = tmp_path / "f.txt"
-    path.write_text(text, encoding="utf-8")
+    # newline="": Windows would write "\r\n", which "lo\nwo" doesn't match
+    path.write_text(text, encoding="utf-8", newline="")
 
     assert _contains(path, substring) is expected
 

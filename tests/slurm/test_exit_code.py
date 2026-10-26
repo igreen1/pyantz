@@ -9,10 +9,17 @@ import subprocess
 import sys
 from typing import TYPE_CHECKING, Any
 
+import pytest
+
 from pyantz.infrastructure.runner.slurm import slurm_runner
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the fake squeue is a bash script; slurm runs on Linux",
+)
 
 FAKE_SQUEUE = """#!/bin/bash
 echo "JOBID DEPENDENCY"

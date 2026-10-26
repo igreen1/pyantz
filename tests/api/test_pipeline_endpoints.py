@@ -191,7 +191,9 @@ def test_run_log_is_the_end_of_the_output(
 ) -> None:
     """The log can be read, and a limit keeps the end of it."""
     run_id = _start_run(client, monkeypatch)
-    (tmp_path / "runs" / run_id / "run.log").write_text("first\nsecond\nthird\n")
+    # newline="": the endpoint returns the bytes, which on Windows would be "\r\n"
+    log = tmp_path / "runs" / run_id / "run.log"
+    log.write_text("first\nsecond\nthird\n", newline="")
 
     whole = client.get(f"/api/v1.0/runs/{run_id}/log").json()
     tail = client.get(f"/api/v1.0/runs/{run_id}/log", params={"max_bytes": 6}).json()

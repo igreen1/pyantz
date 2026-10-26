@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import stat
+import sys
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -12,6 +13,11 @@ from pyantz import start
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the fake sbatch is a bash script; slurm runs on Linux",
+)
 
 NUM_JOBS = 2
 

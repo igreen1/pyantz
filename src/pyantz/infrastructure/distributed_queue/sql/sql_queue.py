@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     import uuid
     from collections.abc import Generator
     from pathlib import Path
+    from typing import Self
 
 
 BUSY_TIMEOUT_SECONDS = 30
@@ -161,12 +162,92 @@ class SqliteQueue(QueueInterface):
 
             """
             cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_SECONDS * 1000}")
+            # the mode is kept in the file: only switch a new file. Switching
+            # takes a lock without waiting for it, so it fails with "database is
+            # locked" while another process uses the file
+            (mode,) = cursor.execute("PRAGMA journal_mode").fetchone()
+            if mode != "wal":
+                cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.close()
 
         return engine
+
+    def close(self) -> None:
+        """Close the queue's pooled connections to :attr:`database_file`.
+
+        The queue can still be used: it reconnects when needed. Until closed, the
+        file stays open, which on Windows means it can't be deleted or replaced.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+
+        Example:
+            .. testsetup:: sql-queue-close
+
+                import os, shutil, tempfile
+                start_dir = os.getcwd()
+                os.chdir(tempfile.mkdtemp())
+
+            .. testcode:: sql-queue-close
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                with SqliteQueue(Path("close.db")) as queue:
+                    print(queue.get_jobs_report().total)
+                Path("close.db").unlink()
+
+            .. testoutput:: sql-queue-close
+
+                0
+
+            .. testcleanup:: sql-queue-close
+
+                tmp = os.getcwd()
+                os.chdir(start_dir)
+                shutil.rmtree(tmp)
+
+        """
+        self._engine.dispose()
+
+    def __enter__(self) -> Self:
+        """Use the queue in a ``with`` block, which closes it at the end.
+
+        Args:
+            None.
+
+        Returns:
+            Self: this queue.
+
+        Raises:
+            None.
+
+        """
+        return self
+
+    def __exit__(self, *_exc_info: object) -> None:
+        """Close the queue at the end of the ``with`` block.
+
+        Args:
+            *_exc_info: the exception raised in the block, if any (unused).
+
+        Returns:
+            None.
+
+        Raises:
+            None.
+
+        """
+        self.close()
 
     def get_job(self) -> GetJobReturn:
         """Return a job from the queue.

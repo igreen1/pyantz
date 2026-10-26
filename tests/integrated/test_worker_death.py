@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import os
+import signal
 from typing import TYPE_CHECKING, Any
 
+from pydantic import BaseModel
+
 from pyantz import start
+from pyantz.infrastructure.config import SubmissionFnType, add_parameters
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-DISPATCH = "pyantz.jobs.subproc.dispatch.dispatch"
 TOUCH = "pyantz.jobs.testing.touch_file.touch_file"
 
 
@@ -34,13 +37,24 @@ def _run(tmp_path: Path, jobs: list[dict[str, Any]], processes: int = 2) -> Sqli
     return SqliteQueue(work / "queue.db")
 
 
+class _NoParams(BaseModel):
+    """Parameters of the killer job."""
+
+
+@add_parameters(_NoParams)
+def kill_own_worker(_params: _NoParams, _submit: SubmissionFnType) -> bool:
+    """Kill the worker process running this job, which can't clean up after it.
+
+    SIGKILL can't be handled; Windows has no SIGKILL, but os.kill terminates the
+    process there.
+    """
+    os.kill(os.getpid(), getattr(signal, "SIGKILL", signal.SIGTERM))
+    return True
+
+
 def _killer(**extra: Any) -> dict[str, Any]:  # noqa: ANN401
-    """Job which kills the worker running it (its parent process) with SIGKILL."""
-    return {
-        "function": DISPATCH,
-        "parameters": {"cmd": ["sh", "-c", "kill -9 $PPID; sleep 30"]},
-        **extra,
-    }
+    """Job which kills the worker running it."""
+    return {"function": f"{__name__}.kill_own_worker", "parameters": {}, **extra}
 
 
 def test_killed_workers_job_is_failed_and_the_pipeline_finishes(

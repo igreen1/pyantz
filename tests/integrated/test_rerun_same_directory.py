@@ -61,17 +61,17 @@ def test_unfinished_jobs_of_old_run_are_not_run(tmp_path: Path) -> None:
     work.mkdir()
     output = tmp_path / "out"
     output.mkdir()
-    old_queue = SqliteQueue(work / "queue.db")
-    old_queue.add_job(
-        JobWithContext.model_validate(
-            {
-                "job_id": "old_job",
-                "function": "pyantz.jobs.testing.touch_file.touch_file",
-                "parameters": {"path": os.fspath(output / "old.txt")},
-            },
-        ),
-        None,
-    )
+    with SqliteQueue(work / "queue.db") as old_queue:
+        old_queue.add_job(
+            JobWithContext.model_validate(
+                {
+                    "job_id": "old_job",
+                    "function": "pyantz.jobs.testing.touch_file.touch_file",
+                    "parameters": {"path": os.fspath(output / "old.txt")},
+                },
+            ),
+            None,
+        )
 
     start(_config(work, output))
 

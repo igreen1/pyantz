@@ -34,7 +34,9 @@ def test_nonexistent_working_dir_valid_for_ssh_host() -> None:
         ),
     )
     assert isinstance(config.submitter, SlurmRunnerConfig)
-    assert os.fspath(config.submitter.working_dir) == "/cluster/only/path"
+    # written for the cluster as given, even when parsed on Windows
+    dumped = config.submitter.model_dump(mode="json")
+    assert dumped["working_dir"] == "/cluster/only/path"
 
 
 def test_start_errors_clearly_for_missing_working_dir(tmp_path: Path) -> None:

@@ -7,13 +7,17 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
+
+import pytest
 
 from pyantz.infrastructure.config import InitialConfig
 from pyantz.infrastructure.runner.slurm import slurm_runner, start
 
-if TYPE_CHECKING:
-    import pytest
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="run.sh is a bash script; slurm runs on Linux",
+)
 
 NOP = "pyantz.jobs.testing.nop.do_nothing"
 

@@ -53,7 +53,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 DEFAULT_JOB_TIMEOUT: int = 10_000  # about 2.8 hours
 """Default of :attr:`SlurmRunnerConfig.max_job_time_seconds`."""
@@ -81,9 +81,26 @@ class SlurmRunnerConfig(BaseModel):
     working_dir: Path
     """Directory shared between the submitting node and the compute nodes. Not
     checked when the config is parsed: with a remote host it only exists there
-    (it is checked when the slurm runner starts)."""
+    (it is checked when the slurm runner starts). Saved with ``/`` separators,
+    since slurm runs on Linux even when the config is written on Windows."""
 
     inherit_dependencies: bool = True
     """If some job A depends on job P and job P submits jobs P1 and P2: if true,
     A depends on P1 and P2 too (which needs ``scontrol`` to modify the pending
     jobs); if false, A depends only on P and may run before P1 and P2."""
+
+    @field_serializer("working_dir", when_used="json")
+    def _posix_working_dir(self, working_dir: Path) -> str:
+        """Write :attr:`working_dir` with ``/`` separators for the Linux cluster.
+
+        Args:
+            working_dir: the directory, as parsed on this machine.
+
+        Returns:
+            str: the directory with ``/`` separators.
+
+        Raises:
+            None.
+
+        """
+        return working_dir.as_posix()
