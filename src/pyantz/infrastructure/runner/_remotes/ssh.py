@@ -16,7 +16,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import paramiko
 
@@ -352,7 +352,7 @@ def run_ssh(config: InitialConfig) -> None:
         msg = f"run_ssh needs an 'ssh' host, got {config.host.type_!r}"
         raise RuntimeError(msg)
 
-    host_config: SshConfig = cast("SshConfig", config.host)
+    host_config: SshConfig = config.host
 
     ssh = paramiko.SSHClient()
     try:

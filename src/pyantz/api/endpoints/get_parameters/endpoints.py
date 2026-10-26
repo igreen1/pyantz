@@ -52,7 +52,7 @@ def strip_format[T](s: T) -> T:
             {
                 k: strip_format(v)  # pyright: ignore[reportUnknownArgumentType]
                 for k, v in s.items()  # pyright: ignore[reportUnknownVariableType]
-                if s.get("type") != "string" or k != "format"  # ty: ignore[invalid-argument-type] # pyright: ignore[reportUnknownMemberType]
+                if s.get("type") != "string" or k != "format"  # pyright: ignore[reportUnknownMemberType]
             },
         )
 

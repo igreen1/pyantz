@@ -30,7 +30,7 @@ def queue(tmp_path: Path) -> SqliteQueue:
 def _job(job_id: str, deps: set[str] | None = None) -> JobWithContext:
     return JobWithContext(
         job_id=job_id,
-        function=NOP,  # ty: ignore[invalid-argument-type]
+        function=NOP,
         parameters={},
         depends_on=deps,
     )

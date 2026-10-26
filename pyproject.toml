@@ -61,7 +61,7 @@ dev = [
     "codespell>=2.4.1",
     "hypothesis>=6.151.10",
     "mypy>=1.17.1",
-    "polars[all]>=1.39.3",
+    "polars[excel]>=1.39.3",
     "pylint>=4.0.4",
     "pytest>=9.0.2",
     "pytest-cov>=7.1.0",
@@ -72,6 +72,7 @@ dev = [
     "sphinx-book-theme>=1.2.0",
     "ty>=0.0.4",
     "types-docker>=7.1.0.20260402",
+    "types-paramiko>=5.0.0.20261021",
 ]
 
 [tool.ruff.lint.isort]
@@ -97,7 +98,8 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["D203", "D213", "COM812"]
+# CPY001: the source files carry no copyright notice
+ignore = ["D203", "D213", "COM812", "CPY001"]
 
 [tool.pylint.main]
 ignore-paths = ["^tests/*"]

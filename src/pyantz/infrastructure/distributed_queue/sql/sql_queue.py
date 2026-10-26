@@ -11,7 +11,7 @@ import logging
 import os
 import sqlite3
 from itertools import batched
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
 import sqlalchemy.event
@@ -701,7 +701,7 @@ class SqliteQueue(QueueInterface):
         """
         with Session(self._engine) as sesh:
             # update jobs to failure if depend on failure
-            failed_jobs: sa.Select[Any] = sa.Select(StatusTable.job_id).where(  # pyright: ignore[reportUnknownVariableType]
+            failed_jobs = sa.select(StatusTable.job_id).where(
                 StatusTable.job_status == JobStatus.ERROR,
             )
 

@@ -51,7 +51,7 @@ def test_non_virtual_function_is_explained() -> None:
             return deps
 
     with pytest.raises(ValidationError, match="mark_virtual"):
-        VirtualJobConfig(function=NotVirtual, parameters={})
+        VirtualJobConfig(function=NotVirtual, parameters={})  # ty: ignore[invalid-argument-type]
 
 
 def test_pipeline_must_be_iterable() -> None:

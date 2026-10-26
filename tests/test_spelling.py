@@ -10,9 +10,11 @@ import pytest
 
 SOURCE = Path(__file__).parent.parent / "src"
 
+# Sass from my AI Agent :(
 # typos which were in the code, spelled out so they don't come back
 PAST_TYPOS = (
     "lcoal",
+    "dadta",
     "fucntion",
     "re2quirements",
     "POssible",
