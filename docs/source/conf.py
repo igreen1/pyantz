@@ -14,6 +14,8 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+import pyantz
+
 if TYPE_CHECKING:
     from sphinx.application import Sphinx
     from sphinx.ext.autodoc import Options
@@ -23,7 +25,9 @@ sys.path.insert(0, str(Path("..").resolve()))
 project = "PyAntz"
 copyright = "2026, Ian Green"  # noqa: A001
 author = "Ian Green"
-release = "1.0.0"
+# the version bumpver keeps in src/pyantz/__init__.py, so the docs move with it
+release = pyantz.__version__
+version = ".".join(release.split(".")[:2])
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
