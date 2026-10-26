@@ -20,8 +20,8 @@ jobs:
     name: Lint (ruff, pylint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
       - run: uv sync --locked
       - name: ruff format
         run: uv run ruff format --check
@@ -34,8 +34,8 @@ jobs:
     name: Type check (ty, mypy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
       - run: uv sync --locked
       - name: ty
         run: uv run ty check
@@ -50,12 +50,12 @@ jobs:
       matrix:
         python: ["3.13", "3.14", "3.15"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           python-version: ${{ matrix.python }}
       # tests/frontend run the typescript of the frontend with node
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
       - run: uv sync --locked
@@ -67,8 +67,8 @@ jobs:
     name: Doctests and Sphinx docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
       - run: uv sync --locked
       - name: doctest
         working-directory: docs
@@ -77,7 +77,7 @@ jobs:
         working-directory: docs
         # -W: warnings (broken references, bad rst in docstrings) fail the build
         run: uv run make html SPHINXOPTS="-W --keep-going"
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: docs/build/html
 
@@ -94,7 +94,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 
   frontend:
     runs-on: ubuntu-latest
@@ -102,8 +102,8 @@ jobs:
       run:
         working-directory: frontend/pyantz
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -120,9 +120,9 @@ jobs:
       run:
         working-directory: frontend/pyantz
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -132,7 +132,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: playwright-traces
@@ -155,10 +155,10 @@ jobs:
     steps:
       # master, not this run's commit: the bump goes on top of master, and the
       # newer push (whose run waits for this one) releases it instead
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: master
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v10.3.2
       - id: bump
         run: |
           if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
@@ -189,12 +189,12 @@ jobs:
     steps:
       - id: tag
         run: echo "tag=${{ needs.bump.outputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ steps.tag.outputs.tag }}
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v10.3.2
       # the pyantz-frontend package builds the web ui with npm
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -210,7 +210,7 @@ jobs:
           fi
       - name: build pyantz and pyantz-frontend
         run: uv build --all-packages
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -224,8 +224,8 @@ jobs:
       contents: write
     steps:
       # gh release create --verify-tag needs the repository
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -250,7 +250,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
