@@ -1,4 +1,25 @@
-"""Configuration of a single job to be run."""
+"""Configuration of a single job to be run.
+
+Example of :class:`JobConfig`:
+
+    .. testcode::
+
+        from pyantz.infrastructure.config import JobConfig
+
+        job = JobConfig.model_validate(
+            {
+                "name": "say hi",
+                "function": "pyantz.jobs.testing.nop.do_nothing",
+                "parameters": {},
+                "max_retries": 2,
+            }
+        )
+        print(job.function.__name__, job.max_retries, job.dependency_type)
+
+    .. testoutput::
+
+        do_nothing 2 afterok
+"""
 
 from __future__ import annotations
 
@@ -40,10 +61,9 @@ class JobConfig(AbstractJobConfig):
 
     model_config = ConfigDict(frozen=True)
 
-    # human readable name for this job
     name: str | None = None
+    """Human readable name for this job."""
 
-    # function to actually run for this job
     function: Annotated[
         JobFunctionType,
         BeforeValidator(import_function_by_name),
@@ -54,32 +74,70 @@ class JobConfig(AbstractJobConfig):
             }
         ),
     ]
+    """Function to actually run for this job, given by its full import path."""
 
-    # when error recovering a job should hold how many times its been
-    # retried so the runner can decide whether to try to restart it
     num_attempted_runs: int = 0
+    """How many times the job has been run, so the runner can decide whether to
+    try it again."""
 
-    # if set, the local runner stops the job (and marks it as failed) after it has
-    # been running this many seconds. The job then runs in its own process
     timeout_seconds: float | None = Field(default=None, gt=0)
+    """If set, the local runner stops the job (and marks it as failed) after it
+    has been running this many seconds. The job then runs in its own process."""
 
-    # how many times a failed job is run again before it is given up on.
-    # Retried jobs run again from the start, so jobs which submit other jobs
-    # should not be retried (the children would be submitted twice)
     max_retries: int = Field(default=0, ge=0)
+    """How many times a failed job is run again before it is given up on. Retried
+    jobs run again from the start, so jobs which submit other jobs should not be
+    retried (the children would be submitted twice)."""
 
-    # how this job waits for the jobs it depends on (SLURM runner only; the local
-    # runner always waits for success): afterok runs it if they succeeded, afterany
-    # after they finished either way (e.g., cleanup jobs), afternotok only if one failed
     dependency_type: Literal["afterok", "afterany", "afternotok"] = "afterok"
+    """How this job waits for the jobs it depends on (SLURM runner only; the
+    local runner always waits for success): ``afterok`` runs it if they
+    succeeded, ``afterany`` after they finished either way (e.g., cleanup jobs),
+    ``afternotok`` only if one failed."""
 
-    # denotes that this a concrete job
-    # makes introspection easier/faster at runtime.
     virtual: Literal[False] = False
+    """Denotes that this a concrete job; makes introspection easier/faster at
+    runtime."""
 
     @model_validator(mode="after")
     def validate_fn(self) -> Self:
-        """Check the parameters for the function."""
+        """Check the parameters for the function.
+
+        See :func:`~pyantz.infrastructure.config.parameters.compile_check.check_config`
+        for when the parameters are checked.
+
+        Args:
+            None.
+
+        Returns:
+            Self: the validated job.
+
+        Raises:
+            ValueError: if the parameters are checked and don't fit the function's
+                parameters model, or the job is strict and its function isn't
+                registered.
+
+        Example:
+            .. testcode::
+
+                from pydantic import ValidationError
+
+                from pyantz.infrastructure.config import JobConfig
+
+                try:
+                    JobConfig(
+                        function="pyantz.jobs.files.simple.copy",
+                        parameters={"src": "a.txt"},  # dst is missing
+                        strict=True,
+                    )
+                except ValidationError:
+                    print("bad parameters")
+
+            .. testoutput::
+
+                bad parameters
+
+        """
         if not check_config(
             self,
             strict=self.strict,
@@ -91,7 +149,32 @@ class JobConfig(AbstractJobConfig):
 
     @field_serializer("function")
     def serialize_job_function(self, fn: JobFunctionType) -> str:
-        """Serialize the function."""
+        """Serialize the function.
+
+        Args:
+            fn: the job's function.
+
+        Returns:
+            str: the function's full import path.
+
+        Raises:
+            ValueError: if the function can't be imported by name, e.g., a lambda.
+
+        Example:
+            .. testcode::
+
+                from pyantz.infrastructure.config import JobConfig
+
+                job = JobConfig(
+                    function="pyantz.jobs.testing.nop.do_nothing", parameters={}
+                )
+                print(job.model_dump()["function"])
+
+            .. testoutput::
+
+                pyantz.jobs.testing.nop.do_nothing
+
+        """
         return serialize_function(fn)
 
 
@@ -101,6 +184,8 @@ class JobWithContext(JobConfig):
     model_config = ConfigDict(frozen=True)
 
     variables: Mapping[str, Any] | None = None
+    """The variables in scope of the job, used to fill in ``%{name}`` references
+    in its parameters (and in its ``job_id``, ``name`` and ``depends_on``)."""
 
     @model_validator(mode="before")
     @classmethod
@@ -109,6 +194,36 @@ class JobWithContext(JobConfig):
 
         This happens before validation, so the resolved values are validated
         like any value given directly.
+
+        Args:
+            data: the raw data being validated.
+
+        Returns:
+            Any: the data with variables resolved in ``job_id``, ``name`` and
+            ``depends_on``; anything which isn't a mapping is returned unchanged.
+
+        Raises:
+            ValueError: if a variable refers to itself (directly or not).
+
+        Example:
+            .. testcode::
+
+                from pyantz.infrastructure.config import JobWithContext
+
+                job = JobWithContext.model_validate(
+                    {
+                        "name": "fit_%{model}",
+                        "function": "pyantz.jobs.testing.nop.do_nothing",
+                        "parameters": {},
+                        "variables": {"model": "linear"},
+                    }
+                )
+                print(job.name)
+
+            .. testoutput::
+
+                fit_linear
+
         """
         if not isinstance(data, Mapping):
             return data
@@ -144,6 +259,24 @@ class JobWithContext(JobConfig):
         Returns:
             JobWithContext: job as defined, with default variables if not present
 
+        Raises:
+            pydantic.ValidationError: if the configuration isn't a valid job.
+
+        Example:
+            .. testcode::
+
+                from pyantz.infrastructure.config import JobConfig, JobWithContext
+
+                job = JobConfig(
+                    function="pyantz.jobs.testing.nop.do_nothing", parameters={}
+                )
+                with_context = JobWithContext.from_config(job)
+                print(with_context.job_id == job.job_id, with_context.variables)
+
+            .. testoutput::
+
+                True None
+
         """
         # no dump round-trip: the function is passed as the callable it already is,
         # instead of being serialized to a name and imported again
@@ -156,7 +289,35 @@ class JobWithContext(JobConfig):
         )
 
     def inherit_context(self, parent_context: Mapping[str, Any]) -> JobWithContext:
-        """Create a JobWithContext inheriting parent variables."""
+        """Create a JobWithContext inheriting parent variables.
+
+        Args:
+            parent_context: the variables of the parent; this job's own variables
+                take precedence over them.
+
+        Returns:
+            JobWithContext: a copy of this job with the combined variables.
+
+        Raises:
+            None.
+
+        Example:
+            .. testcode::
+
+                from pyantz.infrastructure.config import JobWithContext
+
+                job = JobWithContext(
+                    function="pyantz.jobs.testing.nop.do_nothing",
+                    parameters={},
+                    variables={"a": "mine"},
+                )
+                print(job.inherit_context({"a": "parent", "b": "parent"}).variables)
+
+            .. testoutput::
+
+                {'a': 'mine', 'b': 'parent'}
+
+        """
         return self.model_copy(
             update={
                 "variables": {
@@ -170,7 +331,42 @@ class JobWithContext(JobConfig):
 def make_job(
     config: Any,  # noqa: ANN401
 ) -> JobConfig | VirtualJobConfig:
-    """Make a job based on a user provided configuration."""
+    """Make a job based on a user provided configuration.
+
+    The job is virtual if its ``virtual`` key says so or, without one, if its
+    ``function`` is marked with
+    :func:`~pyantz.infrastructure.config.mark_virtual`.
+
+    Args:
+        config: a job configuration (returned unchanged) or a mapping describing
+            one.
+
+    Returns:
+        JobConfig | VirtualJobConfig: the validated job.
+
+    Raises:
+        TypeError: if ``config`` isn't a mapping or job configuration.
+        ValueError: if ``config`` has no ``function``, or it can't be imported.
+        pydantic.ValidationError: if ``config`` isn't a valid job.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.job import make_job
+
+            job = make_job(
+                {
+                    "function": "pyantz.virtual.add_variables.AddVariables",
+                    "parameters": {"variables": {}},
+                }
+            )
+            print(type(job).__name__)
+
+        .. testoutput::
+
+            VirtualJobConfig
+
+    """
     if isinstance(config, (AbstractJobConfig)):
         return config  # type: ignore[return-value] # pyright: ignore[reportReturnType]
     if not isinstance(config, Mapping):

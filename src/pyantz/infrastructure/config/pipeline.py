@@ -39,6 +39,20 @@ def _make_pipeline(
     Raises:
         TypeError: If ``pipeline`` is not iterable.
 
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.pipeline import _make_pipeline
+
+            jobs = _make_pipeline(
+                [{"function": "pyantz.jobs.testing.nop.do_nothing", "parameters": {}}]
+            )
+            print(type(jobs[0]).__name__)
+
+        .. testoutput::
+
+            JobConfig
+
     """
     if not isinstance(pipeline, Iterable):
         msg = f"A pipeline must be a list of jobs, got {type(pipeline).__name__}"
@@ -50,3 +64,4 @@ def _make_pipeline(
 type JobPipeline = Annotated[
     list[JobConfig | VirtualJobConfig], BeforeValidator(_make_pipeline)
 ]
+"""A list of jobs, given as job configs or the mappings describing them."""

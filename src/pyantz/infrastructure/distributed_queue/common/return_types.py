@@ -10,6 +10,27 @@ It wraps one of three payload types:
 
 :class:`JobsReport` is a snapshot of job counts by status, used for
 debugging and progress monitoring.
+
+Example of :class:`GetJobReturn`:
+
+    .. testcode::
+
+        from pyantz.infrastructure.distributed_queue.common import (
+            GetJobReturn,
+        )
+
+        report = {
+            "total": 1, "success": 1, "error": 0, "pending": 0, "ready": 0,
+            "running": 0,
+        }
+        result = GetJobReturn.model_validate(
+            {"payload": {"type_": "complete", "jobs_report": report}}
+        )
+        print(result.payload.type_, result.payload.jobs_report.all_succeeded)
+
+    .. testoutput::
+
+        complete True
 """
 
 from __future__ import annotations
@@ -24,59 +45,93 @@ from pyantz.infrastructure.config.job import JobWithContext
 
 
 class JobStatus(IntEnum):
-    """Possible statuses of a job."""
+    """Possible statuses of a job.
 
-    # job can be run! just waiting for a worker
+    A job starts PENDING, becomes READY once every job it depends on succeeded,
+    RUNNING when a worker takes it, and finally SUCCESS or ERROR. A job whose
+    dependency fails becomes ERROR too.
+    """
+
     READY = 0
-    # job is waiting for dependencies
+    """Job can be run! Just waiting for a worker."""
+
     PENDING = 1
-    # job is running on a worker right now
+    """Job is waiting for dependencies."""
+
     RUNNING = 2
-    # something went wrong; this job will never be completed
-    # depending on the setup, this might cause the whole pipeline to shutdown
+    """Job is running on a worker right now."""
+
     ERROR = 3
-    # success! The job completed
+    """Something went wrong; this job will never be completed. Depending on the
+    setup, this might cause the whole pipeline to shutdown."""
+
     SUCCESS = 4
+    """Success! The job completed."""
 
 
 class JobStatusReport(BaseModel):
     """Status of a job."""
 
-    # identifier for the job
     job_id: str | uuid.UUID
+    """Identifier for the job."""
 
-    # actual status of the job
     status: JobStatus
+    """Actual status of the job."""
 
-    # additional information about the status
-    # for example, for errors this is the error message
     status_details: str | None = None
+    """Additional information about the status; for example, for errors this is
+    the error message."""
 
 
 class JobsReport(BaseModel):
     """Debug message with counts of various jobs for runtime analysis."""
 
-    # total number of unique jobs put on the queue
     total: int = Field(ge=0)
+    """Total number of unique jobs put on the queue."""
 
-    # num jobs which updated themselves as successful
     success: int = Field(ge=0)
+    """Number of jobs which updated themselves as successful."""
 
-    # num jobs which updated themselves as error
     error: int = Field(ge=0)
+    """Number of jobs which updated themselves as error."""
 
-    # num jobs waiting for dependnecies before running
     pending: int = Field(ge=0)
+    """Number of jobs waiting for dependencies before running."""
 
-    # num jobs that could be run RIGHT NOW
     ready: int = Field(ge=0)
+    """Number of jobs that could be run RIGHT NOW."""
 
-    # num jobs currently being run by a worker
     running: int = Field(ge=0)
+    """Number of jobs currently being run by a worker."""
 
     @property
     def all_succeeded(self) -> bool:
-        """True if no job errored and none is left unfinished."""
+        """True if no job errored and none is left unfinished.
+
+        Args:
+            None.
+
+        Returns:
+            bool: True if every job finished successfully.
+
+        Raises:
+            None.
+
+        Example:
+            .. testcode::
+
+                from pyantz.infrastructure.distributed_queue.common import JobsReport
+
+                report = JobsReport(
+                    total=3, success=2, error=0, pending=0, ready=0, running=1
+                )
+                print(report.all_succeeded)
+
+            .. testoutput::
+
+                False
+
+        """
         return (
             self.error == 0
             and self.pending == 0
@@ -88,31 +143,34 @@ class JobsReport(BaseModel):
 class PendingReturn(BaseModel):
     """Indicates that the queue returned nothing but may return something later."""
 
-    # used at runtime to indicate that the return was "pending"
-    # faster/easier than an isinstance check
     type_: Literal["pending"] = "pending"
+    """Tells the returns apart at runtime; faster/easier than an isinstance
+    check."""
 
     jobs_report: JobsReport
+    """The state of the queue."""
 
 
 class CompleteReturn(BaseModel):
     """Indicates that the queue is empty and will not have additional jobs added."""
 
-    # used at runtime to indicate that the return was "complete"
-    # faster/easier than an isinstance check
     type_: Literal["complete"] = "complete"
+    """Tells the returns apart at runtime; faster/easier than an isinstance
+    check."""
 
     jobs_report: JobsReport
+    """The final state of the queue."""
 
 
 class JobReturn(BaseModel):
     """Actual job returned to be run."""
 
-    # used at runtime to indicate that the return was returned
-    # faster/easier than an isinstance check
     type_: Literal["job"] = "job"
+    """Tells the returns apart at runtime; faster/easier than an isinstance
+    check."""
 
     job: JobWithContext
+    """The job to run."""
 
 
 class GetJobReturn(BaseModel):
@@ -128,7 +186,5 @@ class GetJobReturn(BaseModel):
     3. Complete: the queue is empty and the worker should kill itself
     """
 
-    # the actual return value
-    # probably could've used rootmodel to avoid this wrapper
-    # but this is easier to understand in my opinion
     payload: JobReturn | CompleteReturn | PendingReturn = Field(discriminator="type_")
+    """The actual return value, told apart by its ``type_``."""

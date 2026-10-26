@@ -25,8 +25,9 @@ from ._transfers import get_cmd, get_environment, get_project_dir, get_setup_tar
 if TYPE_CHECKING:
     from pyantz.infrastructure.config import InitialConfig, SshConfig
 
-# where the output of a background run is written, in the remote working directory
 REMOTE_LOG_FILE = "pyantz.log"
+"""Where the output of a background run is written, in the remote working
+directory."""
 
 
 def _run_checked(ssh: paramiko.SSHClient, cmd: str, description: str) -> str:
@@ -69,6 +70,17 @@ def _make_remote_dir(ssh: paramiko.SSHClient, path: str) -> None:
 
     Unlike ``sftp.mkdir`` this doesn't fail when the directory already exists
     (for example when re-running) or when parent directories are missing.
+
+    Args:
+        ssh: connected client.
+        path: the directory to create on the remote.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: if ``mkdir -p`` fails on the remote.
+
     """
     _, stdout, stderr = ssh.exec_command(f"mkdir -p {shlex.quote(path)}")
     exit_code = stdout.channel.recv_exit_status()
@@ -85,7 +97,44 @@ def _build_remote_command(
     working_dir: str,
     addl_requirements: list[str],
 ) -> str:
-    """Build the shell command which runs pyantz in the remote working directory."""
+    r"""Build the shell command which runs pyantz in the remote working directory.
+
+    Every value is quoted for the shell. With ``run_async``, the command runs in
+    the background with its output in :data:`REMOTE_LOG_FILE`.
+
+    Args:
+        host_config: the ssh host's configuration.
+        working_dir: the directory on the remote holding ``config.json``.
+        addl_requirements: more arguments for ``uvx``.
+
+    Returns:
+        str: the shell command.
+
+    Raises:
+        OSError: if the environment variables file can't be read.
+        ValueError: if the environment variables file is invalid.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config import SshConfig
+            from pyantz.infrastructure.runner._remotes.ssh import _build_remote_command
+
+            host = SshConfig(
+                remote_host="hpc",
+                remote_user="me",
+                copy_project_dir=True,
+                environment_variables={"MODE": "fast"},
+            )
+            command = _build_remote_command(host, "/tmp/run 1", [])
+            print(command.replace(" > ", "\n> "))
+
+        .. testoutput::
+
+            cd '/tmp/run 1' && nohup env MODE=fast uvx pyantz '/tmp/run 1/config.json'
+            > pyantz.log 2>&1 < /dev/null &
+
+    """
     cmd = get_cmd(host_config, working_dir, addl_requirements)
     environment = get_environment(host_config)
     if environment:
@@ -125,7 +174,20 @@ def _build_remote_command(
 
 
 def _sync_output(host_config: SshConfig, working_dir: str) -> None:
-    """Copy the remote working directory to the local output directory."""
+    """Copy the remote working directory to the local output directory.
+
+    Args:
+        host_config: the ssh host's configuration, with ``output_dir`` set.
+        working_dir: the directory on the remote to copy.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: if ``output_dir`` isn't set or ``rsync`` isn't installed.
+        subprocess.CalledProcessError: if ``rsync`` fails.
+
+    """
     if host_config.output_dir is None:
         # the model validates this, the check is for the type checker
         msg = "output_dir must be set when sync_data_at_end is true"
@@ -156,7 +218,20 @@ def _prepare_working_dir(
     ssh: paramiko.SSHClient,
     host_config: SshConfig,
 ) -> str:
-    """Create (or pick) the directory on the remote that the pipeline runs in."""
+    """Create (or pick) the directory on the remote that the pipeline runs in.
+
+    Args:
+        ssh: connected client.
+        host_config: the ssh host's configuration; if it has no ``working_dir``,
+            a new temporary directory is made on the remote.
+
+    Returns:
+        str: the path of the directory on the remote.
+
+    Raises:
+        RuntimeError: if the directory can't be created.
+
+    """
     logger = logging.getLogger(__name__)
     if host_config.working_dir is not None:
         _make_remote_dir(ssh, host_config.working_dir)
@@ -174,7 +249,29 @@ def _prepare_working_dir(
 
 
 def _host_key_policy(name: str) -> paramiko.MissingHostKeyPolicy:
-    """Get the paramiko policy for hosts which are not in the known hosts."""
+    """Get the paramiko policy for hosts which are not in the known hosts.
+
+    Args:
+        name: ``reject``, ``warn`` or ``auto_add``.
+
+    Returns:
+        paramiko.MissingHostKeyPolicy: the policy.
+
+    Raises:
+        KeyError: if the name is unknown.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.runner._remotes.ssh import _host_key_policy
+
+            print(type(_host_key_policy("warn")).__name__)
+
+        .. testoutput::
+
+            WarningPolicy
+
+    """
     policies: dict[str, type[paramiko.MissingHostKeyPolicy]] = {
         "reject": paramiko.RejectPolicy,
         "warn": paramiko.WarningPolicy,
@@ -184,7 +281,25 @@ def _host_key_policy(name: str) -> paramiko.MissingHostKeyPolicy:
 
 
 def _connect(ssh: paramiko.SSHClient, host_config: SshConfig) -> None:
-    """Connect, trying keys first and falling back to a password."""
+    """Connect, trying keys first and falling back to a password.
+
+    The password is only asked for when there is a terminal.
+
+    Args:
+        ssh: the client to connect.
+        host_config: the ssh host's configuration.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: if keys don't work and there is no terminal to ask for a
+            password.
+        paramiko.SSHException: if the connection fails, e.g., the host is
+            unknown and the policy rejects it.
+        OSError: if the host can't be reached.
+
+    """
     logger = logging.getLogger(__name__)
     ssh.load_system_host_keys()
     ssh.set_missing_host_key_policy(_host_key_policy(host_config.known_hosts_policy))
@@ -216,7 +331,23 @@ def _connect(ssh: paramiko.SSHClient, host_config: SshConfig) -> None:
 
 
 def run_ssh(config: InitialConfig) -> None:
-    """Copy our files to a remote and run."""
+    """Copy our files to a remote and run.
+
+    Connects to the host, copies the configuration (and, if asked, the project)
+    to the remote working directory and runs pyantz there; see
+    :class:`~pyantz.infrastructure.config.SshConfig` for the options.
+
+    Args:
+        config: the pipeline's configuration, with an ``ssh`` host.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: if the host isn't ssh, or a step fails on the remote.
+        paramiko.SSHException: if the connection fails.
+
+    """
     if config.host.type_ != "ssh":
         msg = f"run_ssh needs an 'ssh' host, got {config.host.type_!r}"
         raise RuntimeError(msg)
@@ -237,7 +368,22 @@ def _run_on_connection(
     config: InitialConfig,
     host_config: SshConfig,
 ) -> None:
-    """Copy our files to the connected remote and run."""
+    """Copy our files to the connected remote and run.
+
+    Args:
+        ssh: connected client.
+        config: the pipeline's configuration.
+        host_config: the ssh host's configuration.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: if a step fails on the remote.
+        OSError: if the files can't be copied.
+        subprocess.CalledProcessError: if copying the results back fails.
+
+    """
     logger = logging.getLogger(__name__)
 
     sftp = ssh.open_sftp()

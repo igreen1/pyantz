@@ -38,14 +38,12 @@ class ExternalExtractParams(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    #: Arguments to pass directly to the job
     function_args: list[Any] = Field(default_factory=list)
+    """Positional arguments to pass directly to the function."""
 
-    #: Keyword arguments to pass directly to the job
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
+    """Keyword arguments to pass directly to the function."""
 
-    #: Fully resolved name of the function, e.g. `package.module.function`
-    #: Function must return a polars dataframe
     external_function: Annotated[
         Callable[..., pl.DataFrame | pl.LazyFrame],
         BeforeValidator(import_function_by_name),
@@ -56,16 +54,29 @@ class ExternalExtractParams(BaseModel):
             }
         ),
     ]
+    """Fully resolved name of the function, e.g. ``package.module.function``; it
+    must return a polars DataFrame or LazyFrame."""
 
-    #: Location to save the result from the function
     result_parquet_location: str
+    """Location to save the result from the function."""
 
     @field_serializer("external_function")
     def serialize_job_function(
         self,
         fn: Callable[..., pl.DataFrame | pl.LazyFrame],
     ) -> str:
-        """Serialize the function."""
+        """Serialize the function.
+
+        Args:
+            fn: the function to serialize.
+
+        Returns:
+            str: the function's full import path.
+
+        Raises:
+            ValueError: if the function can't be imported by name, e.g., a lambda.
+
+        """
         return serialize_function(fn)
 
 
@@ -76,7 +87,59 @@ def save_from_external_extraction(params: ExternalExtractParams) -> bool:
 
     While the user could directly call their function, the utility of this
     function is saving it in the parquet file, allowing the user to ignore the file
-    system fun.
+    system fun. Missing parent directories of the parquet are created.
+
+    Args:
+        params: the job's parameters, validated as :class:`ExternalExtractParams`.
+
+    Parameters:
+        function_args (list[Any]): positional arguments for the function.
+            Defaults to none.
+        function_kwargs (dict[str, Any]): keyword arguments for the function.
+            Defaults to none.
+        external_function (str): import path of the function, which must return
+            a polars DataFrame or LazyFrame.
+        result_parquet_location (str): parquet file to save the result to.
+
+    Returns:
+        bool: True if the result was saved, False if the function raises, returns
+        something other than a dataframe, or the parquet can't be written.
+
+    Raises:
+        None: failures are logged and reported by returning False.
+
+    Example:
+        .. testsetup:: analysis-extract
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: analysis-extract
+
+            import polars as pl
+
+            from pyantz.jobs.analysis.external import save_from_external_extraction
+
+            save_from_external_extraction(
+                {
+                    "external_function": "polars.DataFrame",
+                    "function_kwargs": {"data": {"a": [1, 2, 3]}},
+                    "result_parquet_location": "out/extracted.parquet",
+                },
+                lambda job: None,
+            )
+            print(pl.read_parquet("out/extracted.parquet")["a"].to_list())
+
+        .. testoutput:: analysis-extract
+
+            [1, 2, 3]
+
+        .. testcleanup:: analysis-extract
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
 
     """
     logger = logging.getLogger(__name__)
@@ -111,13 +174,12 @@ class ExternalSimpleParams(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    #: Arguments to pass directly to the job
     function_args: list[Any] = Field(default_factory=list)
+    """Positional arguments to pass directly to the function."""
 
-    #: Keyword arguments to pass directly to the job
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
+    """Keyword arguments to pass directly to the function."""
 
-    #: Fully resolved name of the function, e.g. `package.module.function`
     external_function: Annotated[
         Callable[..., Any],
         BeforeValidator(import_function_by_name),
@@ -128,20 +190,68 @@ class ExternalSimpleParams(BaseModel):
             }
         ),
     ]
+    """Fully resolved name of the function, e.g. ``package.module.function``."""
 
     @field_serializer("external_function")
     def serialize_job_function(
         self,
         fn: Callable[..., Any],
     ) -> str:
-        """Serialize the function."""
+        """Serialize the function.
+
+        Args:
+            fn: the function to serialize.
+
+        Returns:
+            str: the function's full import path.
+
+        Raises:
+            ValueError: if the function can't be imported by name, e.g., a lambda.
+
+        """
         return serialize_function(fn)
 
 
 @add_parameters(ExternalSimpleParams)
 @no_submit_fn
 def external_simple(params: ExternalSimpleParams) -> bool:
-    """Call the external function."""
+    """Call the external function.
+
+    Args:
+        params: the job's parameters, validated as :class:`ExternalSimpleParams`.
+
+    Parameters:
+        function_args (list[Any]): positional arguments for the function.
+            Defaults to none.
+        function_kwargs (dict[str, Any]): keyword arguments for the function.
+            Defaults to none.
+        external_function (str): import path of the function to call.
+
+    Returns:
+        bool: the function's result if it returns a bool, False if it raises, and
+        True otherwise.
+
+    Raises:
+        None: failures are logged and reported by returning False.
+
+    Example:
+        .. testcode::
+
+            from pyantz.jobs.analysis.external import external_simple
+
+            def submit(job):
+                pass
+
+            for args in ([1, 1], [1, 2]):
+                params = {"external_function": "operator.eq", "function_args": args}
+                print(external_simple(params, submit))
+
+        .. testoutput::
+
+            True
+            False
+
+    """
     logger = logging.getLogger(__name__)
 
     try:
@@ -162,23 +272,22 @@ class ExternalAnalysisParams(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    #: map variable names to parquet files
-    #: the parquet files will be read into polars lazy or dataframes
-    #: and passed as kwargs to the analysis function
     variable_names_to_parquets: Mapping[str, Path]
+    """Maps keyword argument names to parquet files; the parquet files are read
+    into polars LazyFrames or DataFrames and passed as keyword arguments to the
+    analysis function."""
 
-    #: if lazy, all dataframes are scanned lazily (polars LazyFrames)
-    #: if eager, all dataframes are read into memory (polars DataFrames)
-    #: if a mapping, maps each variable name from `variable_names_to_files` to one
     lazy_or_eager: Literal["lazy", "eager"] | Mapping[str, Literal["lazy", "eager"]]
+    """If ``lazy``, all dataframes are scanned lazily (polars LazyFrames); if
+    ``eager``, all dataframes are read into memory (polars DataFrames); if a
+    mapping, maps each name of ``variable_names_to_parquets`` to one of those."""
 
-    #: Arguments to pass directly to the job
     function_args: list[Any] = Field(default_factory=list)
+    """Positional arguments to pass directly to the function."""
 
-    #: Keyword arguments to pass directly to the job
     function_kwargs: dict[str, Any] = Field(default_factory=dict)
+    """Keyword arguments to pass directly to the function."""
 
-    #: Fully resolved name of the function, e.g. `package.module.function`
     external_function: Annotated[
         Callable[..., Any],
         BeforeValidator(import_function_by_name),
@@ -189,20 +298,98 @@ class ExternalAnalysisParams(BaseModel):
             }
         ),
     ]
+    """Fully resolved name of the function, e.g. ``package.module.function``."""
 
     @field_serializer("external_function")
     def serialize_job_function(
         self,
         fn: Callable[..., Any],
     ) -> str:
-        """Serialize the function."""
+        """Serialize the function.
+
+        Args:
+            fn: the function to serialize.
+
+        Returns:
+            str: the function's full import path.
+
+        Raises:
+            ValueError: if the function can't be imported by name, e.g., a lambda.
+
+        """
         return serialize_function(fn)
 
 
 @add_parameters(ExternalAnalysisParams)
 @no_submit_fn
 def external_analysis(params: ExternalAnalysisParams) -> bool:
-    """Call some external function with the data loaded into polars."""
+    """Call some external function with the data loaded into polars.
+
+    Each parquet of ``variable_names_to_parquets`` is loaded and passed to the
+    function as the keyword argument of its name, after ``function_args`` and
+    along with ``function_kwargs``. The function's result is discarded.
+
+    Args:
+        params: the job's parameters, validated as :class:`ExternalAnalysisParams`.
+
+    Parameters:
+        variable_names_to_parquets (Mapping[str, Path]): keyword argument names
+            mapped to the parquet files to load for them.
+        lazy_or_eager (str | Mapping[str, str]): ``lazy`` (LazyFrames), ``eager``
+            (DataFrames), or one of those for each keyword argument name.
+        function_args (list[Any]): positional arguments for the function.
+            Defaults to none.
+        function_kwargs (dict[str, Any]): more keyword arguments for the
+            function. Defaults to none.
+        external_function (str): import path of the function to call.
+
+    Returns:
+        bool: True if the function ran, False if the data can't be loaded (or a
+        name has no ``lazy_or_eager`` entry) or the function raises.
+
+    Raises:
+        None: failures are logged and reported by returning False.
+
+    Example:
+        .. testsetup:: analysis-external
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: analysis-external
+
+            import polars as pl
+
+            from pyantz.jobs.analysis.external import external_analysis
+
+            pl.DataFrame({"a": [1, 2, 3]}).write_parquet("numbers.parquet")
+
+            # in a configuration, the function is given by its import path
+            def report_total(numbers, label):
+                print(label, numbers["a"].sum())
+
+            external_analysis(
+                {
+                    "variable_names_to_parquets": {"numbers": "numbers.parquet"},
+                    "lazy_or_eager": "eager",
+                    "function_kwargs": {"label": "total:"},
+                    "external_function": report_total,
+                },
+                lambda job: None,
+            )
+
+        .. testoutput:: analysis-external
+
+            total: 6
+
+        .. testcleanup:: analysis-external
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
     logger = logging.getLogger(__name__)
 
     _mapping: dict[Literal["lazy", "eager"], Callable[..., Any]] = {
@@ -211,6 +398,19 @@ def external_analysis(params: ExternalAnalysisParams) -> bool:
     }
 
     def get_loader_func(variable_name: str) -> Callable[..., Any]:
+        """Get the function which loads the parquet of a keyword argument.
+
+        Args:
+            variable_name: the name of the keyword argument.
+
+        Returns:
+            Callable[..., Any]: :func:`polars.scan_parquet` (lazy) or
+            :func:`polars.read_parquet` (eager).
+
+        Raises:
+            RuntimeError: if ``lazy_or_eager`` is a mapping without the name.
+
+        """
         if isinstance(params.lazy_or_eager, Mapping):
             return_type = params.lazy_or_eager.get(variable_name)
             if not return_type:

@@ -22,7 +22,20 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 def _current_user() -> str:
-    """Get the name of the user running pyantz."""
+    """Get the name of the user running pyantz.
+
+    Used as the default of :attr:`SshConfig.remote_user`.
+
+    Args:
+        None.
+
+    Returns:
+        str: the login name of the current user.
+
+    Raises:
+        OSError: if the user's name can't be found (see :func:`getpass.getuser`).
+
+    """
     return getpass.getuser()
 
 
@@ -32,6 +45,7 @@ class LocalConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     type_: Literal["local"] = "local"
+    """Identifies this host configuration."""
 
 
 class RemoteConfig(BaseModel):
@@ -42,33 +56,35 @@ class RemoteConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # if set, a file on *this* machine with `KEY=VALUE` lines (blank lines and
-    # `#` comments are ignored) which is read and sent as environment variables
-    # of the remote command. Variables in `environment_variables` take precedence
     environment_variables_file: str | None = None
+    """If set, a file on *this* machine with ``KEY=VALUE`` lines (blank lines and
+    ``#`` comments are ignored) which is read and sent as environment variables
+    of the remote command. Variables in ``environment_variables`` take
+    precedence."""
 
-    # if set, the working directory from the remote
-    # will be copied to this directory
     output_dir: str | None = None
+    """If set, the working directory from the remote will be copied to this
+    directory."""
 
-    # if set, will use this as the directory to run as cwd
-    # if not set, ssh hosts use a new temporary directory created on the remote
-    # and containers use /workspace
     working_dir: str | None = None
+    """If set, the directory to run in on the remote; if not set, ssh hosts use a
+    new temporary directory created on the remote and containers use
+    ``/workspace``."""
 
-    # files to add as python requirements
     requirements: list[str] | None = None
+    """Python requirements to install on the remote (as given to ``pip
+    install``)."""
 
-    # if true, copy this project directory
-    # primarily useful for testing
     copy_project_dir: bool = False
+    """If true, copy this project directory to the remote; primarily useful for
+    testing."""
 
-    # after connecting to the remote, what host to use there
     subsequent_host: HostConfig = LocalConfig()
+    """After connecting to the remote, what host to use there."""
 
-    # environment variables to set for the command run on the remote host
-    # (for containers, in the container)
     environment_variables: Mapping[str, str] = Field(default_factory=dict)
+    """Environment variables to set for the command run on the remote host (for
+    containers, in the container)."""
 
 
 class SshConfig(RemoteConfig):
@@ -77,39 +93,69 @@ class SshConfig(RemoteConfig):
     model_config = ConfigDict(frozen=True)
 
     type_: Literal["ssh"] = "ssh"
+    """Identifies this host configuration."""
 
-    # host to ssh
     remote_host: str
+    """Host to ssh into."""
 
-    # port to use for ssh (default is 22)
     remote_port: int = 22
+    """Port to use for ssh."""
 
-    # defaults to the current user, looked up when the config is created
     remote_user: str = Field(default_factory=_current_user)
+    """User to log in as; defaults to the current user, looked up when the config
+    is created."""
 
-    # seconds to wait when connecting before giving up
     connect_timeout: float = 30
+    """Seconds to wait when connecting before giving up."""
 
-    # private key file to authenticate with; if not set, paramiko tries the
-    # ssh agent and the usual keys in ~/.ssh
     key_filename: str | None = None
+    """Private key file to authenticate with; if not set, paramiko tries the ssh
+    agent and the usual keys in ``~/.ssh``."""
 
-    # what to do with a host that is not in the known hosts:
-    # "reject" refuses to connect, "warn" connects and logs a warning,
-    # "auto_add" trusts and remembers it (unsafe on untrusted networks)
     known_hosts_policy: Literal["reject", "warn", "auto_add"] = "reject"
+    """What to do with a host that is not in the known hosts: ``reject`` refuses
+    to connect, ``warn`` connects and logs a warning, ``auto_add`` trusts and
+    remembers it (unsafe on untrusted networks)."""
 
-    # if set to true, will not wait for the command to finish to terminate
-    # the ssh terminal
     run_async: bool = True
+    """If true, don't wait for the command to finish before closing the ssh
+    connection."""
 
-    # sync data back after running?
-    # if set to a truthy value, will rsync data from remote working dir to this location
     sync_data_at_end: bool = False
+    """If true, copy the remote working directory back to ``output_dir`` once
+    the command finishes; needs ``run_async`` to be false."""
 
     @model_validator(mode="after")
     def check_syncs(self) -> Self:
-        """Check that sync settings make sense."""
+        """Check that sync settings make sense.
+
+        Args:
+            None.
+
+        Returns:
+            Self: the validated configuration.
+
+        Raises:
+            ValueError: if ``sync_data_at_end`` is set with ``run_async`` or
+                without ``output_dir``.
+
+        Example:
+            .. testcode::
+
+                from pydantic import ValidationError
+
+                from pyantz.infrastructure.config import SshConfig
+
+                try:
+                    SshConfig(remote_host="hpc", sync_data_at_end=True)
+                except ValidationError:
+                    print("can't sync data at the end of an async run")
+
+            .. testoutput::
+
+                can't sync data at the end of an async run
+
+        """
         if self.sync_data_at_end and self.run_async:
             msg = "Cannot run async and sync data at the end of ssh runs."
             raise ValueError(msg)
@@ -125,20 +171,24 @@ class ContainerConfig(RemoteConfig):
     model_config = ConfigDict(frozen=True)
 
     type_: Literal["container"] = "container"
+    """Identifies this host configuration."""
 
-    # which docker software to use
     container_service: Literal["podman", "docker"] = "docker"
+    """Which container software to use."""
 
     image: str = "ghcr.io/astral-sh/uv:alpine"
+    """Image to run if no container is named; it must provide ``uv``."""
 
-    # name of the container to exec into
     name: str | None = None
+    """Name of the running container to exec into; if not set, a new container
+    is started from ``image``."""
 
 
 type HostConfig = Annotated[
     SshConfig | ContainerConfig | LocalConfig,
     Field(discriminator="type_"),
 ]
+"""Any host configuration, told apart by its ``type_``."""
 
 
 # HostConfig is defined after the classes that refer to it

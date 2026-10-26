@@ -17,8 +17,10 @@ class FromCsvToParquetParameters(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     csv_file: Path
+    """Csv file to read."""
 
     parquet_file: Path
+    """Parquet file to write."""
 
 
 @add_parameters(FromCsvToParquetParameters)
@@ -26,50 +28,68 @@ class FromCsvToParquetParameters(BaseModel):
 def csv_to_parquet(params: FromCsvToParquetParameters) -> bool:
     """Use polars to load a csv and dump it into a parquet.
 
-    :Example:
+    The csv is streamed into the parquet, so it doesn't need to fit in memory.
 
-    .. testsetup::
+    Args:
+        params: the job's parameters, validated as :class:`FromCsvToParquetParameters`.
 
-        import polars as pl
-        pl.DataFrame({
-            "a": [1, 2, 3],
-            "b": [4.1, 5.1, 6.2],
-        }).write_csv("some_csv.csv")
+    Parameters:
+        csv_file (Path): csv file to read.
+        parquet_file (Path): parquet file to write.
 
-    .. testcode::
+    Returns:
+        bool: True if the parquet was written, False if the csv doesn't exist or
+        can't be converted.
 
-        import polars as pl
-        from polars.testing import assert_frame_equal
+    Raises:
+        None: failures are logged and reported by returning False.
 
-        from pyantz import start
+    Example:
+        .. testsetup:: files-reformat-csv
 
-        start({
-            "submitter": {
-                "type_": "local_proc",
-                "working_directory": ".",
-            },
-            "jobs": [
-                {
-                    "function": "pyantz.jobs.files.reformat.csv_to_parquet",
-                    "parameters": {
-                        "csv_file": "some_csv.csv",
-                        "parquet_file": "reformatted.parquet",
-                    },
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+            import polars as pl
+            pl.DataFrame({
+                "a": [1, 2, 3],
+                "b": [4.1, 5.1, 6.2],
+            }).write_csv("some_csv.csv")
+
+        .. testcode:: files-reformat-csv
+
+            import polars as pl
+            from polars.testing import assert_frame_equal
+
+            from pyantz import start
+
+            start({
+                "submitter": {
+                    "type_": "local_proc",
+                    "working_directory": ".",
                 },
-            ],
-        })
+                "jobs": [
+                    {
+                        "function": "pyantz.jobs.files.reformat.csv_to_parquet",
+                        "parameters": {
+                            "csv_file": "some_csv.csv",
+                            "parquet_file": "reformatted.parquet",
+                        },
+                    },
+                ],
+            })
 
-        from_csv = pl.read_csv("some_csv.csv")
-        from_parq = pl.read_parquet("reformatted.parquet")
+            from_csv = pl.read_csv("some_csv.csv")
+            from_parq = pl.read_parquet("reformatted.parquet")
 
-        assert_frame_equal(from_csv, from_parq)
+            assert_frame_equal(from_csv, from_parq)
 
-    .. testcleanup::
+        .. testcleanup:: files-reformat-csv
 
-        import os
-        for file in ("some_csv.csv", "reformatted.parquet", "queue.db"):
-            if os.path.exists(file):
-                os.remove(file)
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
 
     """
     logger = logging.getLogger(__name__)
@@ -98,11 +118,13 @@ class FromExcelToCsvParameters(BaseModel):
     """Load a page from an excel and dump it into a csv."""
 
     excel_file: Path
+    """Excel workbook to read."""
 
-    # name of the sheet in excel to execute
     sheet_name: str | None = None
+    """Name of the sheet to convert; if None, the first sheet."""
 
     csv_file: Path
+    """Csv file to write."""
 
 
 @add_parameters(FromExcelToCsvParameters)
@@ -110,50 +132,71 @@ class FromExcelToCsvParameters(BaseModel):
 def excel_to_csv(params: FromExcelToCsvParameters) -> bool:
     """Use polars to load an excel and dump it into a csv.
 
-    :Example:
+    Reading excel files needs the ``fastexcel`` package (``pip install
+    pyantz[excel]``).
 
-    .. testsetup::
+    Args:
+        params: the job's parameters, validated as :class:`FromExcelToCsvParameters`.
 
-        import polars as pl
-        pl.DataFrame({
-            "a": [1, 2, 3],
-            "b": [4.1, 5.1, 6.2],
-        }).write_excel("some_excel.xlsx")
+    Parameters:
+        excel_file (Path): excel workbook to read.
+        sheet_name (str | None): name of the sheet to convert. Defaults to None
+            (the first sheet).
+        csv_file (Path): csv file to write.
 
-    .. testcode::
+    Returns:
+        bool: True if the csv was written, False if the workbook doesn't exist,
+        ``fastexcel`` isn't installed or the conversion fails.
 
-        import polars as pl
-        from polars.testing import assert_frame_equal
+    Raises:
+        None: failures are logged and reported by returning False.
 
-        from pyantz import start
+    Example:
+        .. testsetup:: files-reformat-excel
 
-        start({
-            "submitter": {
-                "type_": "local_proc",
-                "working_directory": ".",
-            },
-            "jobs": [
-                {
-                    "function": "pyantz.jobs.files.reformat.excel_to_csv",
-                    "parameters": {
-                        "excel_file": "some_excel.xlsx",
-                        "csv_file": "some_csv.csv",
-                    },
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+            import polars as pl
+            pl.DataFrame({
+                "a": [1, 2, 3],
+                "b": [4.1, 5.1, 6.2],
+            }).write_excel("some_excel.xlsx")
+
+        .. testcode:: files-reformat-excel
+
+            import polars as pl
+            from polars.testing import assert_frame_equal
+
+            from pyantz import start
+
+            start({
+                "submitter": {
+                    "type_": "local_proc",
+                    "working_directory": ".",
                 },
-            ],
-        })
+                "jobs": [
+                    {
+                        "function": "pyantz.jobs.files.reformat.excel_to_csv",
+                        "parameters": {
+                            "excel_file": "some_excel.xlsx",
+                            "csv_file": "some_csv.csv",
+                        },
+                    },
+                ],
+            })
 
-        from_csv = pl.read_excel("some_excel.xlsx")
-        from_parq = pl.read_csv("some_csv.csv")
+            from_csv = pl.read_excel("some_excel.xlsx")
+            from_parq = pl.read_csv("some_csv.csv")
 
-        assert_frame_equal(from_csv, from_parq)
+            assert_frame_equal(from_csv, from_parq)
 
-    .. testcleanup::
+        .. testcleanup:: files-reformat-excel
 
-        import os
-        for file in ("some_excel.xlsx", "some_csv.csv", "queue.db"):
-            if os.path.exists(file):
-                os.remove(file)
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
 
     """
     logger = logging.getLogger(__name__)

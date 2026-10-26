@@ -34,7 +34,49 @@ if TYPE_CHECKING:
 
 
 def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
-    """Compile any virtual jobs to concrete jobs."""
+    """Compile any virtual jobs to concrete jobs.
+
+    The jobs are compiled from the last to the first in dependency order. A
+    virtual job consumes the (compiled) jobs which depend on it, directly or not,
+    and is replaced by what it compiles them into. Jobs nested in the parameters
+    of a job (such as the branches of ``if_else``) are compiled too.
+
+    Args:
+        jobs: the jobs of a pipeline, virtual or not.
+
+    Returns:
+        list[RealJobConfig]: the concrete jobs.
+
+    Raises:
+        ValueError: if job ids are repeated, the jobs depend on unknown jobs or
+            have a dependency cycle.
+        pydantic.ValidationError: if a virtual job's parameters are invalid.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config import JobConfig, VirtualJobConfig
+            from pyantz.infrastructure.virtual import compile_virtual
+
+            add_x = VirtualJobConfig(
+                job_id="add_x",
+                function="pyantz.virtual.add_variables.AddVariables",
+                parameters={"variables": {"x": 1}},
+            )
+            job = JobConfig(
+                depends_on={"add_x"},
+                function="pyantz.jobs.testing.nop.do_nothing",
+                parameters={},
+            )
+            (wrapper,) = compile_virtual([add_x, job])
+            (inner,) = wrapper.parameters["jobs"]
+            print(wrapper.function.__name__, inner.depends_on)
+
+        .. testoutput::
+
+            run_jobs_in_context set()
+
+    """
     _check_unique_ids(jobs)
 
     # uncompiled lookup tables
@@ -68,7 +110,18 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         raise ValueError(msg)
 
     def get_uncompiled_job_config(job_id: str) -> AnyJobConfig:
-        """Look up a job by id from either the real or virtual lookup tables."""
+        """Look up a job by id from either the real or virtual lookup tables.
+
+        Args:
+            job_id: the id of the job.
+
+        Returns:
+            AnyJobConfig: the job, as given (not compiled).
+
+        Raises:
+            ValueError: if no job has the id.
+
+        """
         lookup_val = real_job_lookup.get(job_id, virtual_job_lookup.get(job_id))
         if lookup_val is None:
             msg = f"No job with id {job_id!r}"
@@ -82,6 +135,17 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
 
         "Consuming" a dependency prevents it from being returned again by a
         later iteration, which would duplicate it in the final list.
+
+        Args:
+            job_id: the id of the job whose dependents to take.
+
+        Returns:
+            list[RealJobConfig]: the compiled jobs depending on ``job_id``,
+            directly or not.
+
+        Raises:
+            None.
+
         """
         nonlocal compiled_jobs
         direct_deps = [
@@ -118,7 +182,18 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
 
 
 def _check_unique_ids(jobs: list[AnyJobConfig]) -> None:
-    """Raise a ValueError if any job id is used by more than one job."""
+    """Raise a ValueError if any job id is used by more than one job.
+
+    Args:
+        jobs: the jobs to check.
+
+    Returns:
+        None.
+
+    Raises:
+        ValueError: if a job id is repeated.
+
+    """
     counts = Counter(job.job_id for job in jobs)
     duplicates = sorted(job_id for job_id, count in counts.items() if count > 1)
     if duplicates:
@@ -127,7 +202,19 @@ def _check_unique_ids(jobs: list[AnyJobConfig]) -> None:
 
 
 def _compile_parameters(jobs: list[RealJobConfig]) -> list[RealJobConfig]:
-    """Apply parameter compilation to every job in the list."""
+    """Apply parameter compilation to every job in the list.
+
+    Args:
+        jobs: the concrete jobs.
+
+    Returns:
+        list[RealJobConfig]: the jobs with the jobs nested in their parameters
+        compiled.
+
+    Raises:
+        ValueError: if nested jobs can't be compiled (see :func:`compile_virtual`).
+
+    """
     return [_compile_parameters_singular(job) for job in jobs]
 
 
@@ -137,6 +224,17 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
     Some jobs (e.g. ``if_else``, ``pipeline_expansion``) hold other jobs as
     parameters.  This function locates those nested job configs and ensures
     virtual ones are compiled too.
+
+    Args:
+        job: the concrete job.
+
+    Returns:
+        RealJobConfig: the job with its nested jobs compiled; unchanged if its
+        function has no registered parameters model.
+
+    Raises:
+        ValueError: if nested jobs can't be compiled (see :func:`compile_virtual`).
+
     """
     joblike_parms = _find_joblike_parameters_with_model(job)
     if joblike_parms is None:
@@ -185,6 +283,31 @@ def _try_to_validate_job(
 
     Used when scanning nested parameters: if validation fails the parameter
     is not a job dict and should be left alone.
+
+    Args:
+        possible_job: a job config (returned unchanged) or a value which may
+            describe one.
+
+    Returns:
+        AnyJobConfig | None: the job, or None if the value isn't one.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.virtual.compile import _try_to_validate_job
+
+            job = {"function": "pyantz.jobs.testing.nop.do_nothing", "parameters": {}}
+            print(type(_try_to_validate_job(job)).__name__)
+            print(_try_to_validate_job({"not": "a job"}))
+
+        .. testoutput::
+
+            JobConfig
+            None
+
     """
     # import locally to avoid circular imports
     from pyantz.infrastructure.config import (  # noqa: PLC0415
@@ -217,6 +340,19 @@ def _compile_singular(
     so dependencies on other virtual jobs are moved onto the compiled result. The
     other virtual job then wraps the compiled result when it is compiled, which
     nests the jobs so they receive the effects of every virtual job they depended on.
+
+    Args:
+        job: the job to compile.
+        dep_jobs: the compiled jobs depending on ``job``.
+        virtual_ids: the ids of every virtual job of the pipeline.
+
+    Returns:
+        list[RealJobConfig]: for a concrete job, the job followed by
+        ``dep_jobs``; for a virtual job, what it compiles to.
+
+    Raises:
+        pydantic.ValidationError: if a virtual job's parameters are invalid.
+
     """
     if not job.virtual:
         return [cast("RealJobConfig", job), *dep_jobs]
@@ -258,6 +394,35 @@ def _find_joblike_parameters_with_model(
     Returns a tuple of single jobs and iterable job parameters.
     If not registered, none is returned to signal that this job may
     have job config parameters, but they aren't registered so we can't tell.
+
+    Args:
+        job: the concrete job.
+
+    Returns:
+        tuple[Iterable[str], Iterable[str]] | None: the names of the parameters
+        holding a job and of those holding jobs, or None if the job's function
+        has no registered parameters model.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config import JobConfig
+            from pyantz.infrastructure.virtual.compile import (
+                _find_joblike_parameters_with_model,
+            )
+
+            if_else = "pyantz.jobs.branching.if_else.if_else"
+            job = JobConfig(function=if_else, parameters={})
+            single, iterable = _find_joblike_parameters_with_model(job)
+            print(sorted(single), sorted(iterable))
+
+        .. testoutput::
+
+            ['if_false', 'if_true'] []
+
     """
     single_job_fields: set[str] = set()
     iterable_job_fields: set[str] = set()
@@ -295,7 +460,30 @@ def _find_joblike_parameters_with_model(
 
 
 def _is_non_empty_iterable(value: object) -> bool:
-    """Return True for non-empty iterables which aren't strings or mappings."""
+    """Return True for non-empty iterables which aren't strings or mappings.
+
+    Args:
+        value: the value to check.
+
+    Returns:
+        bool: True if ``value`` is a non-empty iterable other than ``str``,
+        ``bytes`` or a mapping.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.virtual.compile import _is_non_empty_iterable
+
+            print([_is_non_empty_iterable(v) for v in ([1], [], "ab", {"a": 1})])
+
+        .. testoutput::
+
+            [True, False, False, False]
+
+    """
     return (
         isinstance(value, Iterable)
         and not isinstance(value, (str, bytes, Mapping))
@@ -308,8 +496,30 @@ def _classify_job_annotation(annotation: Any) -> tuple[bool, bool]:  # noqa: ANN
 
     Looks through ``Annotated``, type aliases (like ``JobPipeline``), and unions.
 
+    Args:
+        annotation: the type annotation of a parameters model's field.
+
     Returns:
         tuple[bool, bool]: (holds a single job, holds an iterable of jobs)
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config import JobConfig, JobPipeline
+            from pyantz.infrastructure.virtual.compile import _classify_job_annotation
+
+            print(_classify_job_annotation(JobConfig | None))
+            print(_classify_job_annotation(JobPipeline))
+            print(_classify_job_annotation(list[str]))
+
+        .. testoutput::
+
+            (True, False)
+            (False, True)
+            (False, False)
 
     """
     if isinstance(annotation, TypeAliasType):

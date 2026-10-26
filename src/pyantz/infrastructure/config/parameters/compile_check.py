@@ -31,6 +31,41 @@ def check_config(
     """Enforce type checked parameters on the config.
 
     If variables in the job config (JobWithContext), it will resolve those first.
+    The parameters are only checked if ``check_at_startup`` is set or the
+    function was registered with ``check_at_startup=True``; otherwise they are
+    checked when the job runs.
+
+    Args:
+        job_config: the job to check.
+        strict: if True, the function must be registered with
+            :func:`~pyantz.infrastructure.config.add_parameters`, and parameters
+            with unresolved variables must already be valid.
+        check_at_startup: if True, check the parameters now even if the function
+            doesn't ask for it.
+
+    Returns:
+        bool: True if the job is acceptable, False if it isn't.
+
+    Raises:
+        ValueError: if resolving the variables finds a recursive reference.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config import JobConfig
+            from pyantz.infrastructure.config.parameters.compile_check import (
+                check_config,
+            )
+
+            job = JobConfig(function="pyantz.jobs.files.simple.copy", parameters={})
+            print(check_config(job))  # checked when the job runs instead
+            print(check_config(job, check_at_startup=True))  # src and dst missing
+
+        .. testoutput::
+
+            True
+            False
+
     """
     if not hasattr(job_config.function, "PYANTZ_CHECKED"):
         # if strict and function isn't a pyantz checked, then we can't check
@@ -47,7 +82,35 @@ def check_config(
 
 
 def get_params(job: JobConfig) -> type[BaseModel] | None:
-    """Retrieve parameters attached to the job function, if any registered."""
+    """Retrieve parameters attached to the job function, if any registered.
+
+    Args:
+        job: the job whose function to look at.
+
+    Returns:
+        type[BaseModel] | None: the parameters model the function was registered
+        with by :func:`~pyantz.infrastructure.config.add_parameters`, or None.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config import JobConfig
+            from pyantz.infrastructure.config.parameters import get_params
+
+            job = JobConfig(
+                function="pyantz.jobs.files.simple.copy",
+                parameters={"src": "a", "dst": "b"},
+            )
+            print(get_params(job).__name__)
+
+        .. testoutput::
+
+            CopyParams
+
+    """
     if hasattr(job.function, "PYANTZ_VALIDATION_MODEL"):
         return cast(
             "type[BaseModel]",
@@ -57,7 +120,21 @@ def get_params(job: JobConfig) -> type[BaseModel] | None:
 
 
 def _check_params(job_config: JobConfig, *, strict: bool = False) -> bool:
-    """Check the parameters of the job configuration."""
+    """Check the parameters of the job configuration.
+
+    Args:
+        job_config: the job to check; its variables, if any, are resolved first.
+        strict: if True, parameters with unresolved variables must be valid too.
+
+    Returns:
+        bool: True if the parameters are valid, or (when not strict) invalid but
+        holding variables which may be set later; False otherwise, including when
+        the function has no parameters model.
+
+    Raises:
+        ValueError: if resolving the variables finds a recursive reference.
+
+    """
     if (model := get_params(job_config)) is None:
         return False
 

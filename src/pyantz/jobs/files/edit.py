@@ -40,10 +40,20 @@ from pyantz.infrastructure.config.fn_utils import (
     serialize_function,
 )
 
-# indentation of the json files which are written
 JSON_INDENT = 2
+"""Indentation of the json files which are written."""
 
 type _ExtraField = Literal["ignore", "overwrite", "force_object"]
+"""What to do when an update's field doesn't exist in the edited value.
+
+Consider the field ``"a.b.c.d"`` being set to ``"goodbye!"`` in ``{"a": "hello"}``:
+
+* ``ignore``: leave the value as it was: ``{"a": "hello"}``.
+* ``overwrite``: follow the field as far as possible, then replace that leaf:
+  ``{"a": "goodbye!"}``.
+* ``force_object``: create the missing objects:
+  ``{"a": {"b": {"c": {"d": "goodbye!"}}}}``.
+"""
 
 
 class _PathMismatchError(Exception):
@@ -56,23 +66,22 @@ class _EditJsonLikeParams(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     file: Path
+    """File to edit in place."""
 
-    # updates to be made to the file
-    # to edit a subfield, use "." to join fields (escape a literal "." with "\\")
-    # for example "a.b" will edit the b field in the object pointed to by "a"
-    # to edit arrays, use [] notation, with an index
-    # so for example "a.[0]" will edit the 0th element of a
-    # a negative index adds to the front and "[*]" edits every element
     updates: Mapping[str, Any]
+    r"""Updates to make, mapping each field to its new value.
 
-    # what to do when the field provided points to a location that doesn't exist in json
-    # for example, consider field = "a.b.c.d" being set to "goodbye!"
-    # but the object looks like {"a": "hello world"}
-    # ignore: return the original if a path doesn't match. Return = {"a": "hello world"}
-    # overwrite: follow as much as possible, then overwrite the leaf.
-    #       Return = {"a": "goodbye!"}  # noqa: ERA001
-    # force_object: add the path. Return = {"a": {"b": {"c": {"d": "goodbye!"}}}}
+    To edit a subfield, join fields with ``.`` (escape a literal ``.`` with
+    ``\\``): ``"a.b"`` edits the ``b`` field of the object in ``a``. To edit
+    arrays, use ``[]`` with an index: ``"a.[0]"`` edits the first element of
+    ``a``. An index past the end appends, a negative index adds to the front and
+    ``"[*]"`` edits every element.
+    """
+
     extra_field: _ExtraField = "force_object"
+    """What to do when a field doesn't exist in the file: ``ignore`` leaves the
+    value as it was, ``overwrite`` replaces the deepest existing leaf, and
+    ``force_object`` creates the missing objects."""
 
 
 class EditJsonParams(_EditJsonLikeParams):
@@ -86,7 +95,61 @@ class EditYamlParams(_EditJsonLikeParams):
 @add_parameters(EditYamlParams)
 @no_submit_fn
 def edit_yaml(params: EditYamlParams) -> bool:
-    """Edit a .yaml file in place."""
+    r"""Edit a .yaml file in place.
+
+    The file is edited with ``ruamel.yaml``, which keeps its comments and the
+    order of its keys. It is written atomically, so a failure leaves the original
+    intact.
+
+    Args:
+        params: the job's parameters, validated as :class:`EditYamlParams`.
+
+    Parameters:
+        file (Path): file to edit in place.
+        updates (Mapping[str, Any]): new values keyed by their field, such as
+            ``"a.b"`` or ``"items.[0]"``; see :class:`EditJsonParams`.
+        extra_field (str): what to do when a field doesn't exist: ``ignore``,
+            ``overwrite`` or ``force_object``. Defaults to ``force_object``.
+
+    Returns:
+        bool: True if the file was edited, False if it doesn't exist, isn't a
+        file, can't be parsed or a field is invalid.
+
+    Raises:
+        None: failures are logged and reported by returning False.
+
+    Example:
+        .. testsetup:: files-edit-yaml
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: files-edit-yaml
+
+            from pathlib import Path
+
+            from pyantz.jobs.files.edit import edit_yaml
+
+            Path("config.yaml").write_text("server:\n  port: 80  # the port\n")
+            edit_yaml(
+                {"file": "config.yaml", "updates": {"server.port": 8080}},
+                lambda job: None,
+            )
+            print(Path("config.yaml").read_text(), end="")
+
+        .. testoutput:: files-edit-yaml
+
+            server:
+              port: 8080 # the port
+
+        .. testcleanup:: files-edit-yaml
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
     logger = logging.getLogger(__name__)
 
     if not params.file.exists():
@@ -112,7 +175,63 @@ def edit_yaml(params: EditYamlParams) -> bool:
 @add_parameters(EditJsonParams)
 @no_submit_fn
 def edit_json(params: EditJsonParams) -> bool:
-    """Edit a .json file in place."""
+    """Edit a .json file in place.
+
+    The file is rewritten with an indent of :data:`JSON_INDENT`. It is written
+    atomically, so a failure leaves the original intact.
+
+    Args:
+        params: the job's parameters, validated as :class:`EditJsonParams`.
+
+    Parameters:
+        file (Path): file to edit in place.
+        updates (Mapping[str, Any]): new values keyed by their field, such as
+            ``"a.b"`` or ``"items.[0]"``; see :class:`EditJsonParams`.
+        extra_field (str): what to do when a field doesn't exist: ``ignore``,
+            ``overwrite`` or ``force_object``. Defaults to ``force_object``.
+
+    Returns:
+        bool: True if the file was edited, False if it doesn't exist, isn't a
+        file, isn't valid json or a field is invalid.
+
+    Raises:
+        None: failures are logged and reported by returning False.
+
+    Example:
+        .. testsetup:: files-edit-json
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: files-edit-json
+
+            import json
+            from pathlib import Path
+
+            from pyantz.jobs.files.edit import edit_json
+
+            Path("data.json").write_text('{"items": [{"n": 1}, {"n": 2}]}')
+            edit_json(
+                {
+                    "file": "data.json",
+                    "updates": {"items.[*].n": 0, "items.[5]": "appended"},
+                },
+                lambda job: None,
+            )
+            print(json.loads(Path("data.json").read_text()))
+
+        .. testoutput:: files-edit-json
+
+            {'items': [{'n': 0}, {'n': 0}, 'appended']}
+
+        .. testcleanup:: files-edit-json
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
     logger = logging.getLogger(__name__)
 
     if not params.file.exists():
@@ -138,7 +257,59 @@ def edit_json(params: EditJsonParams) -> bool:
 
 
 def _write_atomically(path: Path, write: Callable[[Any], object]) -> None:
-    """Write via a temporary file so that a failure leaves the original intact."""
+    """Write via a temporary file so that a failure leaves the original intact.
+
+    The temporary file is created next to ``path`` and replaces it only once
+    ``write`` has finished.
+
+    Args:
+        path: the file to (over)write.
+        write: function which writes the new contents to the open text file it is
+            given.
+
+    Returns:
+        None.
+
+    Raises:
+        OSError: if the temporary file can't be created or can't replace ``path``.
+        BaseException: anything raised by ``write`` is raised again, once the
+            temporary file has been removed.
+
+    Example:
+        .. testsetup:: files-edit-write
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: files-edit-write
+
+            from pathlib import Path
+
+            from pyantz.jobs.files.edit import _write_atomically
+
+            def fail(fh):
+                fh.write("half written")
+                raise RuntimeError("oops")
+
+            Path("notes.txt").write_text("original")
+            try:
+                _write_atomically(Path("notes.txt"), fail)
+            except RuntimeError:
+                pass
+            print(Path("notes.txt").read_text())
+
+        .. testoutput:: files-edit-write
+
+            original
+
+        .. testcleanup:: files-edit-write
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
     with tempfile.NamedTemporaryFile(
         "w",
         encoding="utf-8",
@@ -157,7 +328,37 @@ def _write_atomically(path: Path, write: Callable[[Any], object]) -> None:
 
 
 def _edit_jsonlike(params: _EditJsonLikeParams, contents: JsonValue) -> JsonValue:
-    """Edit a JSON like value and return the contents."""
+    """Edit a JSON like value and return the contents.
+
+    Args:
+        params: parameters holding the updates to make and how to handle fields
+            which don't exist.
+        contents: the value to edit. Mutable mappings are edited in place.
+
+    Returns:
+        JsonValue: the edited value.
+
+    Raises:
+        ValueError: if a field is invalid, e.g., it has an empty part (``"a..b"``)
+            or a list index which isn't an integer.
+
+    Example:
+        .. testcode::
+
+            from pyantz.jobs.files.edit import EditJsonParams, _edit_jsonlike
+
+            params = EditJsonParams(
+                file="unused.json",
+                updates={"a.b": 1},
+                extra_field="overwrite",
+            )
+            print(_edit_jsonlike(params, {"a": "text"}))
+
+        .. testoutput::
+
+            {'a': 1}
+
+    """
     edit_jsonvalue = _json_editor_factory(params.extra_field)
 
     for field, value in params.updates.items():
@@ -172,8 +373,10 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
     model_config = ConfigDict(frozen=True)
 
     kwargs: dict[str, Any] = Field(default_factory=dict)
+    """Keyword arguments to call the function with."""
 
     args: tuple[Any, ...] = Field(default_factory=tuple)
+    """Positional arguments to call the function with."""
 
     func: Annotated[
         T,
@@ -185,49 +388,104 @@ class _FunctionDefinition[T: Callable[..., Any]](BaseModel):
             }
         ),
     ]
+    """The function to call, given by its full import path."""
 
     @field_serializer("func")
     def serialize_job_function(
         self,
         fn: T,
     ) -> str:
-        """Serialize the function."""
+        """Serialize the function.
+
+        Args:
+            fn: the function to serialize.
+
+        Returns:
+            str: the function's full import path.
+
+        Raises:
+            ValueError: if the function can't be imported by name, e.g., a lambda.
+
+        """
         return serialize_function(fn)
 
 
 class EditExternalParams(BaseModel):
     """Edit a file using an external function to extract and to save off."""
 
-    # will accept the args/kwargs provided
-    # MUST return a JsonValue to be edited
     extract_function: _FunctionDefinition[Callable[..., JsonValue]]
+    """Function called with its args/kwargs to load the value to edit; it MUST
+    return a JsonValue."""
 
-    # the FIRST argument back to this function will be the file being edited
-    # afterwards, it will spread the user provided kwargs/args
     save_function: _FunctionDefinition[Callable[..., None]]
+    """Function called to save the edited value: its FIRST argument is the edited
+    value, followed by its own args/kwargs."""
 
-    # updates to be made to the file
-    # to edit a subfield, use "." to join fields (escape a literal "." with "\\")
-    # for example "a.b" will edit the b field in the object pointed to by "a"
-    # to edit arrays, use [] notation, with an index
-    # so for example "a.[0]" will edit the 0th element of a
-    # a negative index adds to the front and "[*]" edits every element
     updates: Mapping[str, Any]
+    r"""Updates to make, mapping each field to its new value.
 
-    # what to do when the field provided points to a location that doesn't exist in json
-    # for example, consider field = "a.b.c.d" being set to "goodbye!"
-    # but the object looks like {"a": "hello world"}
-    # ignore: return the original if a path doesn't match. Return = {"a": "hello world"}
-    # overwrite: follow as much as possible, then overwrite the leaf.
-    #       Return = {"a": "goodbye!"}  # noqa: ERA001
-    # force_object: add the path. Return = {"a": {"b": {"c": {"d": "goodbye!"}}}}
+    To edit a subfield, join fields with ``.`` (escape a literal ``.`` with
+    ``\\``): ``"a.b"`` edits the ``b`` field of the object in ``a``. To edit
+    arrays, use ``[]`` with an index: ``"a.[0]"`` edits the first element of
+    ``a``. An index past the end appends, a negative index adds to the front and
+    ``"[*]"`` edits every element.
+    """
+
     extra_field: _ExtraField = "force_object"
+    """What to do when a field doesn't exist in the file: ``ignore`` leaves the
+    value as it was, ``overwrite`` replaces the deepest existing leaf, and
+    ``force_object`` creates the missing objects."""
 
 
 @add_parameters(EditExternalParams)
 @no_submit_fn
 def edit_external_method(params: EditExternalParams) -> bool:
-    """Edit a file using user-provided functionality."""
+    """Edit a file using user-provided functionality.
+
+    The value to edit is loaded by ``extract_function``, edited like
+    :func:`edit_json` would, and given to ``save_function``. This edits formats
+    which have no job of their own.
+
+    Args:
+        params: the job's parameters, validated as :class:`EditExternalParams`.
+
+    Parameters:
+        extract_function (dict): ``func`` (import path), ``args`` and ``kwargs``
+            of the function which returns the value to edit.
+        save_function (dict): ``func`` (import path), ``args`` and ``kwargs`` of
+            the function which saves the edited value, given as its first
+            argument.
+        updates (Mapping[str, Any]): new values keyed by their field, such as
+            ``"a.b"`` or ``"items.[0]"``; see :class:`EditExternalParams`.
+        extra_field (str): what to do when a field doesn't exist: ``ignore``,
+            ``overwrite`` or ``force_object``. Defaults to ``force_object``.
+
+    Returns:
+        bool: True if the value was extracted, edited and saved; False if any of
+        those steps fails.
+
+    Raises:
+        None: failures are logged and reported by returning False.
+
+    Example:
+        .. testcode::
+
+            from pyantz.jobs.files.edit import edit_external_method
+
+            edit_external_method(
+                {
+                    "extract_function": {"func": "json.loads", "args": ['{"a": 1}']},
+                    "save_function": {"func": "builtins.print"},
+                    "updates": {"b": 2},
+                },
+                lambda job: None,
+            )
+
+        .. testoutput::
+
+            {'a': 1, 'b': 2}
+
+    """
     logger = logging.getLogger(__name__)
 
     try:
@@ -268,16 +526,54 @@ def _json_editor_factory(  # noqa: C901, PLR0915
 ) -> Callable[[JsonValue, str, JsonValue], JsonValue]:
     """Create a callable to edit a JsonValue recursively.
 
+    The callable takes the value to edit, a field such as ``"a.[0].b"`` and the
+    new value, and returns the edited value. Mutable mappings are edited in place
+    (keeping the order of keys and, for yaml, comments), except with ``ignore``,
+    which edits a copy so the original is untouched when a field doesn't match.
+
     Args:
         extra_field: user has defined a field (nested too deeply); how to handle
             ignore: don't overwrite, ignore the user instructions
             overwrite: follow as far as possible, then overwrite the leaf
             force_object: turn the value into an object that is as nested as user input
 
+    Returns:
+        Callable[[JsonValue, str, JsonValue], JsonValue]: the editing function.
+
+    Raises:
+        None: errors in fields are raised by the returned function, as
+            ``ValueError``.
+
+    Example:
+        .. testcode::
+
+            from pyantz.jobs.files.edit import _json_editor_factory
+
+            for extra_field in ("ignore", "overwrite", "force_object"):
+                edit = _json_editor_factory(extra_field)
+                print(extra_field, edit({"a": "hello"}, "a.b.c", "goodbye!"))
+
+        .. testoutput::
+
+            ignore {'a': 'hello'}
+            overwrite {'a': 'goodbye!'}
+            force_object {'a': {'b': {'c': 'goodbye!'}}}
+
     """
 
     def split_components(field: str) -> list[str]:
-        """Split on `.` but allow escaping with backslash."""
+        r"""Split on `.` but allow escaping with backslash.
+
+        Args:
+            field: the field, such as ``"a.b"`` or ``"a\\.b"`` (the key ``a.b``).
+
+        Returns:
+            list[str]: the field's parts, with escaped dots kept in them.
+
+        Raises:
+            ValueError: if a part is empty, e.g., ``"a..b"``.
+
+        """
         field_components = field.split(".")
         # handle escape '.', which are not counted as splitting
         prev: int | None = None
@@ -294,6 +590,12 @@ def _json_editor_factory(  # noqa: C901, PLR0915
     def overwrite_on_mismatch() -> bool:
         """Say if a leaf replaces a field that doesn't exist in the edited value.
 
+        Args:
+            None.
+
+        Returns:
+            bool: True for ``overwrite``, False for ``force_object``.
+
         Raises:
             _PathMismatchError: the field doesn't exist and extra_field is `ignore`.
 
@@ -305,7 +607,25 @@ def _json_editor_factory(  # noqa: C901, PLR0915
     def edit_list(
         val: JsonValue, curr_key: str, new_value: JsonValue, field_components: list[str]
     ) -> list[JsonValue]:
-        """Edit the value as a list."""
+        """Edit the value as a list.
+
+        Args:
+            val: the value to edit; if it isn't a list, it is replaced (with
+                ``overwrite``) or treated as an empty list.
+            curr_key: the list part of the field, such as ``"[0]"``, ``"[-1]"``
+                or ``"[*]"``.
+            new_value: the value to set at the end of the field.
+            field_components: the parts of the field after ``curr_key``.
+
+        Returns:
+            list[JsonValue]: the edited list (a new list).
+
+        Raises:
+            ValueError: if the index isn't an integer or ``*``.
+            _PathMismatchError: if ``val`` isn't a list and extra_field is
+                ``ignore``.
+
+        """
         curr_key = curr_key[1:-1]  # strip []
         if not isinstance(val, list):
             if overwrite_on_mismatch():
@@ -342,7 +662,23 @@ def _json_editor_factory(  # noqa: C901, PLR0915
         new_value: JsonValue,
         field_components: list[str],
     ) -> JsonValue:
-        """Edit the map."""
+        """Edit the map.
+
+        Args:
+            val: the value to edit; if it isn't a mapping, it is replaced (with
+                ``overwrite``) or treated as an empty mapping.
+            curr_key: the key to edit.
+            new_value: the value to set at the end of the field.
+            field_components: the parts of the field after ``curr_key``.
+
+        Returns:
+            JsonValue: the edited mapping (``val`` itself if it is mutable).
+
+        Raises:
+            _PathMismatchError: if the field doesn't exist and extra_field is
+                ``ignore``.
+
+        """
         if not isinstance(val, Mapping):
             if overwrite_on_mismatch():
                 return new_value
@@ -361,7 +697,23 @@ def _json_editor_factory(  # noqa: C901, PLR0915
     def edit_any(
         val: JsonValue, field_components: list[str], new_value: JsonValue
     ) -> JsonValue:
-        """Edit any json value that comes our way."""
+        """Edit any json value that comes our way.
+
+        Args:
+            val: the value to edit.
+            field_components: the remaining parts of the field; when empty,
+                ``new_value`` replaces ``val``.
+            new_value: the value to set at the end of the field.
+
+        Returns:
+            JsonValue: the edited value.
+
+        Raises:
+            ValueError: if a list index isn't an integer or ``*``.
+            _PathMismatchError: if the field doesn't exist and extra_field is
+                ``ignore``.
+
+        """
         if len(field_components) == 0:
             return new_value
         curr_key = field_components[0]
@@ -378,7 +730,21 @@ def _json_editor_factory(  # noqa: C901, PLR0915
         )
 
     def edit_any_wrapper(val: JsonValue, field: str, new_value: JsonValue) -> JsonValue:
-        """Edit any but accept a user style field string that is then split."""
+        """Edit any but accept a user style field string that is then split.
+
+        Args:
+            val: the value to edit.
+            field: the field to edit, such as ``"a.[0].b"``.
+            new_value: the value to set at the field.
+
+        Returns:
+            JsonValue: the edited value; with ``ignore``, the original value if
+            the field doesn't match it.
+
+        Raises:
+            ValueError: if the field is invalid.
+
+        """
         components = split_components(field)
         if extra_field != "ignore":
             return edit_any(val=val, field_components=components, new_value=new_value)

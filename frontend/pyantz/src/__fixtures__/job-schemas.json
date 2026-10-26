@@ -1478,9 +1478,9 @@
     }
   },
   "pyantz.jobs.files.simple.move": {
-    "description": "Move `src` to `dest`.",
+    "description": "Move `src` to `dst`.",
     "json_schema": {
-      "description": "Parameters to copy file.",
+      "description": "Parameters to move a file.",
       "properties": {
         "dst": {
           "title": "Dst",
@@ -2473,7 +2473,7 @@
           "type": "object"
         }
       },
-      "description": "Parameters to submit a job through a new submitter.",
+      "description": "Parameters to run jobs through a new submitter on another host.",
       "properties": {
         "host_config": {
           "$ref": "#/$defs/HostConfig"
@@ -2885,7 +2885,7 @@
           "type": "object"
         }
       },
-      "description": "Parameters for running jobs sequentially within this job without submitting.",
+      "description": "Parameters for submitting jobs with variables shared between them.",
       "properties": {
         "jobs": {
           "$ref": "#/$defs/JobPipeline"

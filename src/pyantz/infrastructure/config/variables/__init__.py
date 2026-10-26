@@ -1,4 +1,8 @@
-"""Fill in variables in the parameters."""
+"""Fill in variables in the parameters.
+
+Strings in a job's parameters may refer to variables as ``%{name}``. Variables may
+refer to other variables, up to :data:`MAX_RESOLUTION_DEPTH` levels deep.
+"""
 
 from __future__ import annotations
 
@@ -8,9 +12,10 @@ from collections.abc import Callable, Iterable, Mapping
 from typing import Any, cast
 
 VARIABLE_REGEX = re.compile(r"(%{[^%{}]+})")
+"""Matches a reference to a variable, such as ``%{name}``."""
 
-# maximum nesting of variables referring to other variables
 MAX_RESOLUTION_DEPTH = 32
+"""Maximum nesting of variables referring to other variables."""
 
 
 def resolve_parameters(
@@ -26,8 +31,26 @@ def resolve_parameters(
         variables (Mapping[str, Any]): variables to put in the parameters
 
     Returns:
-        Mapping[str, Any]: parameters with the variables eagerly replaced
-        bool: True if some variables were detected and not replaced
+        tuple[Mapping[str, Any], bool]: parameters with the variables eagerly
+        replaced, and True if some variables were detected and not replaced
+
+    Raises:
+        ValueError: if a variable refers to itself, directly or not.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.variables import resolve_parameters
+
+            parameters, unresolved = resolve_parameters(
+                {"path": "%{root}/%{name}.txt", "count": "%{n}", "other": "%{unset}"},
+                {"root": "/data", "name": "run_%{n}", "n": 3},
+            )
+            print(parameters, unresolved)
+
+        .. testoutput::
+
+            {'path': '/data/run_3.txt', 'count': 3, 'other': '%{unset}'} True
 
     """
     logger = logging.getLogger(__name__)
@@ -44,8 +67,31 @@ def resolve_var_any[T](
 ) -> tuple[T, bool]:
     """Resolve the variable and return it.
 
-    Returns: value with variables interleaved and a boolean. if the boolean is true,
-        a variable was detected but left unchanged.
+    Strings are resolved, and mappings, lists, tuples and sets are searched at
+    any depth; anything else is returned unchanged.
+
+    Args:
+        some_val: the value to resolve.
+        variables: the variables to fill in.
+
+    Returns:
+        tuple[T, bool]: value with variables interleaved and a boolean. if the
+        boolean is true, a variable was detected but left unchanged.
+
+    Raises:
+        ValueError: if a variable refers to itself, directly or not.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.variables import resolve_var_any
+
+            print(resolve_var_any(("%{a}", ["b=%{b}"], 7), {"a": 1, "b": "x"}))
+
+        .. testoutput::
+
+            ((1, ['b=x'], 7), False)
+
     """
     if isinstance(some_val, str):
         return cast("tuple[T, bool]", _resolve_var_str(some_val, variables))  # type: ignore[return-value]
@@ -69,12 +115,40 @@ def resolve_var_any[T](
     return some_val, False
 
 
-# containers whose items are searched for variables
 _SEQUENCE_AND_SET_TYPES = (list, tuple, set, frozenset)
+"""Containers whose items are searched for variables."""
 
 
 def _rebuild(original: Iterable[Any], items: list[Any]) -> Any:  # noqa: ANN401
-    """Make a container like *original* from *items*."""
+    """Make a container like *original* from *items*.
+
+    Args:
+        original: the container the items came from.
+        items: the new items.
+
+    Returns:
+        Any: a container of the type of ``original`` holding ``items``, or of its
+        base type (list, tuple, set or frozenset) if that type can't be built from
+        a list, such as a namedtuple.
+
+    Raises:
+        StopIteration: if ``original`` isn't a list, tuple, set or frozenset.
+
+    Example:
+        .. testcode::
+
+            from collections import namedtuple
+
+            from pyantz.infrastructure.config.variables import _rebuild
+
+            Point = namedtuple("Point", "x y")
+            print(_rebuild(frozenset(), [1]), _rebuild(Point(0, 0), [1, 2]))
+
+        .. testoutput::
+
+            frozenset({1}) (1, 2)
+
+    """
     base = next(base for base in _SEQUENCE_AND_SET_TYPES if isinstance(original, base))
     try:
         return cast("Callable[[list[Any]], Any]", type(original))(items)
@@ -89,9 +163,38 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[Any, bool]:
     variable, the variable's value is returned as is, preserving its type.
     Otherwise, values are converted to strings and interpolated.
 
-    Returns the string with variables interleaved
-        AND a boolean. If the boolean is true, then a variable substring was found
-        but could not be replaced because the variable isn't set.
+    Args:
+        v: the string to resolve.
+        variables: the variables to fill in.
+
+    Returns:
+        tuple[Any, bool]: the string with variables interleaved (or the value of
+        a whole reference) AND a boolean. If the boolean is true, then a variable
+        substring was found but could not be replaced because the variable isn't
+        set.
+
+    Raises:
+        ValueError: if resolving needs more than :data:`MAX_RESOLUTION_DEPTH`
+            passes, i.e., a variable refers to itself.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.variables import _resolve_var_str
+
+            print(_resolve_var_str("%{n}", {"n": 5}))
+            print(_resolve_var_str("n=%{n}", {"n": 5}))
+            try:
+                _resolve_var_str("%{a}", {"a": "%{b}", "b": "%{a}"})
+            except ValueError as exc:
+                print(exc)
+
+        .. testoutput::
+
+            (5, False)
+            ('n=5', False)
+            Recursive variable reference while resolving '%{a}'
+
     """
     whole_reference = VARIABLE_REGEX.fullmatch(v)
     if whole_reference is not None:

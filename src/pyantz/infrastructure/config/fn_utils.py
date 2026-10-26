@@ -19,16 +19,40 @@ if TYPE_CHECKING:
     from pyantz.infrastructure.config.job import JobFunctionType
 
 
-# comma separated module prefixes which configurations may import functions from
 ALLOWED_MODULES_VARIABLE = "PYANTZ_ALLOWED_MODULES"
+"""Environment variable holding the comma separated module prefixes which
+configurations may import functions from; see :func:`_check_import_allowed`."""
 
 
 def serialize_function(fn: Callable[..., Any]) -> str:
     """Serialize the function so that others can import it dynamically.
 
+    Args:
+        fn: the function (or class) to serialize.
+
+    Returns:
+        str: the full dotted import path of ``fn``.
+
     Raises:
         ValueError: if the function can't be imported by name (lambdas and
             functions defined inside other functions)
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.fn_utils import serialize_function
+            from pyantz.jobs.files.simple import copy
+
+            print(serialize_function(copy))
+            try:
+                serialize_function(lambda: None)
+            except ValueError:
+                print("lambdas can't be imported by name")
+
+        .. testoutput::
+
+            pyantz.jobs.files.simple.copy
+            lambdas can't be imported by name
 
     """
     mod_name: str = fn.__module__ if hasattr(fn, "__module__") else "anonymous"
@@ -53,8 +77,34 @@ def _check_import_allowed(key: str) -> None:
     runs it is trusted. Set it wherever configurations come from someone else. The
     check happens before importing, so modules that are not allowed never run.
 
+    Args:
+        key: the full dotted name to be imported.
+
+    Returns:
+        None.
+
     Raises:
         ValueError: if the name is not allowed
+
+    Example:
+        .. testcode::
+
+            import os
+
+            from pyantz.infrastructure.config.fn_utils import _check_import_allowed
+
+            os.environ["PYANTZ_ALLOWED_MODULES"] = "pyantz, my_package"
+            try:
+                _check_import_allowed("pyantz.jobs.files.simple.copy")  # allowed
+                _check_import_allowed("os.system")
+            except ValueError:
+                print("os.system is not allowed")
+            finally:
+                del os.environ["PYANTZ_ALLOWED_MODULES"]
+
+        .. testoutput::
+
+            os.system is not allowed
 
     """
     allowed = [
@@ -73,12 +123,75 @@ def _check_import_allowed(key: str) -> None:
 
 
 def import_function_by_name(fn_path: Any) -> JobFunctionType:  # noqa: ANN401
-    """Import a function by its name."""
+    """Import a function by its name.
+
+    Used to validate the ``function`` of a job; a value which isn't a string
+    (such as the function itself) is returned unchanged.
+
+    Args:
+        fn_path: the function's full dotted import path, or the function.
+
+    Returns:
+        JobFunctionType: the imported function.
+
+    Raises:
+        ValueError: if the name can't be imported or isn't allowed by
+            :data:`ALLOWED_MODULES_VARIABLE`.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.fn_utils import import_function_by_name
+
+            fn = import_function_by_name("pyantz.jobs.testing.nop.do_nothing")
+            print(fn.__name__)
+
+        .. testoutput::
+
+            do_nothing
+
+    """
     return import_module_item_by_name(fn_path)
 
 
 def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
-    """Import a parameters model by its name."""
+    """Import a parameters model by its name.
+
+    Any item of a module can be imported, including attributes of classes such as
+    ``package.module.Class.method``: the longest prefix of the name which is a
+    module is imported, and the rest is looked up on it.
+
+    Args:
+        key: the item's full dotted import path; anything which isn't a string is
+            returned unchanged.
+
+    Returns:
+        Any: the imported item.
+
+    Raises:
+        ValueError: if the name has fewer than two parts, its module can't be
+            imported, the module lacks the item, or the name isn't allowed by
+            :data:`ALLOWED_MODULES_VARIABLE`.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.fn_utils import (
+                import_module_item_by_name,
+            )
+
+            print(import_module_item_by_name("pathlib.Path.home").__qualname__)
+            try:
+                import_module_item_by_name("pathlib.Missing")
+            except ValueError as exc:
+                print(exc)
+
+        .. testoutput::
+
+            Path.home
+            Cannot import 'pathlib.Missing': Module 'pathlib' has no attribute 'Missing'
+
+    """
     if not isinstance(key, str):
         return key
 

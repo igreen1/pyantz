@@ -79,6 +79,9 @@ dev = [
 # imports in annotations working there as they do with 3.14's deferred ones
 required-imports = ["from __future__ import annotations"]
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 
@@ -87,6 +90,8 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 "tests/**/*.py" = ["S101", "S607", "S603"]
 # a hatch build hook is a script next to the pyproject, not part of a package
 "packages/*/hatch_build.py" = ["INP001"]
+# sphinx's configuration is a script in the docs, not part of a package
+"docs/source/conf.py" = ["INP001"]
 
 [tool.ruff.lint]
 select = ["ALL"]

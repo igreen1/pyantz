@@ -25,6 +25,31 @@ def find_graph_problems(jobs: Iterable[AbstractJobConfig]) -> list[str]:
     Returns:
         list[str]: a message for each problem; empty if the jobs are fine
 
+    Raises:
+        None: problems are reported in the returned list.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config import JobConfig
+            from pyantz.infrastructure.config.graph_validation import (
+                find_graph_problems,
+            )
+
+            nop = "pyantz.jobs.testing.nop.do_nothing"
+            jobs = [
+                JobConfig(job_id="a", depends_on={"b"}, function=nop, parameters={}),
+                JobConfig(job_id="b", depends_on={"a"}, function=nop, parameters={}),
+                JobConfig(job_id="c", depends_on={"x"}, function=nop, parameters={}),
+            ]
+            for problem in find_graph_problems(jobs):
+                print(problem)
+
+        .. testoutput::
+
+            Job 'c' depends on unknown job 'x'
+            Dependency cycle: a -> b -> a
+
     """
     job_list = list(jobs)
     problems: list[str] = []

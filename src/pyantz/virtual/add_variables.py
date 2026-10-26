@@ -13,6 +13,53 @@ Example JSON usage::
         "variables": {"data_dir": "/mnt/data", "batch_size": 64}
       }
     }
+
+Example of :class:`AddVariables`:
+
+    .. testsetup:: virtual-add-variables
+
+        import os, shutil, tempfile
+        start_dir = os.getcwd()
+        os.chdir(tempfile.mkdtemp())
+
+    .. testcode:: virtual-add-variables
+
+        import os
+
+        from pyantz import start
+
+        start(
+            {
+                "submitter": {
+                    "type_": "local_proc",
+                    "working_directory": ".",
+                    "use_same_proc": True,
+                },
+                "jobs": [
+                    {
+                        "job_id": "set_name",
+                        "function": "pyantz.virtual.add_variables.AddVariables",
+                        "parameters": {"variables": {"name": "results"}},
+                    },
+                    {
+                        "function": "pyantz.jobs.files.simple.mkdir",
+                        "parameters": {"dir_path": "%{name}"},
+                        "depends_on": ["set_name"],
+                    },
+                ],
+            }
+        )
+        print(os.path.isdir("results"))
+
+    .. testoutput:: virtual-add-variables
+
+        True
+
+    .. testcleanup:: virtual-add-variables
+
+        tmp = os.getcwd()
+        os.chdir(start_dir)
+        shutil.rmtree(tmp)
 """
 
 from __future__ import annotations
@@ -31,8 +78,8 @@ class AddVariables(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # variables to add to subsequent jobs
     variables: Mapping[str, Any]
+    """Variables to add to the jobs which depend on this one."""
 
     def compile_virtual(self, deps: list[JobConfig]) -> list[JobConfig]:
         """Wrap *deps* in a ``run_jobs_in_context`` job.
@@ -47,6 +94,25 @@ class AddVariables(BaseModel):
         Returns:
             A single-element list containing the compiled
             :class:`~pyantz.infrastructure.config.job.JobConfig`.
+
+        Raises:
+            pydantic.ValidationError: if the compiled job is invalid.
+
+        Example:
+            .. testcode::
+
+                from pyantz.infrastructure.config import JobConfig
+                from pyantz.virtual.add_variables import AddVariables
+
+                job = JobConfig(
+                    function="pyantz.jobs.testing.nop.do_nothing", parameters={}
+                )
+                (wrapper,) = AddVariables(variables={"x": 1}).compile_virtual([job])
+                print(wrapper.parameters["jobs"][0].job_id == job.job_id)
+
+            .. testoutput::
+
+                True
 
         """
         configs = [

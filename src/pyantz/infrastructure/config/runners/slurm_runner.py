@@ -32,6 +32,20 @@ Something like the below is possible, which fits many use cases::
     A -> B -> C
                 \ C2
 
+Example of :class:`SlurmRunnerConfig`:
+
+    .. testcode::
+
+        from pyantz.infrastructure.config.runners import SlurmRunnerConfig
+
+        config = SlurmRunnerConfig(
+            working_dir="/shared/pipeline", slurm_args=["--partition=short"]
+        )
+        print(config.type_, config.max_job_time_seconds, config.slurm_args)
+
+    .. testoutput::
+
+        slurm_sbatch 10000 ['--partition=short']
 """
 
 from __future__ import annotations
@@ -42,6 +56,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 DEFAULT_JOB_TIMEOUT: int = 10_000  # about 2.8 hours
+"""Default of :attr:`SlurmRunnerConfig.max_job_time_seconds`."""
 
 
 class SlurmRunnerConfig(BaseModel):
@@ -50,25 +65,25 @@ class SlurmRunnerConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     type_: Literal["slurm_sbatch"] = "slurm_sbatch"
+    """Identifies this submitter configuration."""
 
-    # max time a job can be running before slurm timeouts. Passed to sbatch as
-    # `--time` (in whole minutes, rounded up) unless `slurm_args` sets a time limit
     max_job_time_seconds: int = DEFAULT_JOB_TIMEOUT
+    """Max time a job can be running before slurm stops it. Passed to sbatch as
+    ``--time`` (in whole minutes, rounded up) unless ``slurm_args`` sets a time
+    limit."""
 
-    # extra arguments for every sbatch call. Unless they include
-    # `--kill-on-invalid-dep`, jobs are submitted with `--kill-on-invalid-dep=yes`
-    # so that when a job fails, the jobs waiting on it are cancelled instead of
-    # staying pending forever
     slurm_args: list[str] = Field(default_factory=list)
+    """Extra arguments for every sbatch call. Unless they include
+    ``--kill-on-invalid-dep``, jobs are submitted with
+    ``--kill-on-invalid-dep=yes`` so that when a job fails, the jobs waiting on
+    it are cancelled instead of staying pending forever."""
 
-    # directory shared between the submitting node and the compute nodes.
-    # not checked when the config is parsed: with a remote host it only exists there
-    # (it is checked when the slurm runner starts)
     working_dir: Path
+    """Directory shared between the submitting node and the compute nodes. Not
+    checked when the config is parsed: with a remote host it only exists there
+    (it is checked when the slurm runner starts)."""
 
-    # if some job A depends on job P and job P submits jobs
-    # P1 and P2, if inherit_dependencies then A depends on P1 and P2
-    # if not inherit dependencies, then A depends only on P and
-    # may run before P1 and p2
-    # requires using sctrl to modify running jobs
     inherit_dependencies: bool = True
+    """If some job A depends on job P and job P submits jobs P1 and P2: if true,
+    A depends on P1 and P2 too (which needs ``scontrol`` to modify the pending
+    jobs); if false, A depends only on P and may run before P1 and P2."""
