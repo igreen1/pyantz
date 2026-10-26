@@ -69,12 +69,14 @@ jobs:
         run: |
           uv run python - <<'PY'
           import xml.etree.ElementTree as ET
-          out = []
+          ids, out = [], []
           for case in ET.parse("junit.xml").iter("testcase"):
               for bad in [*case.iter("failure"), *case.iter("error")]:
+                  test_id = f"{case.get('classname')}::{case.get('name')}"
                   lines = (bad.text or bad.get("message") or "").strip().splitlines()
-                  out.append(f"{case.get('classname')}::{case.get('name')}\n" + "\n".join(lines[-25:]))
-          text = "\n\n=====\n".join(out) or "no failures in junit.xml"
+                  ids.append(test_id)
+                  out.append(test_id + "\n" + "\n".join(lines[-12:]))
+          text = "\n\n=====\n".join(["FAILED:\n" + "\n".join(ids), *out])
           for i in range(0, min(len(text), 9 * 6000), 6000):
               chunk = text[i : i + 6000].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
               print(f"::error title=pytest failures {i // 6000}::{chunk}")
