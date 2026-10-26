@@ -10,6 +10,8 @@ also creates per-run output directories and injects ``output_dir`` and
 ``pipeline_id`` variables.
 """
 
+from __future__ import annotations
+
 import itertools
 import math
 import os

@@ -14,6 +14,8 @@ Is actually
 SubmitInContext[JobA]
 """
 
+from __future__ import annotations
+
 from .compile import compile_virtual
 
 __all__ = [

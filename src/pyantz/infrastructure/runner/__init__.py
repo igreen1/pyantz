@@ -1,5 +1,7 @@
 """Runners are the workers that actually perform the work of the jobs."""
 
+from __future__ import annotations
+
 from .local import start as start_local
 
 __all__ = [

@@ -1,5 +1,7 @@
 """Test that child SLURM jobs exit non-zero when the job fails."""
 
+from __future__ import annotations
+
 import json
 import os
 import stat

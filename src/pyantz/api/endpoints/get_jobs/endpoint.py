@@ -1,5 +1,7 @@
 """Get the jobs as a list for the user."""
 
+from __future__ import annotations
+
 import inspect
 
 from fastapi import APIRouter

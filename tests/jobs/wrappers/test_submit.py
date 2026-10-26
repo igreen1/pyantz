@@ -1,5 +1,7 @@
 """Test the jobs which run a sub-pipeline with another submitter or host."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

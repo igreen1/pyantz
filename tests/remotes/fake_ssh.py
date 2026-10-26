@@ -1,5 +1,7 @@
 """A fake paramiko SSH client, to test the ssh runner without a server."""
 
+from __future__ import annotations
+
 import io
 import posixpath
 from typing import TYPE_CHECKING, Any, Self

@@ -28,7 +28,7 @@ pip install pyantz
 uv add pyantz
 ```
 
-**Requires Python ≥ 3.14.**
+**Requires Python ≥ 3.13.**
 
 ---
 
@@ -325,14 +325,21 @@ uv run pyantz-dev                               # the api, on http://127.0.0.1:8
 cd frontend/pyantz && npm ci && npm run dev     # the UI, on http://localhost:5173
 ```
 
-**One server** (the api serves the built UI at `/`):
+**Installed** (the UI is an optional feature, so a plain `pip install pyantz` stays small):
+
+```bash
+uv pip install "pyantz[frontend]"
+uv run pyantz-frontend                          # the api and the UI, on http://127.0.0.1:8000
+```
+
+**One server from a checkout** (the api serves the built UI at `/`):
 
 ```bash
 cd frontend/pyantz && npm ci && npm run build
 PYANTZ_FRONTEND_DIR=frontend/pyantz/dist uv run pyantz-prod   # http://127.0.0.1:8000
 ```
 
-Both servers read their settings from the environment:
+The servers read their settings from the environment:
 
 | Variable | Meaning |
 | --- | --- |
@@ -340,7 +347,7 @@ Both servers read their settings from the environment:
 | `PYANTZ_API_TOKEN` | If set, the api needs `Authorization: Bearer <token>`; the UI asks for it and keeps it for the tab. |
 | `PYANTZ_ALLOWED_MODULES` | Comma separated module prefixes which configs may run functions from, e.g. `pyantz`. **Runs from the UI are refused until this is set**, since a config is code. |
 | `PYANTZ_RUNS_DIR` | Where runs started from the UI keep their files (default: a directory in the system's temp directory). |
-| `PYANTZ_FRONTEND_DIR` | The built UI (`frontend/pyantz/dist`) to serve at `/`. The page itself is served without the token, so that it can ask for it. |
+| `PYANTZ_FRONTEND_DIR` | The built UI (`frontend/pyantz/dist`) to serve at `/`; `pyantz-frontend` uses the installed one if this is not set. The page itself is served without the token, so that it can ask for it. |
 | `PYANTZ_CORS_ORIGINS` | Origins allowed to call the api from another address. |
 | `PYANTZ_API_URL` | For the Vite dev server only: where the api is, if not on port 8000. |
 

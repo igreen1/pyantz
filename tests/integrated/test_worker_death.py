@@ -1,5 +1,7 @@
 """Test the pipeline recovers when a worker process is killed mid-job."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

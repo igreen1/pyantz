@@ -1,5 +1,7 @@
 """Decorate functions and strongly enforce parameter types."""
 
+from __future__ import annotations
+
 import logging
 import uuid
 from functools import wraps

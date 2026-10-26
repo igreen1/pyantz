@@ -1,5 +1,7 @@
 """Test the container runner against a mocked docker client."""
 
+from __future__ import annotations
+
 import io
 import os
 import tarfile

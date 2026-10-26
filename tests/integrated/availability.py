@@ -1,5 +1,7 @@
 """Check whether the services needed by some integration tests are available."""
 
+from __future__ import annotations
+
 import socket
 
 import docker

@@ -2,6 +2,7 @@
 
 # regression tests for issue #10
 
+from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest

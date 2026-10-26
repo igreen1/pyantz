@@ -1,5 +1,7 @@
 """Settings of the api servers, read from the environment when a server starts."""
 
+from __future__ import annotations
+
 import os
 import tempfile
 from pathlib import Path

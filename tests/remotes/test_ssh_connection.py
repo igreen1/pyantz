@@ -1,5 +1,7 @@
 """Test how the ssh runner opens and closes its connection."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 import paramiko

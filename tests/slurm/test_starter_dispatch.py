@@ -1,5 +1,7 @@
 """Test that the top-level starter routes SLURM configs to the SLURM runner."""
 
+from __future__ import annotations
+
 import os
 import stat
 from typing import TYPE_CHECKING, Any

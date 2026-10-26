@@ -1,5 +1,7 @@
 """Test restricting which modules a configuration can import functions from."""
 
+from __future__ import annotations
+
 import os
 import sys
 from typing import TYPE_CHECKING

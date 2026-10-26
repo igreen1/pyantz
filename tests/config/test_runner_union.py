@@ -1,5 +1,7 @@
 """Test that submitter and host configs are discriminated by their `type_`."""
 
+from __future__ import annotations
+
 from pyantz.infrastructure.config import InitialConfig
 from pyantz.infrastructure.config.runners import LocalRunnerConfig, SlurmRunnerConfig
 from pyantz.jobs.wrappers.submit import HostParams, SubmitParams

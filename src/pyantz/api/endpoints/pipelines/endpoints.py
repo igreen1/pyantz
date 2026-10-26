@@ -1,5 +1,7 @@
 """Endpoints to validate, preview and run pipeline configurations."""
 
+from __future__ import annotations
+
 import json
 import os
 import re

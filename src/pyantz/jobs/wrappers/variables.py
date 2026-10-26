@@ -3,6 +3,8 @@
 A user may wish to declare some variables locally for a few common jobs.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import tempfile

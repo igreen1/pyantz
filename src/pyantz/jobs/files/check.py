@@ -5,6 +5,8 @@ memory-mapped I/O to efficiently search for a substring anywhere in a file.
 Both return ``False`` (signalling job failure) when the condition is not met.
 """
 
+from __future__ import annotations
+
 import mmap
 from pathlib import Path
 

@@ -1,5 +1,7 @@
 """Compile virtual jobs to 'real' jobs."""
 
+from __future__ import annotations
+
 import graphlib
 from collections import Counter
 from collections.abc import Collection, Iterable, Mapping
@@ -198,7 +200,7 @@ def _try_to_validate_job(
 
     try:
         return make_job(possible_job)
-    except ValidationError, TypeError, ValueError:
+    except (ValidationError, TypeError, ValueError):
         return None
 
 

@@ -1,5 +1,7 @@
 """Test dependents of a slurm job wait on every child the job submits."""
 
+from __future__ import annotations
+
 import inspect
 import subprocess
 from typing import TYPE_CHECKING, Any

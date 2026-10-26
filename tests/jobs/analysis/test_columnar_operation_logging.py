@@ -1,5 +1,7 @@
 """Test the logging of the columnar operation job."""
 
+from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 

@@ -1,6 +1,8 @@
 """Test the declared attributes of the queue match what it really has."""
 
-import annotationlib
+from __future__ import annotations
+
+import inspect
 from typing import TYPE_CHECKING
 
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
@@ -12,10 +14,9 @@ if TYPE_CHECKING:
 def _annotated_attributes() -> set[str]:
     """Names annotated on the class (without evaluating type-checking-only types)."""
     return set(
-        annotationlib.get_annotations(
-            SqliteQueue,
-            format=annotationlib.Format.FORWARDREF,
-        ),
+        # the module uses `from __future__ import annotations`, so these are the
+        # unevaluated strings
+        inspect.get_annotations(SqliteQueue),
     )
 
 

@@ -1,5 +1,7 @@
 """Test the working directory used on remote hosts when none is configured."""
 
+from __future__ import annotations
+
 import io
 from typing import TYPE_CHECKING, Any, Self
 

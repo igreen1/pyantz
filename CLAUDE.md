@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-PyAntz is a local-first DAG pipeline runner. Pipelines are JSON/dict configs whose jobs reference Python functions by import path. They run via local multiprocessing (SQLite-backed queue) or SLURM `sbatch`, optionally on a remote host (SSH or Docker/Podman container). Requires Python >= 3.14 (uses PEP 695 syntax such as `def f[T: ...]`). Package manager is `uv`; source is in `src/pyantz`.
+PyAntz is a local-first DAG pipeline runner. Pipelines are JSON/dict configs whose jobs reference Python functions by import path. They run via local multiprocessing (SQLite-backed queue) or SLURM `sbatch`, optionally on a remote host (SSH or Docker/Podman container). Requires Python >= 3.13 (uses PEP 695 syntax such as `def f[T: ...]`); development defaults to 3.14 (`.python-version`). Package manager is `uv`; source is in `src/pyantz`.
 
 ## Commands
 
@@ -22,10 +22,11 @@ make doc                                  # build sphinx html docs
 cd frontend/pyantz && npm run dev -- --host   # web UI (React/Vite); API via `pyantz-dev` / `pyantz-prod`
 make frontend-check                       # web UI: lint, typecheck, unit tests, build
 make e2e                                  # web UI: Playwright tests against real servers
+make frontend-bundle                      # build the UI into packages/pyantz-frontend (for `pyantz-frontend` in a checkout)
 uv run pytest tests/frontend              # the UI's model agrees with the python models (needs node >= 22.18)
 ```
 
-Entry points: `pyantz <config.json>`, `pyantz-status`, `pyantz-dev`, `pyantz-prod`.
+Entry points: `pyantz <config.json>`, `pyantz-status`, `pyantz-dev`, `pyantz-prod`, `pyantz-frontend` (api + built UI; needs the `frontend` extra).
 
 Pytest markers `docker`, `ssh`, `slow` mark tests that need a docker daemon / ssh server / long runtime (skipped when unavailable). `tests/` also contains meta-tests: formatting (ruff), spelling (codespell), and job registration (checks in a fresh interpreter that `import pyantz.jobs` registers everything and has no circular imports). Docstrings in `src` are executed as Sphinx doctests (`.. testcode::`), so keep them runnable.
 
@@ -39,12 +40,13 @@ Flow: `pyantz.start(config)` (`infrastructure/runner/starter.py`) validates into
 - **`infrastructure/distributed_queue/`** — queue interface (`common/`) with a SQLAlchemy/SQLite implementation (`sql/`) used for job fan-out and status; `JobsReport` return types live in `common/return_types.py`.
 - **`jobs/`** — built-in job library grouped by area (`files`, `analysis`, `branching`, `subproc`, `wrappers` for loop/submit, `testing`). Jobs receive their params plus a submit function so they can enqueue follow-on jobs.
 - **`virtual/`** — built-in virtual job definitions (e.g. `add_variables`). Configs support `%{var}` template substitution.
-- **`api/`** — FastAPI backend for the optional web UI; `frontend/pyantz` is the React app (see its README). `PYANTZ_FRONTEND_DIR` makes the server serve the built app. `python -m pyantz.api.dump_schemas` regenerates `frontend/pyantz/src/__fixtures__/job-schemas.json`, which a test checks. The UI's `src/model/types.ts` lists the config fields and `tests/frontend` compares them with the pydantic models: change both when you add a field.
+- **`api/`** — FastAPI backend for the optional web UI; `frontend/pyantz` is the React app (see its README). `PYANTZ_FRONTEND_DIR` makes the server serve the built app. The `frontend` extra (`pyantz[frontend]`) pulls in `pyantz-frontend`, a second distribution in `packages/pyantz-frontend` (uv workspace member) whose hatch build hook runs `npm run build` and ships the result; `pyantz-frontend` (`api/frontend_server.py`) serves it. `make build` builds both; the versions move together via bumpver. `python -m pyantz.api.dump_schemas` regenerates `frontend/pyantz/src/__fixtures__/job-schemas.json`, which a test checks. The UI's `src/model/types.ts` lists the config fields and `tests/frontend` compares them with the pydantic models: change both when you add a field.
 
 Note: both `config/abstract_job.py` and `config/abtrast_job.py` exist; import `AbstractJobConfig` from `abstract_job`.
 
 ## Conventions
 
 - Ruff runs with `select = ["ALL"]` (ignoring D203, D213, COM812): all public code needs Google-style docstrings and full type hints; asserts are only allowed under `tests/`. Imports used only for typing go under `TYPE_CHECKING` (pydantic models are treated as runtime-evaluated).
+- Code must run on Python 3.13: every module starts with `from __future__ import annotations` (ruff `required-imports` adds it) because 3.13 has no deferred annotations (PEP 649); no 3.14-only syntax such as unparenthesized `except A, B` (PEP 758) or modules such as `annotationlib`. To test on 3.13: `UV_PROJECT_ENVIRONMENT=.venv-3.13 uv run --python 3.13 pytest`.
 - Version lives in `src/pyantz/__init__.py` and `pyproject.toml`, bumped via `bumpver` (`make build`) — don't edit by hand.
 - More user-facing docs: `README.md`, `TUTORIAL.md`, `docs/source`.

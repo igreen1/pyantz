@@ -1,5 +1,7 @@
 """Test jobs which run for too long are stopped."""
 
+from __future__ import annotations
+
 import os
 import time
 from typing import TYPE_CHECKING, Any

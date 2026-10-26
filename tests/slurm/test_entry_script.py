@@ -1,5 +1,7 @@
 """Test how slurm child jobs are launched on the compute node."""
 
+from __future__ import annotations
+
 import importlib
 import os
 import subprocess

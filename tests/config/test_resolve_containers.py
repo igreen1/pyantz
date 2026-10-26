@@ -1,5 +1,7 @@
 """Test variable resolution inside different kinds of values."""
 
+from __future__ import annotations
+
 from collections import OrderedDict, namedtuple
 
 from pydantic import BaseModel

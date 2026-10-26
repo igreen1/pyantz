@@ -1,5 +1,9 @@
 """Where the application is defined."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import uvicorn
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,12 +19,19 @@ from .settings import (
     get_settings,
 )
 
+if TYPE_CHECKING:
+    from pathlib import Path
 
-def create_app() -> FastAPI:
+
+def create_app(frontend_dir: Path | None = None) -> FastAPI:
     """Create the application, reading its settings from the environment.
 
     The cors origins are read from `PYANTZ_CORS_ORIGINS`, and the built web ui is
     served at ``/`` if `PYANTZ_FRONTEND_DIR` names it.
+
+    Args:
+        frontend_dir: the built web ui to serve at ``/``, instead of the one which
+            `PYANTZ_FRONTEND_DIR` names
 
     Raises:
         ValueError: if `PYANTZ_FRONTEND_DIR` is not a directory with an index.html
@@ -36,7 +47,7 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
     application.include_router(endpoints.router, dependencies=[Depends(require_token)])
-    frontend_dir = get_frontend_dir()
+    frontend_dir = frontend_dir or get_frontend_dir()
     if frontend_dir is not None:
         if not (frontend_dir / "index.html").is_file():
             msg = (

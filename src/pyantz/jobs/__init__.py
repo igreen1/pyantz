@@ -46,6 +46,8 @@ that literally does nothing.
 
 """
 
+from __future__ import annotations
+
 from . import analysis, branching, files, subproc, testing, wrappers
 
 __all__ = [

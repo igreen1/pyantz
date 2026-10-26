@@ -6,6 +6,8 @@ pure-Python :func:`copy` / :func:`move` alternatives built on
 than raising exceptions.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import shutil

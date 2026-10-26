@@ -7,6 +7,8 @@ columns and stores the result in a new column.
 writes the output to a third file.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Literal, Self
@@ -232,7 +234,8 @@ def join_parquets(params: JoinParquetParams) -> bool:
         }
         start(config)
 
-        result = pl.read_parquet("output.parquet")
+        # a join doesn't keep the order of the rows
+        result = pl.read_parquet("output.parquet").sort("idx")
         print(result)
 
     Output:

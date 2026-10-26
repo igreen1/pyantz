@@ -14,6 +14,8 @@ the database file. But, after initialization this cannot be
 updated or changed without a new class instance.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import TYPE_CHECKING, Protocol
 

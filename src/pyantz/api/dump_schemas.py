@@ -5,6 +5,8 @@ api serves them. Run ``python -m pyantz.api.dump_schemas [FILE]`` (standard outp
 without a file) to regenerate it.
 """
 
+from __future__ import annotations
+
 import json
 import sys
 from pathlib import Path

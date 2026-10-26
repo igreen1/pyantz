@@ -1,5 +1,7 @@
 """Test the failure paths and options of the analysis jobs."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 import polars as pl

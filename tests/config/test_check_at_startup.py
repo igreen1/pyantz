@@ -1,5 +1,7 @@
 """Test that parameters are only validated at load time when asked for."""
 
+from __future__ import annotations
+
 import pytest
 from pydantic import BaseModel, ValidationError
 

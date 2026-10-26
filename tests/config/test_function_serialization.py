@@ -1,5 +1,7 @@
 """Test converting job functions to and from importable names."""
 
+from __future__ import annotations
+
 from typing import Any
 
 import pytest

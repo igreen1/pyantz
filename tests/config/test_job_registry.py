@@ -1,5 +1,7 @@
 """Test the registry of jobs."""
 
+from __future__ import annotations
+
 import importlib
 
 import pyantz.jobs  # noqa: F401  (registers the jobs)

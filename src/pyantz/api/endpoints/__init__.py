@@ -1,5 +1,7 @@
 """The API endpoints."""
 
+from __future__ import annotations
+
 from fastapi import APIRouter
 
 from . import get_jobs, get_parameters, pipelines

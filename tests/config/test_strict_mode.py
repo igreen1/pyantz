@@ -1,5 +1,7 @@
 """Test that ``strict`` rejects unresolved variables in typed parameters."""
 
+from __future__ import annotations
+
 from typing import Any
 
 import pytest

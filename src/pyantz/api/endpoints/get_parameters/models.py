@@ -1,5 +1,7 @@
 """Data models used by the `get_parameters` endpoints."""
 
+from __future__ import annotations
+
 from pydantic import BaseModel, JsonValue
 
 
