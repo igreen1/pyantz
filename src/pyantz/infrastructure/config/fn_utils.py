@@ -34,8 +34,9 @@ def serialize_function(fn: Callable[..., Any]) -> str:
         str: the full dotted import path of ``fn``.
 
     Raises:
-        ValueError: if the function can't be imported by name (lambdas and
-            functions defined inside other functions)
+        ValueError: if the function can't be imported by name (lambdas,
+            functions defined inside other functions, and functions without a
+            module, such as those made by code run with ``exec``)
 
     Example:
         .. testcode::
@@ -55,13 +56,15 @@ def serialize_function(fn: Callable[..., Any]) -> str:
             lambdas can't be imported by name
 
     """
-    mod_name: str = fn.__module__ if hasattr(fn, "__module__") else "anonymous"
+    # None for functions made by code run without a module, e.g., with `exec`
+    mod_name: str | None = getattr(fn, "__module__", None)
     qualified_name: str = str(
         getattr(fn, "__qualname__", getattr(fn, "__name__", "some_fn")),
     )
-    if "<lambda>" in qualified_name or "<locals>" in qualified_name:
+    if mod_name is None or "<lambda>" in qualified_name or "<locals>" in qualified_name:
+        location = mod_name or "<no module>"
         msg = (
-            f"Function {mod_name}.{qualified_name} is not importable; "
+            f"Function {location}.{qualified_name} is not importable; "
             "define it at module level"
         )
         raise ValueError(msg)

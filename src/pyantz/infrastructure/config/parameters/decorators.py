@@ -248,11 +248,6 @@ def add_parameters[T: BaseModel](
         None.
 
     Example:
-        .. testsetup:: decorators-add-parameters
-
-            # functions are registered under the name of the module defining them
-            __name__ = "my_jobs"
-
         .. testcode:: decorators-add-parameters
 
             from pydantic import BaseModel
@@ -327,7 +322,7 @@ def add_parameters[T: BaseModel](
         except ValueError:
             # not importable by name (e.g., defined inside a function), so it can
             # still run in-process but can't be sent to other processes
-            module = getattr(fn, "__module__", "anonymous")
+            module = getattr(fn, "__module__", None) or "anonymous"
             name = f"{module}.{getattr(fn, '__qualname__', 'some_fn')}"
         _fn_with_checker.PYANTZ_NAME = name  # type: ignore[attr-defined]  # ty:ignore[unresolved-attribute]
 

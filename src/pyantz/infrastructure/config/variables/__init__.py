@@ -86,11 +86,11 @@ def resolve_var_any[T](
 
             from pyantz.infrastructure.config.variables import resolve_var_any
 
-            print(resolve_var_any(("%{a}", ["b=%{b}"], 7), {"a": 1, "b": "x"}))
+            print(resolve_var_any(("%{a}", ["%{a}-%{b}"], 7), {"a": 1, "b": "x"}))
 
         .. testoutput::
 
-            ((1, ['b=x'], 7), False)
+            ((1, ['1-x'], 7), False)
 
     """
     if isinstance(some_val, str):
@@ -183,7 +183,8 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[Any, bool]:
             from pyantz.infrastructure.config.variables import _resolve_var_str
 
             print(_resolve_var_str("%{n}", {"n": 5}))
-            print(_resolve_var_str("n=%{n}", {"n": 5}))
+            print(_resolve_var_str("%{a}-%{b}", {"a": 1, "b": "x"}))
+            print(_resolve_var_str("%{a}-%{unset}", {"a": 1}))
             try:
                 _resolve_var_str("%{a}", {"a": "%{b}", "b": "%{a}"})
             except ValueError as exc:
@@ -192,7 +193,8 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[Any, bool]:
         .. testoutput::
 
             (5, False)
-            ('n=5', False)
+            ('1-x', False)
+            ('1-%{unset}', True)
             Recursive variable reference while resolving '%{a}'
 
     """
@@ -203,24 +205,36 @@ def _resolve_var_str(v: str, variables: Mapping[str, Any]) -> tuple[Any, bool]:
             return variables[name], False
 
     s = v
+    for _ in range(MAX_RESOLUTION_DEPTH):
+        replaced = False
+        unresolved = False
 
-    unmade_change = False
-    variable_detected = True
-    passes = 0
-    while variable_detected:
-        passes += 1
-        if passes > MAX_RESOLUTION_DEPTH:
-            msg = f"Recursive variable reference while resolving {v!r}"
-            raise ValueError(msg)
-        variable_detected = False
-        for match in VARIABLE_REGEX.finditer(s):
-            start = match.start()
-            end = match.end()
-            substr = s[start:end]
-            if substr[2:-1] in variables:
-                variable_detected = True
-                s = s.replace(substr, str(variables[substr[2:-1]]))
-            else:
-                unmade_change = True
+        def _replace(match: re.Match[str]) -> str:
+            """Replace one reference by its variable's value, if it is set.
 
-    return s, unmade_change
+            Args:
+                match: a reference to a variable, such as ``%{name}``.
+
+            Returns:
+                str: the variable's value as text, or the reference if unset.
+
+            Raises:
+                None.
+
+            """
+            nonlocal replaced, unresolved
+            name = match.group(1)[2:-1]
+            if name in variables:
+                replaced = True
+                return str(variables[name])
+            unresolved = True
+            return match.group(1)
+
+        # every reference of the pass is replaced in one go, so replacing one
+        # can't shift the others (values may hold references for the next pass)
+        s = VARIABLE_REGEX.sub(_replace, s)
+        if not replaced:
+            return s, unresolved
+
+    msg = f"Recursive variable reference while resolving {v!r}"
+    raise ValueError(msg)

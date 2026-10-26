@@ -14,11 +14,6 @@ model's JSON schema to build its forms. A job which never submits other jobs can
 take only its parameters by adding :func:`~pyantz.infrastructure.config.no_submit_fn`
 below.
 
-.. testsetup:: writing-jobs-typed
-
-    # functions are registered under the name of the module defining them
-    __name__ = "my_project.jobs"
-
 .. testcode:: writing-jobs-typed
 
     from pydantic import BaseModel
@@ -78,10 +73,6 @@ The submit function adds jobs to the running pipeline. The submitted jobs inheri
 the variables of the job which submitted them, and the jobs waiting for that job
 wait for them too. :func:`~pyantz.jobs.branching.if_else.if_else` and
 :func:`~pyantz.jobs.branching.case_matrix.pipeline_expansion` work this way.
-
-.. testsetup:: writing-jobs-submit
-
-    __name__ = "my_project.jobs"
 
 .. testcode:: writing-jobs-submit
 
