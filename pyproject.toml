@@ -25,7 +25,7 @@ Documentation = "https://iangreen.dev/pyantz/"
 # reading excel files (pyantz.jobs.files.reformat.excel_to_csv)
 excel = ["fastexcel>=0.12.0"]
 # the web ui, built (packages/pyantz-frontend); start it with `pyantz-frontend`
-frontend = ["pyantz-frontend==2.0.1"]
+frontend = ["pyantz-frontend==2.0.2"]
 
 [project.scripts]
 pyantz = "pyantz.__main__:main"
@@ -131,7 +131,7 @@ disable = [
 ]
 
 [tool.bumpver]
-current_version = "2.0.1"
+current_version = "2.0.2"
 version_pattern = "MAJOR.MINOR.PATCH[-TAG]"
 commit_message = "bump version {old_version} -> {new_version}"
 tag_message = "{new_version}"
