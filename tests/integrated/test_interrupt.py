@@ -100,6 +100,10 @@ def _group_is_empty(pgid: int) -> bool:
         os.killpg(pgid, 0)
     except ProcessLookupError:
         return True
+    except PermissionError:
+        # the processes are ours: macOS refuses when only zombies are left
+        # (exited, not yet reaped), which run nothing
+        return True
     return False
 
 
