@@ -19,7 +19,8 @@ UI_KEY = "x-pyantz-ui"
 def _export(run_script: Any, tmp_path: Path, *args: str) -> dict[str, Any]:  # noqa: ANN401
     """Export the graph of the fixture, with its files in `tmp_path`."""
     graph = tmp_path / "graph.json"
-    graph.write_text(GRAPH.read_text().replace("%TMP%", str(tmp_path)))
+    # as_posix: a "\\" of a Windows path would be an escape in the json
+    graph.write_text(GRAPH.read_text().replace("%TMP%", tmp_path.as_posix()))
     config: dict[str, Any] = json.loads(
         run_script("graph_to_config.ts", str(graph), *args)
     )
