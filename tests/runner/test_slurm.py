@@ -130,6 +130,20 @@ def test_initial_submit_orders_by_dependencies(
     )
 
 
+def test_initial_submit_does_not_wait_for_the_launching_job(
+    tmp_path: Path, slurm: FakeSlurm, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Started from within a slurm job, the initial jobs don't depend on it."""
+    monkeypatch.setenv("SLURM_JOB_ID", "100")
+    work = tmp_path / "work"
+    config = _config(work, [_job("a"), _job("b", "a")])
+
+    _submit(config)
+
+    deps = {_job_file(cmd, work).job_id: _dependency_of(cmd) for cmd in slurm.sbatch}
+    assert deps == {"a": None, "b": "afterok:1000"}
+
+
 def test_initial_submit_passes_user_arguments(tmp_path: Path, slurm: FakeSlurm) -> None:
     """The user's sbatch arguments, a time limit and --parsable are used."""
     config = _config(tmp_path / "work", [_job("a")], slurm_args=["--partition", "gpu"])

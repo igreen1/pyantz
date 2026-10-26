@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import multiprocessing as mp
 import os
+import signal
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -10,8 +12,9 @@ import pytest
 from pydantic import ValidationError
 
 from pyantz import start
-from pyantz.infrastructure.config import JobConfig
+from pyantz.infrastructure.config import JobConfig, JobWithContext
 from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+from pyantz.infrastructure.runner.local.local_runner import _run_with_timeout
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -120,6 +123,27 @@ def test_failing_job_with_a_limit_fails(tmp_path: Path) -> None:
     queue, _ = _run(tmp_path, jobs)
 
     assert queue.get_jobs_report().error == 1
+
+
+def test_interrupting_the_worker_stops_the_job(tmp_path: Path) -> None:
+    """A worker interrupted while waiting for a job doesn't leave it running."""
+    job = JobWithContext.model_validate(_sleeper(timeout_seconds=SLEEP_SECONDS))
+
+    def _interrupt(_signum: int, _frame: object) -> None:
+        raise KeyboardInterrupt
+
+    previous = signal.signal(signal.SIGALRM, _interrupt)
+    signal.setitimer(signal.ITIMER_REAL, 2)
+    started = time.monotonic()
+    try:
+        with pytest.raises(KeyboardInterrupt):
+            _run_with_timeout(job, tmp_path / "queue.db", SLEEP_SECONDS)
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+    assert mp.active_children() == []
+    assert time.monotonic() - started < SLEEP_SECONDS / 2
 
 
 @pytest.mark.parametrize("value", [0, -1])

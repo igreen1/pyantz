@@ -235,24 +235,37 @@ def _run_job_no_parent_wrapper_with_details(
         wrapped_submit_fn: function to submit the job's jobs with.
 
     Returns:
-        JobResult: whether the job succeeded and, if not, why.
+        JobResult: whether the job succeeded and, if not, why (including a
+        recursive reference among its variables).
 
     Raises:
-        ValueError: if resolving the variables finds a recursive reference.
+        None: failures of the job are reported in the result.
 
     """
     logger = logging.getLogger(__name__)
     logger.debug("Starting running %s", job_config)
 
-    # resolve parameters
-    if job_config.variables:
+    def _resolve_parameters() -> Mapping[str, Any]:
+        """Fill in the variables in the job's parameters.
+
+        Args:
+            None.
+
+        Returns:
+            Mapping[str, Any]: the parameters with their variables filled in.
+
+        Raises:
+            ValueError: if resolving the variables finds a recursive reference.
+
+        """
+        if not job_config.variables:
+            logger.debug("No variables, parameters: %s", job_config.parameters)
+            return job_config.parameters
         parameters, _unresolved_vars = resolve_parameters(
             job_parameters=job_config.parameters,
             variables=job_config.variables,
         )
-    else:
-        parameters = job_config.parameters
-        logger.debug("No variables, parameters: %s", parameters)
+        return parameters
 
     def _validate_job() -> None:
         """Validate that the job is not virtual.
@@ -273,6 +286,7 @@ def _run_job_no_parent_wrapper_with_details(
 
     try:
         _validate_job()
+        parameters = _resolve_parameters()
         logger.info("Running job %s", job_config.job_id)
         token = JobVariables.set(job_config.variables)
         try:

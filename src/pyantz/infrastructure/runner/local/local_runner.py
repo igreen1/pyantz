@@ -790,12 +790,33 @@ def _run_in_child(job_json: str, queue_file: str, ready: SyncEvent) -> None:
     sys.exit(0 if run_job_with_details(job_config, submit_fn).success else 1)
 
 
+def _stop_process(process: BaseProcess) -> None:
+    """Ask the process to stop, kill it if it doesn't, and wait for it to end.
+
+    Args:
+        process: the process to stop.
+
+    Returns:
+        None.
+
+    Raises:
+        None.
+
+    """
+    process.terminate()
+    process.join(STOP_WAIT_SECONDS)
+    if process.is_alive():
+        process.kill()
+        process.join()
+
+
 def _run_with_timeout(
     job_config: JobWithContext, queue_file: Path, timeout: float
 ) -> JobResult:
     """Run the job in a separate process, which is stopped if it takes too long.
 
-    The timeout starts once the process has started.
+    The timeout starts once the process has started. The process is also stopped
+    if this one is interrupted while waiting for it.
 
     Args:
         job_config: the job to run.
@@ -807,6 +828,9 @@ def _run_with_timeout(
 
     Raises:
         OSError: if the process can't be started.
+        KeyboardInterrupt: if interrupted while waiting (the process is stopped).
+        WorkerTerminatedError: if terminated while waiting (the process is
+            stopped).
 
     """
     logger = logging.getLogger(__name__)
@@ -817,19 +841,20 @@ def _run_with_timeout(
         args=(job_config.model_dump_json(), os.fspath(queue_file), ready),
     )
     process.start()
-    ready.wait(STARTUP_WAIT_SECONDS)
-    process.join(timeout)
+    try:
+        ready.wait(STARTUP_WAIT_SECONDS)
+        process.join(timeout)
+    except BaseException:
+        # don't leave the job running (and submitting jobs) without its worker
+        _stop_process(process)
+        raise
     if process.is_alive():
         logger.error(
             "Job %s timed out after %s seconds, stopping it",
             job_config.job_id,
             timeout,
         )
-        process.terminate()
-        process.join(STOP_WAIT_SECONDS)
-        if process.is_alive():
-            process.kill()
-            process.join()
+        _stop_process(process)
         return JobResult(
             success=False,
             details=f"Timed out after {timeout} seconds",

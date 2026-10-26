@@ -113,10 +113,11 @@ def _initial_submit(
     }
     submit_order = TopologicalSorter(graph=dependency_adj_graph).static_order()
 
-    # directly call sbatch instead of submitter
-    # because our parent node may not be a slurm job
-    # so we don't want to make the child depend on the current
-    sbatch = _create_sbatch(runner_config, slurm_config_path)
+    # directly call sbatch instead of submitter: pyantz may be started from
+    # within a slurm job (e.g., salloc), but the initial jobs must not wait for it
+    sbatch = _create_sbatch(
+        runner_config, slurm_config_path, wait_for_current_job=False
+    )
 
     def _submit(job: JobConfig, job_to_slurm_id_map: dict[str, str]) -> str:
         """Resolve context, compute dependencies, and call sbatch for one job.
@@ -416,12 +417,16 @@ def _has_time_limit(slurm_args: list[str]) -> bool:
 def _create_sbatch(
     config: SlurmRunnerConfig,
     slurm_config_path: Path,
+    *,
+    wait_for_current_job: bool = True,
 ) -> Callable[[JobConfig, list[str] | None], str]:
     """Sbatch the provided job config and return its new job id.
 
     Args:
         config: the slurm runner's configuration.
         slurm_config_path: the saved slurm runner configuration.
+        wait_for_current_job: within a slurm job, make each submitted job wait
+            for the current one (as a child waits for the job submitting it).
 
     Returns:
         Callable[[JobConfig, list[str] | None], str]: function which sbatches a
@@ -438,9 +443,10 @@ def _create_sbatch(
     ) -> str:
         """Serialise the job config, call sbatch, and return the new SLURM job id.
 
-        Within a slurm job, the new job also waits for the current one. Unless
-        the configured arguments say otherwise, the job gets a time limit of
-        ``max_job_time_seconds`` and ``--kill-on-invalid-dep=yes``.
+        Within a slurm job, the new job also waits for the current one (unless
+        ``wait_for_current_job`` is False). Unless the configured arguments say
+        otherwise, the job gets a time limit of ``max_job_time_seconds`` and
+        ``--kill-on-invalid-dep=yes``.
 
         Args:
             job: the job to submit.
@@ -466,7 +472,7 @@ def _create_sbatch(
         if "--parsable" not in slurm_args:
             slurm_args.append("--parsable")
         curr_job_id = _get_slurm_env_variables()["job_id"]
-        if curr_job_id is not None:
+        if wait_for_current_job and curr_job_id is not None:
             # may be sbatching from a local terminal so no guarantee curr job id exists
             # but if it is, our child should always wait for this parent to exit
             # this avoids race conditions when adding dependencies and aligns with
