@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    # versions are tagged without a "v" (bumpver's tag_message), e.g. 2.0.1
+    tags: ["[0-9]+.[0-9]+.[0-9]+*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  lint:
+    name: Lint (ruff, pylint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --locked
+      - name: ruff format
+        run: uv run ruff format --check
+      - name: ruff check
+        run: uv run ruff check
+      - name: pylint
+        run: uv run pylint src
+
+  typecheck:
+    name: Type check (ty, mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --locked
+      - name: ty
+        run: uv run ty check
+      - name: mypy
+        run: uv run mypy src
+
+  test:
+    name: pytest (python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python }}
+      # tests/frontend run the typescript of the frontend with node
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: uv sync --locked
+      # not with -n auto: tests/integrated/branching/test_if_else.py parametrizes
+      # randomly, so xdist workers collect different tests
+      - run: uv run pytest
+
+  docs:
+    name: Doctests and Sphinx docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --locked
+      - name: doctest
+        working-directory: docs
+        run: uv run make doctest
+      - name: build html
+        working-directory: docs
+        # -W: warnings (broken references, bad rst in docstrings) fail the build
+        run: uv run make html SPHINXOPTS="-W --keep-going"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build/html
+
+  deploy-docs:
+    name: Publish docs to GitHub Pages
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [docs, lint, typecheck, test]
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/pyantz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/pyantz/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend/pyantz
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/pyantz/package-lock.json
+      - run: uv sync --locked
+        working-directory: .
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: frontend/pyantz/test-results
+
+  release:
+    name: GitHub release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: [lint, typecheck, test, docs, frontend, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # the pyantz-frontend package builds the web ui with npm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/pyantz/package-lock.json
+      - name: check the tag is the package's version
+        run: |
+          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/pyantz/__init__.py)"
+          if [ "$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME is not the package version $version"
+            exit 1
+          fi
+      - name: build pyantz and pyantz-frontend
+        run: uv build --all-packages
+      - name: create the release with the built packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" dist/*
+          --title "$GITHUB_REF_NAME"
+          --generate-notes
+          --verify-tag

@@ -24,9 +24,60 @@ if TYPE_CHECKING:
 def start(config: _InitialConfig | Mapping[str, Any]) -> JobsReport | None:
     """Check how to start the program and route to the proper starter.
 
+    This is the main entry point of pyantz, also available as ``pyantz.start``.
+
+    Args:
+        config: the pipeline's configuration, as an
+            :class:`~pyantz.infrastructure.config.InitialConfig` or a mapping
+            (e.g., loaded from JSON) describing one.
+
     Returns:
         JobsReport | None: final report of the jobs when the run is local and
             blocking; None if the outcome is not known (e.g. remote hosts).
+
+    Raises:
+        pydantic.ValidationError: if the configuration is invalid.
+        ValueError: if the submitter type is unknown.
+
+    Example:
+        .. testsetup:: runner-start
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: runner-start
+
+            from pyantz import start
+
+            report = start(
+                {
+                    "submitter": {"type_": "local_proc", "working_directory": "."},
+                    "jobs": [
+                        {
+                            "job_id": "make",
+                            "function": "pyantz.jobs.files.simple.create",
+                            "parameters": {"path": "out.txt", "contents": "hi"},
+                        },
+                        {
+                            "function": "pyantz.jobs.files.check.file_contains",
+                            "parameters": {"file": "out.txt", "substring": "hi"},
+                            "depends_on": ["make"],
+                        },
+                    ],
+                }
+            )
+            print(report.total, report.success, report.all_succeeded)
+
+        .. testoutput:: runner-start
+
+            2 2 True
+
+        .. testcleanup:: runner-start
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
 
     """
     loaded_config: _InitialConfig = _InitialConfig.model_validate(config)
@@ -46,6 +97,57 @@ def run_local(config: _InitialConfig) -> JobsReport | None:
     """Start running the various jobs.
 
     This is a blocking operation if running locally.
+
+    Args:
+        config: the validated configuration, whose host is this machine.
+
+    Returns:
+        JobsReport | None: final report of the jobs for the local runner; None for
+        slurm, whose jobs run after this returns.
+
+    Raises:
+        ValueError: if the submitter type is unknown.
+
+    Example:
+        .. testsetup:: runner-run-local
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: runner-run-local
+
+            from pyantz.infrastructure.config import InitialConfig
+            from pyantz.infrastructure.runner.starter import run_local
+
+            config = InitialConfig.model_validate(
+                {
+                    "submitter": {
+                        "type_": "local_proc",
+                        "working_directory": ".",
+                        "use_same_proc": True,
+                    },
+                    "jobs": [
+                        {
+                            "function": "pyantz.jobs.files.check.file_exists",
+                            "parameters": {"file": "missing.txt"},
+                        },
+                    ],
+                }
+            )
+            report = run_local(config)
+            print(report.error, report.all_succeeded)
+
+        .. testoutput:: runner-run-local
+
+            1 False
+
+        .. testcleanup:: runner-run-local
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
     """
     # if not loaded, check it
     if config.submitter.type_ == "local_proc":

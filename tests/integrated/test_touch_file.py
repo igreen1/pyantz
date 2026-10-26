@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 from copy import deepcopy
-from pathlib import Path
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from pyantz import start
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 MINIMAL_CONFIG: Final[dict[str, Any]] = {
     "jobs": [

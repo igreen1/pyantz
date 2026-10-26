@@ -11,6 +11,9 @@ from pyantz.infrastructure.config.fn_utils import (
     import_module_item_by_name,
     serialize_function,
 )
+from pyantz.infrastructure.config.parameters.decorators import (
+    PYANTZ_REGISTERED_FUNCTION,
+)
 from pyantz.virtual.add_variables import AddVariables
 
 NOP = "pyantz.jobs.testing.nop.do_nothing"
@@ -81,3 +84,33 @@ def test_from_config_keeps_existing_variables() -> None:
         {"function": NOP, "parameters": {}, "variables": {"v": 1}},
     )
     assert JobWithContext.from_config(original) == original
+
+
+def test_function_without_module_is_not_serializable() -> None:
+    """A function made by code run without a module (exec) is reported clearly."""
+    namespace: dict[str, Any] = {}
+    exec("def made_by_exec(): ...", namespace)  # noqa: S102
+    with pytest.raises(ValueError, match=r"<no module>\.made_by_exec.*not importable"):
+        serialize_function(namespace["made_by_exec"])
+
+
+def test_add_parameters_registers_function_without_module() -> None:
+    """add_parameters works on functions without a module, which can't be imported."""
+    namespace: dict[str, Any] = {}
+    exec(  # noqa: S102
+        "from pydantic import BaseModel\n"
+        "from pyantz.infrastructure.config import add_parameters\n"
+        "class Params(BaseModel):\n"
+        "    x: int\n"
+        "@add_parameters(Params)\n"
+        "def job(params, submit_fn):\n"
+        "    return params.x > 0\n",
+        namespace,
+    )
+    job = namespace["job"]
+    try:
+        assert job.PYANTZ_NAME == "anonymous.job"
+        assert job({"x": 1}, lambda _job: None)
+    finally:
+        # keep the registry (which the api lists) free of this test's job
+        PYANTZ_REGISTERED_FUNCTION.pop("anonymous.job", None)

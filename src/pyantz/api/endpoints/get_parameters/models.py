@@ -10,6 +10,8 @@ class GetJsonSchemaResponse(BaseModel):
 
     # path to the function
     fn_path: str
+    """Full import path of the job."""
 
     # json schema for that function
     json_schema: JsonValue
+    """Json schema of the job's parameters."""

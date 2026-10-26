@@ -20,7 +20,31 @@ from pyantz.infrastructure.config.parameters.decorators import get_registered_fu
 
 
 def dump_schemas() -> dict[str, dict[str, object]]:
-    """Get the description and schema of each job, by job name and sorted by it."""
+    """Get the description and schema of each job, by job name and sorted by it.
+
+    Args:
+        None.
+
+    Returns:
+        dict[str, dict[str, object]]: for each registered job, its
+        ``description`` and the ``json_schema`` of its parameters.
+
+    Raises:
+        fastapi.HTTPException: if a registered job has no parameters model.
+
+    Example:
+        .. testcode::
+
+            from pyantz.api.dump_schemas import dump_schemas
+
+            copy = dump_schemas()["pyantz.jobs.files.simple.copy"]
+            print(copy["description"], sorted(copy["json_schema"]["properties"]))
+
+        .. testoutput::
+
+            Copy from src to destination. ['dst', 'src']
+
+    """
     jobs: dict[str, dict[str, object]] = {}
     for fn in get_registered_functions():
         name = serialize_function(fn)
@@ -32,7 +56,18 @@ def dump_schemas() -> dict[str, dict[str, object]]:
 
 
 def main() -> None:
-    """Write the dump to the file given as argument, or to standard output."""
+    """Write the dump to the file given as argument, or to standard output.
+
+    Args:
+        None.
+
+    Returns:
+        None.
+
+    Raises:
+        OSError: if the file can't be written.
+
+    """
     text = json.dumps(dump_schemas(), indent=2, sort_keys=True) + "\n"
     if len(sys.argv) > 1:
         Path(sys.argv[1]).write_text(text, encoding="utf-8")

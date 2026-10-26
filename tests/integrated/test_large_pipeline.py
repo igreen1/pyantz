@@ -20,12 +20,17 @@ if TYPE_CHECKING:
 
 exec_path = Path(__file__).parent.parent / "assets" / "script.bash"
 
+CREATE_CASE_MATRIX = "pyantz.jobs.branching.case_matrix.create_case_matrix"
+EXPAND_WITH_OUTPUT_DIR = (
+    "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir"
+)
+
 
 def set_variable(set_var: Callable[[str, Any], None], test_path: str) -> None:
     """Set variables for the test."""
-    set_var("output_file", os.path.join(test_path, "my_super_cool.csv"))
-    set_var("case_matrix", os.path.join(test_path, "case_matrix.parquet"))
-    set_var("root_output_dir", os.path.join(test_path, "output"))
+    set_var("output_file", os.fspath(Path(test_path) / "my_super_cool.csv"))
+    set_var("case_matrix", os.fspath(Path(test_path) / "case_matrix.parquet"))
+    set_var("root_output_dir", os.fspath(Path(test_path) / "output"))
 
 
 # host with an ssh server for the ssh test; the test is skipped if it can't be reached
@@ -74,7 +79,7 @@ def test_large_pipeline(tmp_path: Path) -> None:
                 "jobs": [
                     {
                         "job_id": "matrix_creation",
-                        "function": "pyantz.jobs.branching.case_matrix.create_case_matrix",
+                        "function": CREATE_CASE_MATRIX,
                         "parameters": {
                             "save_file": "%{case_matrix}",
                             "variables": {
@@ -110,7 +115,7 @@ def test_large_pipeline(tmp_path: Path) -> None:
                     {
                         "job_id": "case matrix set",
                         "depends_on": ["make_output_dir"],
-                        "function": "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir",
+                        "function": EXPAND_WITH_OUTPUT_DIR,
                         "parameters": {
                             "case_matrix_parquet": "%{case_matrix}",
                             "output_dir": "%{root_output_dir}",
@@ -179,7 +184,7 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
                 "jobs": [
                     {
                         "job_id": "matrix_creation",
-                        "function": "pyantz.jobs.branching.case_matrix.create_case_matrix",
+                        "function": CREATE_CASE_MATRIX,
                         "parameters": {
                             "save_file": "%{case_matrix}",
                             "variables": {
@@ -215,7 +220,7 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
                     {
                         "job_id": "case_matrix_set",
                         "depends_on": ["make_output_dir"],
-                        "function": "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir",
+                        "function": EXPAND_WITH_OUTPUT_DIR,
                         "parameters": {
                             "case_matrix_parquet": "%{case_matrix}",
                             "output_dir": "%{root_output_dir}",
@@ -294,7 +299,7 @@ def test_large_pipeline_ssh(tmp_path: Path) -> None:
                 "jobs": [
                     {
                         "job_id": "matrix_creation",
-                        "function": "pyantz.jobs.branching.case_matrix.create_case_matrix",
+                        "function": CREATE_CASE_MATRIX,
                         "parameters": {
                             "save_file": "%{case_matrix}",
                             "variables": {
@@ -330,7 +335,7 @@ def test_large_pipeline_ssh(tmp_path: Path) -> None:
                     {
                         "job_id": "case matrix set",
                         "depends_on": ["make_output_dir"],
-                        "function": "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir",
+                        "function": EXPAND_WITH_OUTPUT_DIR,
                         "parameters": {
                             "case_matrix_parquet": "%{case_matrix}",
                             "output_dir": "%{root_output_dir}",
@@ -420,7 +425,7 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
                 "jobs": [
                     {
                         "job_id": "matrix_creation",
-                        "function": "pyantz.jobs.branching.case_matrix.create_case_matrix",
+                        "function": CREATE_CASE_MATRIX,
                         "parameters": {
                             "save_file": "%{case_matrix}",
                             "variables": {
@@ -456,7 +461,7 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
                     {
                         "job_id": "case matrix set",
                         "depends_on": ["make_output_dir"],
-                        "function": "pyantz.jobs.branching.case_matrix.pipeline_expansion_with_output_dir",
+                        "function": EXPAND_WITH_OUTPUT_DIR,
                         "parameters": {
                             "case_matrix_parquet": "%{case_matrix}",
                             "output_dir": "%{root_output_dir}",
@@ -525,7 +530,7 @@ def _check_run(tmp_path: Path) -> None:
         }
     )
     result_case_matrix = pl.read_parquet(tmp_path / "case_matrix.parquet")
-    assert len(result_case_matrix) == 9
+    assert len(result_case_matrix) == 9  # noqa: PLR2004
     assert_frame_equal(
         expected_case_matrix,
         result_case_matrix,

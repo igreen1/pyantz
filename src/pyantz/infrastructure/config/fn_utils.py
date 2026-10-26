@@ -10,34 +10,61 @@ from __future__ import annotations
 
 import importlib
 import os
-from typing import TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Annotated, Any, TypeVar
+
+from pydantic import BeforeValidator, PlainSerializer, WithJsonSchema
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import Any
-
     from pyantz.infrastructure.config.job import JobFunctionType
 
 
-# comma separated module prefixes which configurations may import functions from
 ALLOWED_MODULES_VARIABLE = "PYANTZ_ALLOWED_MODULES"
+"""Environment variable holding the comma separated module prefixes which
+configurations may import functions from; see :func:`_check_import_allowed`."""
 
 
 def serialize_function(fn: Callable[..., Any]) -> str:
     """Serialize the function so that others can import it dynamically.
 
+    Args:
+        fn: the function (or class) to serialize.
+
+    Returns:
+        str: the full dotted import path of ``fn``.
+
     Raises:
-        ValueError: if the function can't be imported by name (lambdas and
-            functions defined inside other functions)
+        ValueError: if the function can't be imported by name (lambdas,
+            functions defined inside other functions, and functions without a
+            module, such as those made by code run with ``exec``)
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.fn_utils import serialize_function
+            from pyantz.jobs.files.simple import copy
+
+            print(serialize_function(copy))
+            try:
+                serialize_function(lambda: None)
+            except ValueError:
+                print("lambdas can't be imported by name")
+
+        .. testoutput::
+
+            pyantz.jobs.files.simple.copy
+            lambdas can't be imported by name
 
     """
-    mod_name: str = fn.__module__ if hasattr(fn, "__module__") else "anonymous"
+    # None for functions made by code run without a module, e.g., with `exec`
+    mod_name: str | None = getattr(fn, "__module__", None)
     qualified_name: str = str(
         getattr(fn, "__qualname__", getattr(fn, "__name__", "some_fn")),
     )
-    if "<lambda>" in qualified_name or "<locals>" in qualified_name:
+    if mod_name is None or "<lambda>" in qualified_name or "<locals>" in qualified_name:
+        location = mod_name or "<no module>"
         msg = (
-            f"Function {mod_name}.{qualified_name} is not importable; "
+            f"Function {location}.{qualified_name} is not importable; "
             "define it at module level"
         )
         raise ValueError(msg)
@@ -53,8 +80,34 @@ def _check_import_allowed(key: str) -> None:
     runs it is trusted. Set it wherever configurations come from someone else. The
     check happens before importing, so modules that are not allowed never run.
 
+    Args:
+        key: the full dotted name to be imported.
+
+    Returns:
+        None.
+
     Raises:
         ValueError: if the name is not allowed
+
+    Example:
+        .. testcode::
+
+            import os
+
+            from pyantz.infrastructure.config.fn_utils import _check_import_allowed
+
+            os.environ["PYANTZ_ALLOWED_MODULES"] = "pyantz, my_package"
+            try:
+                _check_import_allowed("pyantz.jobs.files.simple.copy")  # allowed
+                _check_import_allowed("os.system")
+            except ValueError:
+                print("os.system is not allowed")
+            finally:
+                del os.environ["PYANTZ_ALLOWED_MODULES"]
+
+        .. testoutput::
+
+            os.system is not allowed
 
     """
     allowed = [
@@ -73,12 +126,75 @@ def _check_import_allowed(key: str) -> None:
 
 
 def import_function_by_name(fn_path: Any) -> JobFunctionType:  # noqa: ANN401
-    """Import a function by its name."""
+    """Import a function by its name.
+
+    Used to validate the ``function`` of a job; a value which isn't a string
+    (such as the function itself) is returned unchanged.
+
+    Args:
+        fn_path: the function's full dotted import path, or the function.
+
+    Returns:
+        JobFunctionType: the imported function.
+
+    Raises:
+        ValueError: if the name can't be imported or isn't allowed by
+            :data:`ALLOWED_MODULES_VARIABLE`.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.fn_utils import import_function_by_name
+
+            fn = import_function_by_name("pyantz.jobs.testing.nop.do_nothing")
+            print(fn.__name__)
+
+        .. testoutput::
+
+            do_nothing
+
+    """
     return import_module_item_by_name(fn_path)
 
 
 def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
-    """Import a parameters model by its name."""
+    """Import a parameters model by its name.
+
+    Any item of a module can be imported, including attributes of classes such as
+    ``package.module.Class.method``: the longest prefix of the name which is a
+    module is imported, and the rest is looked up on it.
+
+    Args:
+        key: the item's full dotted import path; anything which isn't a string is
+            returned unchanged.
+
+    Returns:
+        Any: the imported item.
+
+    Raises:
+        ValueError: if the name has fewer than two parts, its module can't be
+            imported, the module lacks the item, or the name isn't allowed by
+            :data:`ALLOWED_MODULES_VARIABLE`.
+
+    Example:
+        .. testcode::
+
+            from pyantz.infrastructure.config.fn_utils import (
+                import_module_item_by_name,
+            )
+
+            print(import_module_item_by_name("pathlib.Path.home").__qualname__)
+            try:
+                import_module_item_by_name("pathlib.Missing")
+            except ValueError as exc:
+                print(exc)
+
+        .. testoutput::
+
+            Path.home
+            Cannot import 'pathlib.Missing': Module 'pathlib' has no attribute 'Missing'
+
+    """
     if not isinstance(key, str):
         return key
 
@@ -119,3 +235,37 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
     mod_name = ".".join(name_components[:-1])
     msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({last_error})"
     raise ValueError(msg) from last_error
+
+
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+# a plain alias rather than a `type` statement: pydantic inlines it in the json
+# schemas (a `type` alias becomes a named definition, losing the field's title)
+ImportedCallable = Annotated[
+    _F,
+    BeforeValidator(import_function_by_name),
+    PlainSerializer(serialize_function, return_type=str),
+    WithJsonSchema({"type": "string", "format": "base64"}),
+]
+"""A field holding a function, given (and serialized) as its full import path.
+
+Example:
+    .. testcode::
+
+        from collections.abc import Callable
+
+        from pydantic import BaseModel
+
+        from pyantz.infrastructure.config.fn_utils import ImportedCallable
+
+        class Call(BaseModel):
+            func: ImportedCallable[Callable[..., object]]
+
+        call = Call(func="json.dumps")
+        print(call.func([1]), call.model_dump())
+
+    .. testoutput::
+
+        [1] {'func': 'json.dumps'}
+
+"""

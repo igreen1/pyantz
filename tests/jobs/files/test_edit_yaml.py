@@ -29,7 +29,7 @@ def test_simple_yaml(tmp_path: Path) -> None:
         },
     }
 
-    edit_yaml(params, None)
+    edit_yaml(params, lambda _job: None)
 
     assert file_path.read_text(encoding="utf-8").rstrip() == "hello: general kenobi"
 
@@ -88,7 +88,7 @@ def test_nested_yaml(tmp_path: Path) -> None:
 
     edit_yaml(
         params,
-        None,
+        lambda _job: None,
     )
 
     with file_path.open("r", encoding="utf-8") as fh:

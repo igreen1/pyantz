@@ -79,14 +79,21 @@ dev = [
 # imports in annotations working there as they do with 3.14's deferred ones
 required-imports = ["from __future__ import annotations"]
 
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
 
 [tool.ruff.lint.per-file-ignores]
 # Ignore S101 (assert statements) in the "tests" directory and all subdirectories
 "tests/**/*.py" = ["S101", "S607", "S603"]
+# examples are standalone scripts which print and use /tmp for sample data
+"examples/**/*.py" = ["INP001", "T201", "S108"]
 # a hatch build hook is a script next to the pyproject, not part of a package
 "packages/*/hatch_build.py" = ["INP001"]
+# sphinx's configuration is a script in the docs, not part of a package
+"docs/source/conf.py" = ["INP001"]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -95,8 +102,27 @@ ignore = ["D203", "D213", "COM812"]
 [tool.pylint.main]
 ignore-paths = ["^tests/*"]
 
+[tool.pylint.format]
+# the docstrings' examples make modules long; ruff checks the length of lines
+max-module-lines = 1500
+
 [tool.pylint."MESSAGES CONTROL"]
-disable = ["E0601", "E0602"]
+disable = [
+    "E0601",
+    "E0602",
+    # ruff enforces these (with `noqa` for the deliberate exceptions), so pylint
+    # would only repeat it without seeing the `noqa` comments
+    "line-too-long",  # E501
+    "broad-exception-caught",  # BLE001: allowed when the exception is logged
+    "import-outside-toplevel",  # PLC0415: imports done late to break cycles
+    "unused-import",  # F401: `import pyantz.jobs` registers the jobs
+    # ruff's TRY300 asks for the `else` of try/except, which these reject
+    "no-else-return",
+    "no-else-raise",
+    # pyantz -> runner -> _remotes -> pyantz (for its version), imported in the
+    # function which needs it, so the cycle never happens at import time
+    "cyclic-import",
+]
 
 [tool.bumpver]
 current_version = "1.0.6"

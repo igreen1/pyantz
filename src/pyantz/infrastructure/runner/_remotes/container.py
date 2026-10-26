@@ -24,8 +24,8 @@ from ._transfers import (
     get_setup_tar,
 )
 
-# http status of a name clash
 CONFLICT = 409
+"""HTTP status of a name clash."""
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -38,6 +38,16 @@ def _make_client(service: str) -> docker.DockerClient:
 
     Podman is reached through its docker compatible socket: ``CONTAINER_HOST``
     if set, otherwise the default rootless socket of the current user.
+
+    Args:
+        service: ``docker`` or ``podman``.
+
+    Returns:
+        docker.DockerClient: the client.
+
+    Raises:
+        docker.errors.DockerException: if the service can't be reached.
+
     """
     if service == "podman":
         socket = os.environ.get(
@@ -49,7 +59,19 @@ def _make_client(service: str) -> docker.DockerClient:
 
 
 def _ensure_image(client: docker.DockerClient, image: str) -> None:
-    """Pull the image if it isn't available locally."""
+    """Pull the image if it isn't available locally.
+
+    Args:
+        client: the container service's client.
+        image: the image's name.
+
+    Returns:
+        None.
+
+    Raises:
+        docker.errors.APIError: if the image can't be pulled.
+
+    """
     try:
         client.images.get(image)
     except docker.errors.ImageNotFound:
@@ -62,6 +84,49 @@ def _extract_output(bits: Iterable[bytes], output_dir: str) -> None:
 
     The archive has every entry under the directory's name (``workspace/...``);
     that leading component is removed so results land directly in *output_dir*.
+
+    Args:
+        bits: the archive, in chunks, as returned by the container service.
+        output_dir: the directory to extract into.
+
+    Returns:
+        None.
+
+    Raises:
+        tarfile.TarError: if the archive is invalid or has unsafe entries.
+
+    Example:
+        .. testsetup:: remotes-extract
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: remotes-extract
+
+            import io
+            import tarfile
+            from pathlib import Path
+
+            from pyantz.infrastructure.runner._remotes._transfers import add_to_tar_file
+            from pyantz.infrastructure.runner._remotes.container import _extract_output
+
+            buffer = io.BytesIO()
+            with tarfile.open(fileobj=buffer, mode="w") as tar:
+                add_to_tar_file("done", "workspace/result.txt", tar)
+            _extract_output([buffer.getvalue()], "results")
+            print(Path("results/result.txt").read_text())
+
+        .. testoutput:: remotes-extract
+
+            done
+
+        .. testcleanup:: remotes-extract
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
     """
     with tempfile.TemporaryFile(mode="wb+") as fh:
         for chunk in bits:
@@ -79,7 +144,25 @@ def _extract_output(bits: Iterable[bytes], output_dir: str) -> None:
 
 
 def run_container(config: InitialConfig) -> None:
-    """Copy our files to the container and run!."""
+    """Copy our files to the container and run!.
+
+    A container is created from the configured image (with the configured name,
+    if any), the configuration (and, if asked, the project) is copied into it,
+    and it runs pyantz until done. The working directory is copied to
+    ``output_dir`` if set, and the container is removed.
+
+    Args:
+        config: the pipeline's configuration, with a ``container`` host.
+
+    Returns:
+        None.
+
+    Raises:
+        RuntimeError: if the host isn't a container, a container with the name
+            already exists, or the container exits with a non-zero status.
+        docker.errors.DockerException: if the container service fails.
+
+    """
     logger = logging.getLogger(__name__)
     if config.host.type_ != "container":
         msg = f"run_container needs a 'container' host, got {config.host.type_!r}"

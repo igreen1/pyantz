@@ -4,7 +4,7 @@ A user should first create a large configuration file and then pass this to the
 PyAntz entry point runner. Below is an example using a "nop", which is a job
 that literally does nothing.
 
-:Example:
+Example:
 
     .. testsetup::
 

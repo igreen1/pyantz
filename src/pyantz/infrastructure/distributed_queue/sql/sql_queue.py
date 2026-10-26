@@ -1,4 +1,9 @@
-"""Queue running with sql."""
+"""Queue running with sql.
+
+:class:`SqliteQueue` keeps the queue in a SQLite file (see
+:mod:`~pyantz.infrastructure.distributed_queue.sql.orm` for its tables), so
+several worker processes can share it.
+"""
 
 from __future__ import annotations
 
@@ -33,12 +38,52 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-# how long a connection waits for another process to release the database lock
 BUSY_TIMEOUT_SECONDS = 30
+"""How long a connection waits for another process to release the database
+lock."""
 
 
 class SqliteQueue(QueueInterface):
-    """Type checking interface to ensure consistent accesses."""
+    """Queue of jobs stored in a SQLite database file.
+
+    Example:
+        .. testsetup:: sql-queue
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: sql-queue
+
+            from pathlib import Path
+
+            from pyantz.infrastructure.config import JobWithContext
+            from pyantz.infrastructure.distributed_queue.common import JobStatus
+            from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+            queue = SqliteQueue(Path("example.db"))
+            job = JobWithContext(
+                job_id="a", function="pyantz.jobs.testing.nop.do_nothing", parameters={}
+            )
+            queue.add_job(job, None)
+
+            result = queue.get_job()
+            print(result.payload.type_, result.payload.job.job_id)
+            queue.update_job_status("a", JobStatus.SUCCESS)
+            print(queue.get_job().payload.type_)
+
+        .. testoutput:: sql-queue
+
+            job a
+            complete
+
+        .. testcleanup:: sql-queue
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
 
     __slots__ = [
         "_engine",
@@ -46,10 +91,27 @@ class SqliteQueue(QueueInterface):
     ]
 
     database_file: Path
+    """The SQLite file holding the queue."""
+
     _engine: sa.Engine
+    """Engine connecting to :attr:`database_file`."""
 
     def __init__(self, database_file: Path) -> None:
-        """Set the sqlalchemy engine for connections."""
+        """Set the sqlalchemy engine for connections.
+
+        The queue's tables are created if they don't exist yet.
+
+        Args:
+            database_file: the SQLite file holding the queue; created if missing.
+
+        Returns:
+            None.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the tables can't be created, e.g.,
+                the directory isn't writable.
+
+        """
         self.database_file = database_file
         self._engine = self._create_engine(self.database_file)
 
@@ -67,6 +129,16 @@ class SqliteQueue(QueueInterface):
         Connections use write-ahead logging and wait for locks rather than failing
         immediately, so many worker processes can share one queue file.
         Note that WAL needs a local filesystem (not NFS) for the queue file.
+
+        Args:
+            database_file: the SQLite file holding the queue.
+
+        Returns:
+            sa.Engine: the engine, which sets up each new connection.
+
+        Raises:
+            None.
+
         """
         engine = sa.create_engine(
             f"""sqlite:///{os.fspath(database_file)}""",
@@ -75,6 +147,19 @@ class SqliteQueue(QueueInterface):
 
         @sqlalchemy.event.listens_for(engine, "connect")
         def _set_pragmas(dbapi_connection: sqlite3.Connection, _record: object) -> None:
+            """Set up a new connection for sharing the file between processes.
+
+            Args:
+                dbapi_connection: the new SQLite connection.
+                _record: sqlalchemy's record of the connection (unused).
+
+            Returns:
+                None.
+
+            Raises:
+                sqlite3.OperationalError: if a pragma can't be set.
+
+            """
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_SECONDS * 1000}")
@@ -86,11 +171,44 @@ class SqliteQueue(QueueInterface):
     def get_job(self) -> GetJobReturn:
         """Return a job from the queue.
 
+        The job is taken out of the queue and marked RUNNING. A job whose config
+        can't be loaded is marked ERROR and skipped.
+
+        Args:
+            None.
+
         Returns:
             GetJobReturn: either
                 - A job to run
                 - Pending to indicate that nothing is ready but to keep waiting
                 - Complete to tell the worker to kill itself
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("get_job.db"))
+                nop = "pyantz.jobs.testing.nop.do_nothing"
+                first = JobWithContext(job_id="first", function=nop, parameters={})
+                second = JobWithContext(
+                    job_id="second", depends_on={"first"}, function=nop, parameters={}
+                )
+                queue.add_job(first, None)
+                queue.add_job(second, None)
+                print(queue.get_job().payload.job.job_id)
+                print(queue.get_job().payload.type_)  # second waits for first
+
+            .. testoutput:: sql-queue
+
+                first
+                pending
 
         """
         self._update_job_statuses()
@@ -104,10 +222,16 @@ class SqliteQueue(QueueInterface):
     def _try_dequeue(self) -> GetJobReturn | None:
         """Dequeue the next READY job and mark it RUNNING in one transaction.
 
+        Args:
+            None.
+
         Returns:
             GetJobReturn | None: the result of the dequeue, or None if the job
                 dequeued had a config which could not be loaded. That job is
                 marked ERROR rather than being lost.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
 
         """
         logger = logging.getLogger(__name__)
@@ -161,7 +285,20 @@ class SqliteQueue(QueueInterface):
 
     @staticmethod
     def _get_job_config(sesh: Session, job_id: str) -> JobReturn:
-        """Get the job config by piecing the various chunks together."""
+        """Get the job config by piecing the various chunks together.
+
+        Args:
+            sesh: the current sqlalchemy session.
+            job_id: the job to load.
+
+        Returns:
+            JobReturn: the job.
+
+        Raises:
+            RuntimeError: if the job has no stored config.
+            pydantic.ValidationError: if the stored config isn't a valid job.
+
+        """
         query = (
             sa.select(
                 JobConfigTable.job_config_content,
@@ -190,6 +327,13 @@ class SqliteQueue(QueueInterface):
         Args:
             sesh (Session): current sqlalchemy session
 
+        Returns:
+            GetJobReturn: pending if jobs are running, pending or ready; otherwise
+            complete (every job is ERROR or SUCCESS).
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
         """
         jobs_report = SqliteQueue._generate_jobs_report(sesh)
 
@@ -208,7 +352,40 @@ class SqliteQueue(QueueInterface):
         # all jobs are ERROR or SUCCESS
 
     def get_job_ids_with_status(self, status: JobStatus) -> list[str]:
-        """Get the ids of the jobs which currently have the status, sorted."""
+        """Get the ids of the jobs which currently have the status, sorted.
+
+        Args:
+            status: the status to look for.
+
+        Returns:
+            list[str]: the ids of the jobs with the status, sorted.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.common import JobStatus
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("with_status.db"))
+                nop = "pyantz.jobs.testing.nop.do_nothing"
+                for job_id in ("b", "a"):
+                    queue.add_job(
+                        JobWithContext(job_id=job_id, function=nop, parameters={}),
+                        None,
+                    )
+                print(queue.get_job_ids_with_status(JobStatus.READY))
+
+            .. testoutput:: sql-queue
+
+                ['a', 'b']
+
+        """
         with Session(self._engine) as sesh:
             rows = sesh.execute(
                 sa.select(StatusTable.job_id)
@@ -218,7 +395,46 @@ class SqliteQueue(QueueInterface):
             return [row[0] for row in rows]
 
     def get_failed_jobs(self) -> list[JobStatusReport]:
-        """Get the status (with the error details) of every job which errored."""
+        """Get the status (with the error details) of every job which errored.
+
+        Args:
+            None.
+
+        Returns:
+            list[JobStatusReport]: the failed jobs, sorted by job id.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.common import JobStatus
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("failed.db"))
+                nop = "pyantz.jobs.testing.nop.do_nothing"
+                job_a = JobWithContext(job_id="a", function=nop, parameters={})
+                queue.add_job(job_a, None)
+                queue.add_job(
+                    JobWithContext(
+                        job_id="b", depends_on={"a"}, function=nop, parameters={}
+                    ),
+                    None,
+                )
+                queue.update_job_status("a", JobStatus.ERROR, "it broke")
+                for report in queue.get_failed_jobs():
+                    print(report.job_id, report.status_details)
+
+            .. testoutput:: sql-queue
+
+                a it broke
+                b A job this job depends on failed
+
+        """
         with Session(self._engine) as sesh:
             rows = sesh.execute(
                 sa.select(StatusTable.job_id, StatusTable.details)
@@ -233,7 +449,19 @@ class SqliteQueue(QueueInterface):
         ]
 
     def set_job_worker(self, job_id: str | uuid.UUID, worker_id: int) -> None:
-        """Record which worker is running the job."""
+        """Record which worker is running the job.
+
+        Args:
+            job_id: the job being run.
+            worker_id: the worker (its process id) running it.
+
+        Returns:
+            None.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        """
         with Session(self._engine) as sesh:
             sesh.execute(
                 sa.update(StatusTable)
@@ -245,8 +473,36 @@ class SqliteQueue(QueueInterface):
     def fail_jobs_of_worker(self, worker_id: int) -> list[str]:
         """Mark the RUNNING jobs of a worker which died as ERROR.
 
+        The jobs depending on them fail too.
+
+        Args:
+            worker_id: the worker (its process id) which died.
+
         Returns:
             list[str]: ids of the jobs which were failed
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("worker.db"))
+                nop = "pyantz.jobs.testing.nop.do_nothing"
+                job_a = JobWithContext(job_id="a", function=nop, parameters={})
+                queue.add_job(job_a, None)
+                queue.get_job()  # a worker takes the job...
+                queue.set_job_worker("a", 1234)
+                print(queue.fail_jobs_of_worker(1234))  # ...and dies
+
+            .. testoutput:: sql-queue
+
+                ['a']
 
         """
         with Session(self._engine) as sesh:
@@ -268,8 +524,36 @@ class SqliteQueue(QueueInterface):
         Callers should confirm the state persists across a few polls: a job that
         just finished may not have had its dependents promoted yet.
 
+        Args:
+            None.
+
         Returns:
             list[str]: ids of the jobs which were failed
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("deadlock.db"))
+                stuck = JobWithContext(
+                    job_id="stuck",
+                    depends_on={"never_added"},
+                    function="pyantz.jobs.testing.nop.do_nothing",
+                    parameters={},
+                )
+                queue.add_job(stuck, None)
+                print(queue.fail_deadlocked_jobs())
+
+            .. testoutput:: sql-queue
+
+                ['stuck']
 
         """
         self._update_job_statuses()
@@ -297,19 +581,63 @@ class SqliteQueue(QueueInterface):
 
         Useful for debugging or determining the size of the queue.
 
-        Returns (JobsReport): report of the jobs and their states.
+        Args:
+            None.
+
+        Returns:
+            JobsReport: report of the jobs and their states.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("report.db"))
+                nop = "pyantz.jobs.testing.nop.do_nothing"
+                job_a = JobWithContext(job_id="a", function=nop, parameters={})
+                queue.add_job(job_a, None)
+                queue.add_job(
+                    JobWithContext(
+                        job_id="b", depends_on={"a"}, function=nop, parameters={}
+                    ),
+                    None,
+                )
+                report = queue.get_jobs_report()
+                print(report.total, report.ready, report.pending)
+
+            .. testoutput:: sql-queue
+
+                2 1 1
+
         """
         with Session(self._engine) as sesh:
             return self._generate_jobs_report(sesh)
 
     @staticmethod
     def _generate_jobs_report(sesh: Session) -> JobsReport:
-        """Create a report of the current jobs on the queue."""
+        """Create a report of the current jobs on the queue.
+
+        Args:
+            sesh: the current sqlalchemy session.
+
+        Returns:
+            JobsReport: the number of jobs in each status, and in total.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        """
         # calculate total separately to check for inconsistencies
         # if total is not the sum of our states, then we have something
         # deeply wrong in our queue! useful for debugging
         total_job_count = sa.select(
-            sa.func.count(
+            sa.func.count(  # pylint: disable=not-callable
                 sa.func.distinct(
                     JobConfigTable.job_id,
                 ),
@@ -321,7 +649,7 @@ class SqliteQueue(QueueInterface):
         # state rollups
         status_queries = {
             status: sa.select(
-                sa.func.count(
+                sa.func.count(  # pylint: disable=not-callable
                     sa.func.distinct(StatusTable.job_id),
                 ),
             ).where(StatusTable.job_status == status)
@@ -357,9 +685,19 @@ class SqliteQueue(QueueInterface):
 
         Propagates errors and successes down the dependency chain.
 
-        Specifically, if a job status is ERROR, set its immediate dependents to ERROR
-            with each call, this will propagate down the dependency chain
-        And, if a job status is SUCCESS, immediate dependents from "PENDING" to "READY"
+        Specifically, if a job status is ERROR, set its immediate dependents to
+        ERROR; with each call, this will propagate down the dependency chain. And,
+        once every job a PENDING job depends on is SUCCESS, set it to READY.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
         """
         with Session(self._engine) as sesh:
             # update jobs to failure if depend on failure
@@ -426,6 +764,33 @@ class SqliteQueue(QueueInterface):
             details (str | None): additional information about status
                 eg., may be the error message for debugging.
 
+        Returns:
+            None.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.common import JobStatus
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("update.db"))
+                nop = "pyantz.jobs.testing.nop.do_nothing"
+                job_a = JobWithContext(job_id="a", function=nop, parameters={})
+                queue.add_job(job_a, None)
+                queue.update_job_status("a", JobStatus.ERROR, "out of memory")
+                report = queue.get_job_status("a")
+                print(report.status.name, report.status_details)
+
+            .. testoutput:: sql-queue
+
+                ERROR out of memory
+
         """
         with Session(self._engine) as sesh:
             update_query = (
@@ -447,8 +812,28 @@ class SqliteQueue(QueueInterface):
         Args:
             job_id (str | uuid.UUID): job to look up
 
+        Returns:
+            JobStatusReport: the job's status and its details.
+
         Raises:
             KeyError: if there is no such job
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("status.db"))
+                try:
+                    queue.get_job_status("unknown")
+                except KeyError:
+                    print("no such job")
+
+            .. testoutput:: sql-queue
+
+                no such job
 
         """
         with Session(self._engine) as sesh:
@@ -486,6 +871,33 @@ class SqliteQueue(QueueInterface):
             bool: True if successfully added; False if unable to add
                 (for example, a job with the same id already exists)
 
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("add_job.db"))
+                nop = "pyantz.jobs.testing.nop.do_nothing"
+                parent = JobWithContext(job_id="parent", function=nop, parameters={})
+                after = JobWithContext(
+                    job_id="after", depends_on={"parent"}, function=nop, parameters={}
+                )
+                child = JobWithContext(job_id="child", function=nop, parameters={})
+                print(queue.add_job(parent, None), queue.add_job(parent, None))
+                queue.add_job(after, None)
+                # "after" now waits for "child" too, as "parent" submitted it
+                queue.add_job(child, parent_job_id="parent")
+
+            .. testoutput:: sql-queue
+
+                True False
+
         """
         # not required but polite to call whenever accessing
         self._update_job_statuses()
@@ -510,6 +922,14 @@ class SqliteQueue(QueueInterface):
         parent_job_id: str | uuid.UUID | None,
     ) -> None:
         """Insert all rows for a job in one transaction.
+
+        Args:
+            job_config: the job to insert, as PENDING.
+            parent_job_id: the job which submitted it, whose dependents will wait
+                for this job too; None for no parent.
+
+        Returns:
+            None.
 
         Raises:
             sqlalchemy.exc.IntegrityError: if the job id is already present
@@ -580,10 +1000,43 @@ class SqliteQueue(QueueInterface):
         Then it will set its status to PENDING.
 
         The queue will then set PENDING to READY on its next check and return
-        the job to be re-run.
+        the job to be re-run (the job is put back in the queue if a worker had
+        already taken it out).
 
         Args:
             job_config (JobWithContext): configuration to run
+
+        Returns:
+            None.
+
+        Raises:
+            sqlalchemy.exc.OperationalError: if the database can't be used.
+
+        Example:
+            .. testcode:: sql-queue
+
+                from pathlib import Path
+
+                from pyantz.infrastructure.config import JobWithContext
+                from pyantz.infrastructure.distributed_queue.common import JobStatus
+                from pyantz.infrastructure.distributed_queue.sql import SqliteQueue
+
+                queue = SqliteQueue(Path("retry.db"))
+                job = JobWithContext(
+                    job_id="a",
+                    function="pyantz.jobs.testing.nop.do_nothing",
+                    parameters={},
+                )
+                queue.add_job(job, None)
+                taken = queue.get_job().payload.job
+                retry = taken.model_copy(update={"num_attempted_runs": 1})
+                queue.change_config_in_place(retry)
+                queue.update_job_status("a", JobStatus.PENDING)
+                print(queue.get_job().payload.job.num_attempted_runs)
+
+            .. testoutput:: sql-queue
+
+                1
 
         """
         with Session(self._engine) as sesh:

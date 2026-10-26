@@ -21,40 +21,87 @@ from pyantz.infrastructure.config import add_parameters, no_submit_fn
 class DispatchParams(BaseModel):
     """Parameters for dispatching jobs."""
 
-    # command to pass to the subprocess
     cmd: tuple[str, ...]
+    """Command to run: the program followed by its arguments."""
 
-    # If set, and if the timeout expires, the child process will be killed and waited
     timeout: float | None = None
+    """If set, and if the timeout (in seconds) expires, the child process is
+    killed and waited for."""
 
-    # input to provide to the subprocess in stdin
     input_stream: bytes | None = None
+    """Input to provide to the subprocess in stdin."""
 
-    # current working directory
     cwd: DirectoryPath | None = None
+    """Working directory of the subprocess; it must exist."""
 
-    # If env is not None, it must be a mapping that defines the environment variables
-    # for the new process; these are used instead of the default behavior of inheriting
-    # the current process environment
     env: Mapping[str, str] | None = None
+    """If not None, the environment variables of the new process, used instead of
+    inheriting the current process environment."""
 
-    # file location to write stdout
-    # will overwrite any existing file
-    # if the same as stderr, will start will stdout and then append stderr
-    # will add a header to help distinguish
     stdout_file: Path | str | None = None
+    """File to write stdout to, overwriting any existing file. If the same as
+    ``stderr_file``, it starts with stdout and then has stderr appended after a
+    header."""
 
-    # file location to write stderr
-    # if the same as stdout, will start will stdout and then append stderr
-    # will add a header to help distinguish
     stderr_file: Path | str | None = None
+    """File to write stderr to. If the same as ``stdout_file``, stderr is appended
+    after stdout and a header."""
 
 
 STDERR_HEADER = b"\n--- stderr ---\n"
+"""Separates stdout from stderr when both are written to the same file."""
 
 
 def _save_output(params: DispatchParams, stdout: bytes, stderr: bytes) -> None:
-    """Write the captured output to the files the user asked for."""
+    """Write the captured output to the files the user asked for.
+
+    Missing parent directories are created. When ``stdout_file`` and
+    ``stderr_file`` are the same file, it holds stdout, :data:`STDERR_HEADER` and
+    then stderr.
+
+    Args:
+        params: the dispatch parameters naming the output files.
+        stdout: the captured stdout.
+        stderr: the captured stderr.
+
+    Returns:
+        None.
+
+    Raises:
+        OSError: if a file can't be written.
+
+    Example:
+        .. testsetup:: subproc-save-output
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: subproc-save-output
+
+            from pathlib import Path
+
+            from pyantz.jobs.subproc.dispatch import DispatchParams, _save_output
+
+            params = DispatchParams(
+                cmd=("unused",), stdout_file="logs/out.txt", stderr_file="logs/out.txt"
+            )
+            _save_output(params, b"some output", b"a warning")
+            print(Path("logs/out.txt").read_text())
+
+        .. testoutput:: subproc-save-output
+
+            some output
+            --- stderr ---
+            a warning
+
+        .. testcleanup:: subproc-save-output
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
     stdout_file = Path(params.stdout_file) if params.stdout_file else None
     stderr_file = Path(params.stderr_file) if params.stderr_file else None
 
@@ -77,6 +124,67 @@ def dispatch(params: DispatchParams) -> bool:
     """Dispatch a command in a subprocess.
 
     The output is saved to the requested files whether or not the command succeeds.
+    The command is run directly, without a shell.
+
+    Args:
+        params: the job's parameters, validated as :class:`DispatchParams`.
+
+    Parameters:
+        cmd (tuple[str, ...]): the program to run followed by its arguments.
+        timeout (float | None): seconds after which the process is killed.
+            Defaults to None (no timeout).
+        input_stream (bytes | None): input for the process's stdin. Defaults to
+            None.
+        cwd (Path | None): working directory of the process, which must exist.
+            Defaults to None (this process's).
+        env (Mapping[str, str] | None): environment variables of the process,
+            replacing this process's. Defaults to None (inherit them).
+        stdout_file (Path | str | None): file to write stdout to. Defaults to
+            None.
+        stderr_file (Path | str | None): file to write stderr to; it may be
+            ``stdout_file``. Defaults to None.
+
+    Returns:
+        bool: True if the command exited with code 0, False if it exited with
+        another code, timed out or couldn't be started.
+
+    Raises:
+        OSError: if an output file can't be written.
+
+    Example:
+        .. testsetup:: subproc-dispatch
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: subproc-dispatch
+
+            import sys
+            from pathlib import Path
+
+            from pyantz.jobs.subproc.dispatch import dispatch
+
+            success = dispatch(
+                {
+                    "cmd": [sys.executable, "-c", "print(input().upper())"],
+                    "input_stream": b"hello",
+                    "stdout_file": "stdout.txt",
+                },
+                lambda job: None,
+            )
+            print(success, Path("stdout.txt").read_text().strip())
+
+        .. testoutput:: subproc-dispatch
+
+            True HELLO
+
+        .. testcleanup:: subproc-dispatch
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
     """
     logger = logging.getLogger(__name__)
 

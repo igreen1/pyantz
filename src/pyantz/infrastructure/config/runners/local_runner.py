@@ -3,6 +3,19 @@
 :class:`LocalRunnerConfig` describes how many worker processes to spawn, where
 to store the SQLite queue, how often to poll for new jobs, and an optional
 overall timeout.  It is the default runner for local development and testing.
+
+Example of :class:`LocalRunnerConfig`:
+
+    .. testcode::
+
+        from pyantz.infrastructure.config import LocalRunnerConfig
+
+        config = LocalRunnerConfig(working_directory=".", number_processes=4)
+        print(config.type_, config.number_processes, config.use_same_proc)
+
+    .. testoutput::
+
+        local_proc 4 False
 """
 
 from __future__ import annotations
@@ -18,27 +31,26 @@ class LocalRunnerConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    # used to find out which config is being used for serialization
     type_: Literal["local_proc"] = "local_proc"
+    """Identifies this submitter configuration."""
 
-    # location to save temporary files and the queue
     working_directory: Path
+    """Location to save temporary files and the queue (``queue.db``)."""
 
-    # how long to wait between each check of the queue
-    # used while actively pending
     poll_timeout: float = 1.0
+    """Seconds to wait between each check of the queue while waiting for jobs."""
 
-    # how many processes to start
     number_processes: int = 2
+    """How many worker processes to start."""
 
-    # if set, will timeout the runner if jobs are
-    # not received in a certain time
     timeout: float | None = None
+    """If set, the runner stops when it hasn't received a job for this many
+    seconds."""
 
-    # with several worker processes, log a progress report this often (in seconds);
-    # None turns the reports off
     progress_interval: float | None = 30.0
+    """With several worker processes, log a progress report this often (in
+    seconds); None turns the reports off."""
 
-    # if true, use this process rather than a pool
-    # (easier debugging and faster for small jobs)
     use_same_proc: bool = False
+    """If true, run the jobs in this process rather than a pool (easier
+    debugging and faster for small jobs)."""

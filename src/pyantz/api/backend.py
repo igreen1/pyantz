@@ -1,4 +1,8 @@
-"""Where the application is defined."""
+"""Where the application is defined.
+
+:data:`app` is the api application, served by ``pyantz-prod`` (and, reloading on
+changes, ``pyantz-dev``).
+"""
 
 from __future__ import annotations
 
@@ -33,8 +37,24 @@ def create_app(frontend_dir: Path | None = None) -> FastAPI:
         frontend_dir: the built web ui to serve at ``/``, instead of the one which
             `PYANTZ_FRONTEND_DIR` names
 
+    Returns:
+        FastAPI: the application, with every endpoint under ``/api/v1.0``
+        requiring the token (if one is set).
+
     Raises:
         ValueError: if `PYANTZ_FRONTEND_DIR` is not a directory with an index.html
+
+    Example:
+        .. testcode::
+
+            from pyantz.api.backend import create_app
+
+            paths = {route.path for route in create_app().routes}
+            print("/api/v1.0/jobs/get_all_jobs" in paths)
+
+        .. testoutput::
+
+            True
 
     """
     application = FastAPI()
@@ -63,10 +83,26 @@ def create_app(frontend_dir: Path | None = None) -> FastAPI:
 
 
 app = create_app()
+"""The api application, configured from the environment when imported."""
 
 
 def start_prod_server() -> None:
-    """Start a production server."""
+    """Start a production server.
+
+    Entry point of ``pyantz-prod``; listens where `PYANTZ_HOST` and
+    `PYANTZ_PORT` say, until stopped.
+
+    Args:
+        None.
+
+    Returns:
+        None.
+
+    Raises:
+        ValueError: if the settings are invalid, or the host isn't local and no
+            token is set.
+
+    """
     settings = get_settings()
     check_safe_to_bind(settings)
     uvicorn.run(

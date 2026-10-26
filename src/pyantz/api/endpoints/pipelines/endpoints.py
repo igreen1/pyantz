@@ -38,22 +38,53 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 router = APIRouter(prefix="/config")
+"""Routes checking configurations."""
+
 runs_router = APIRouter(prefix="/runs")
+"""Routes starting and following runs."""
 
 RUN_ID_PATTERN = re.compile(r"[0-9a-f]{32}")
+"""What a run id looks like (a uuid in hex)."""
 
-# the most of a run's log which one request can get
 MAX_LOG_BYTES = 1_000_000
-DEFAULT_LOG_BYTES = 20_000
+"""The most of a run's log which one request can get."""
 
-# the processes started by this server; a restart forgets them
+DEFAULT_LOG_BYTES = 20_000
+"""How much of a run's log a request gets by default."""
+
 _PROCESSES: dict[str, subprocess.Popen[bytes]] = {}
+"""The processes started by this server, by run id; a restart forgets them."""
 
 type ConfigBody = Annotated[dict[str, Any], Body()]
+"""A configuration, sent as the request's json body."""
 
 
 def _problems(config: dict[str, Any]) -> tuple[InitialConfig | None, list[str]]:
-    """Validate the configuration and list what is wrong with it."""
+    """Validate the configuration and list what is wrong with it.
+
+    Args:
+        config: the configuration, as sent.
+
+    Returns:
+        tuple[InitialConfig | None, list[str]]: the validated configuration (None
+        if invalid) and a message for each problem.
+
+    Raises:
+        None: problems are returned.
+
+    Example:
+        .. testcode::
+
+            from pyantz.api.endpoints.pipelines.endpoints import _problems
+
+            config, problems = _problems({"jobs": []})
+            print(config, problems)
+
+        .. testoutput::
+
+            None ['submitter: Field required']
+
+    """
     try:
         return InitialConfig.model_validate(config), []
     except ValidationError as exc:
@@ -67,14 +98,81 @@ def _problems(config: dict[str, Any]) -> tuple[InitialConfig | None, list[str]]:
 
 @router.post("/validate")
 def validate_config(config: ConfigBody) -> ValidateResponse:
-    """Check a configuration and list its problems."""
+    """Check a configuration and list its problems.
+
+    \f
+    Args:
+        config: the configuration, as sent.
+
+    Returns:
+        ValidateResponse: whether it is valid, and its problems.
+
+    Raises:
+        None: problems are returned.
+
+    Example:
+        .. testcode::
+
+            from pyantz.api.endpoints.pipelines.endpoints import validate_config
+
+            result = validate_config(
+                {
+                    "submitter": {"type_": "local_proc", "working_directory": "."},
+                    "jobs": [
+                        {"function": "pyantz.jobs.testing.nop.do_nothing",
+                         "parameters": {}, "depends_on": ["missing"]},
+                    ],
+                }
+            )
+            print(result.valid, len(result.errors))
+
+        .. testoutput::
+
+            False 1
+
+    """  # noqa: D301
     _, errors = _problems(config)
     return ValidateResponse(valid=not errors, errors=errors)
 
 
 @router.post("/compile")
 def compile_config(config: ConfigBody) -> CompileResponse:
-    """Compile a configuration into its concrete jobs and dependency edges."""
+    """Compile a configuration into its concrete jobs and dependency edges.
+
+    \f
+    Args:
+        config: the configuration, as sent.
+
+    Returns:
+        CompileResponse: the concrete jobs (virtual jobs expanded) and the edges
+        between them.
+
+    Raises:
+        HTTPException: 422 if the configuration is invalid.
+
+    Example:
+        .. testcode::
+
+            from pyantz.api.endpoints.pipelines.endpoints import compile_config
+
+            nop = "pyantz.jobs.testing.nop.do_nothing"
+            result = compile_config(
+                {
+                    "submitter": {"type_": "local_proc", "working_directory": "."},
+                    "jobs": [
+                        {"job_id": "a", "function": nop, "parameters": {}},
+                        {"job_id": "b", "function": nop, "parameters": {},
+                         "depends_on": ["a"]},
+                    ],
+                }
+            )
+            print(result.edges)
+
+        .. testoutput::
+
+            [('a', 'b')]
+
+    """  # noqa: D301
     loaded, errors = _problems(config)
     if loaded is None:
         raise HTTPException(
@@ -100,7 +198,23 @@ def start_run(config: ConfigBody) -> StartRunResponse:
     Only local runs are accepted, and the working directory is chosen by the server.
     Since a configuration can import and run any function, runs are refused unless
     the server limits the modules with `PYANTZ_ALLOWED_MODULES`.
-    """
+
+    \f
+    The run's directory (in :func:`~pyantz.api.settings.get_runs_dir`) holds its
+    configuration, its log (``run.log``) and its working directory (``work``).
+
+    Args:
+        config: the configuration, as sent.
+
+    Returns:
+        StartRunResponse: the id of the new run.
+
+    Raises:
+        HTTPException: 403 if `PYANTZ_ALLOWED_MODULES` isn't set, 422 if the
+            configuration is invalid or isn't a local run.
+        OSError: if the run's directory can't be created.
+
+    """  # noqa: D301
     if not os.environ.get(ALLOWED_MODULES_VARIABLE, "").strip():
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
@@ -127,7 +241,8 @@ def start_run(config: ConfigBody) -> StartRunResponse:
     config_file = run_dir / "config.json"
     config_file.write_text(json.dumps({**config, "submitter": submitter}))
     with (run_dir / "run.log").open("wb") as log:
-        _PROCESSES[run_id] = subprocess.Popen(  # noqa: S603
+        # the process outlives the request: get_run polls it, nothing waits for it
+        _PROCESSES[run_id] = subprocess.Popen(  # noqa: S603  # pylint: disable=consider-using-with
             [sys.executable, "-m", "pyantz", str(config_file)],
             cwd=run_dir,
             stdout=log,
@@ -138,7 +253,34 @@ def start_run(config: ConfigBody) -> StartRunResponse:
 
 
 def _run_dir(run_id: str) -> Path:
-    """Get the directory of a run, refusing ids which could escape the runs dir."""
+    """Get the directory of a run, refusing ids which could escape the runs dir.
+
+    Args:
+        run_id: the run's id.
+
+    Returns:
+        Path: the run's directory (which may not exist).
+
+    Raises:
+        HTTPException: 404 if the id isn't a valid run id.
+
+    Example:
+        .. testcode::
+
+            from fastapi import HTTPException
+
+            from pyantz.api.endpoints.pipelines.endpoints import _run_dir
+
+            try:
+                _run_dir("../../etc")
+            except HTTPException as exc:
+                print(exc.status_code)
+
+        .. testoutput::
+
+            404
+
+    """
     if not RUN_ID_PATTERN.fullmatch(run_id):
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail=f"No such run: {run_id}"
@@ -148,7 +290,51 @@ def _run_dir(run_id: str) -> Path:
 
 @runs_router.get("/{run_id}")
 def get_run(run_id: str) -> RunResponse:
-    """Get the progress of a run: its state, job counts and per-job statuses."""
+    """Get the progress of a run: its state, job counts and per-job statuses.
+
+    \f
+    Args:
+        run_id: the run's id.
+
+    Returns:
+        RunResponse: the run's state, the counts of its jobs and their statuses.
+
+    Raises:
+        HTTPException: 404 if there is no such run.
+
+    Example:
+        .. testsetup:: api-get-run
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: api-get-run
+
+            import os
+            from pathlib import Path
+
+            from pyantz.api.endpoints.pipelines.endpoints import get_run
+
+            os.environ["PYANTZ_RUNS_DIR"] = "runs"
+            run_id = "0" * 32
+            Path("runs", run_id).mkdir(parents=True)
+            try:
+                print(get_run(run_id).state)  # this server didn't start it
+            finally:
+                del os.environ["PYANTZ_RUNS_DIR"]
+
+        .. testoutput:: api-get-run
+
+            unknown
+
+        .. testcleanup:: api-get-run
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """  # noqa: D301
     run_dir = _run_dir(run_id)
     if not run_dir.is_dir():
         raise HTTPException(
@@ -197,7 +383,55 @@ def get_run_log(
     run_id: str,
     max_bytes: Annotated[int, Query(ge=1, le=MAX_LOG_BYTES)] = DEFAULT_LOG_BYTES,
 ) -> RunLogResponse:
-    """Get the end of what a run printed (its standard output and errors)."""
+    """Get the end of what a run printed (its standard output and errors).
+
+    \f
+    Args:
+        run_id: the run's id.
+        max_bytes: how many bytes of the end of the log to return.
+
+    Returns:
+        RunLogResponse: the end of the log, and whether it was cut.
+
+    Raises:
+        HTTPException: 404 if the run has no log.
+        OSError: if the log can't be read.
+
+    Example:
+        .. testsetup:: api-get-run-log
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: api-get-run-log
+
+            import os
+            from pathlib import Path
+
+            from pyantz.api.endpoints.pipelines.endpoints import get_run_log
+
+            os.environ["PYANTZ_RUNS_DIR"] = "runs"
+            run_id = "0" * 32
+            Path("runs", run_id).mkdir(parents=True)
+            Path("runs", run_id, "run.log").write_text("starting... all done")
+            try:
+                result = get_run_log(run_id, max_bytes=8)
+                print(result.log, result.truncated)
+            finally:
+                del os.environ["PYANTZ_RUNS_DIR"]
+
+        .. testoutput:: api-get-run-log
+
+            all done True
+
+        .. testcleanup:: api-get-run-log
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """  # noqa: D301
     run_dir = _run_dir(run_id)
     log_file = run_dir / "run.log"
     if not log_file.is_file():

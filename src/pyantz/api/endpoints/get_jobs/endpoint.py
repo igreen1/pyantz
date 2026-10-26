@@ -14,12 +14,39 @@ from pyantz.infrastructure.config.parameters.decorators import get_registered_fu
 from .models import GetJobResponse, JobInfo
 
 router = APIRouter(prefix="/jobs")
+"""Routes listing the jobs."""
 
 NO_DESCRIPTION = "No description available."
+"""Description of jobs without a docstring."""
 
 
 def describe_job(fn: object) -> str:
-    """Get the first paragraph of the docstring, on one line."""
+    """Get the first paragraph of the docstring, on one line.
+
+    Args:
+        fn: the job function.
+
+    Returns:
+        str: the first paragraph of its docstring, or :data:`NO_DESCRIPTION`.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.api.endpoints.get_jobs.endpoint import describe_job
+            from pyantz.jobs.files.simple import mkdir
+
+            print(describe_job(mkdir))
+            print(describe_job(lambda: None))
+
+        .. testoutput::
+
+            Create the directory, and any missing parents (it may already exist).
+            No description available.
+
+    """
     doc = inspect.getdoc(fn)
     if not doc:
         return NO_DESCRIPTION
@@ -28,7 +55,31 @@ def describe_job(fn: object) -> str:
 
 @router.get("/get_all_jobs")
 def get_jobs() -> GetJobResponse:
-    """Get list of all the available jobs."""
+    """Get list of all the available jobs.
+
+    \f
+    Args:
+        None.
+
+    Returns:
+        GetJobResponse: the name and description of each registered job.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.api.endpoints.get_jobs.endpoint import get_jobs
+
+            names = [job.name for job in get_jobs().jobs]
+            print("pyantz.jobs.files.simple.copy" in names)
+
+        .. testoutput::
+
+            True
+
+    """  # noqa: D301
     return GetJobResponse(
         jobs=[
             JobInfo(name=serialize_function(fn), description=describe_job(fn))

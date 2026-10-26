@@ -34,11 +34,17 @@ class QueueInterface(Protocol):
     def get_job(self) -> GetJobReturn:
         """Return a job from the queue.
 
+        Args:
+            None.
+
         Returns:
             GetJobReturn: either
                 - A job to run
                 - Pending to indicate that nothing is ready but to keep waiting
                 - Complete to tell the worker to kill itself
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
 
         """
 
@@ -57,6 +63,12 @@ class QueueInterface(Protocol):
             details (str | None): additional information about status
                 eg., may be the error message for debugging.
 
+        Returns:
+            None.
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
+
         """
 
     @abstractmethod
@@ -65,6 +77,9 @@ class QueueInterface(Protocol):
 
         Args:
             job_id (str | uuid.UUID): job to look up
+
+        Returns:
+            JobStatusReport: the job's status and its details.
 
         Raises:
             KeyError: if there is no such job
@@ -92,6 +107,9 @@ class QueueInterface(Protocol):
         Returns:
             bool: True if successfully added; False if unable to add
 
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
+
         """
 
     @abstractmethod
@@ -109,18 +127,42 @@ class QueueInterface(Protocol):
         Args:
             job_config (JobWithContext): configuration to run
 
+        Returns:
+            None.
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
+
         """
 
     @abstractmethod
     def set_job_worker(self, job_id: str | uuid.UUID, worker_id: int) -> None:
-        """Record which worker is running the job."""
+        """Record which worker is running the job.
+
+        Args:
+            job_id: the job being run.
+            worker_id: the worker (its process id) running it.
+
+        Returns:
+            None.
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
+
+        """
 
     @abstractmethod
     def fail_jobs_of_worker(self, worker_id: int) -> list[str]:
         """Mark the RUNNING jobs of a worker which died as ERROR.
 
+        Args:
+            worker_id: the worker (its process id) which died.
+
         Returns:
             list[str]: ids of the jobs which were failed
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
 
         """
 
@@ -132,8 +174,14 @@ class QueueInterface(Protocol):
         example, it depends on a job id that was never added), so the pipeline
         would wait forever.
 
+        Args:
+            None.
+
         Returns:
             list[str]: ids of the jobs which were failed
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
 
         """
 
@@ -141,7 +189,15 @@ class QueueInterface(Protocol):
     def get_failed_jobs(self) -> list[JobStatusReport]:
         """Get the status (with the error details) of every job which errored.
 
-        Returns (list[JobStatusReport]): the failed jobs, sorted by job id.
+        Args:
+            None.
+
+        Returns:
+            list[JobStatusReport]: the failed jobs, sorted by job id.
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
+
         """
 
     @abstractmethod
@@ -150,5 +206,13 @@ class QueueInterface(Protocol):
 
         Useful for debugging or determining the size of the queue.
 
-        Returns (JobsReport): report of the jobs and their states.
+        Args:
+            None.
+
+        Returns:
+            JobsReport: report of the jobs and their states.
+
+        Raises:
+            Exception: implementations may raise if the queue's storage fails.
+
         """

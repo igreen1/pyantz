@@ -1,1 +1,1 @@
-"""Unit and regression testing"""
+"""Unit and regression testing."""

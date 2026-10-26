@@ -1,6 +1,12 @@
 """Primary way to run a configuration.
 
-Pass a path to the configuration file (JSON or YAML).
+Pass a path to the configuration file (JSON or YAML)::
+
+    pyantz config.json
+    pyantz config.yaml --validate
+    pyantz config.json --log-level DEBUG --log-file run.log
+
+The exit status is 1 if the configuration is invalid or a job failed.
 """
 
 from __future__ import annotations
@@ -20,11 +26,37 @@ from pyantz import start as _start
 from pyantz.infrastructure.config import InitialConfig as _InitialConfig
 
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
+"""Choices of ``--log-level``."""
+
 YAML_SUFFIXES = (".yaml", ".yml")
+"""Endings of configuration files read as YAML; others are read as JSON."""
 
 
 def _build_parser() -> _argparse.ArgumentParser:
-    """Create the command line parser."""
+    """Create the command line parser.
+
+    Args:
+        None.
+
+    Returns:
+        argparse.ArgumentParser: the parser of ``pyantz``'s arguments.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.__main__ import _build_parser
+
+            args = _build_parser().parse_args(["config.yaml", "--log-level", "debug"])
+            print(args.config_location, args.log_level, args.validate)
+
+        .. testoutput::
+
+            config.yaml DEBUG False
+
+    """
     parser = _argparse.ArgumentParser("PyAntz", description="Run a DAG of data jobs.")
     parser.add_argument(
         "config_location",
@@ -48,7 +80,46 @@ def _build_parser() -> _argparse.ArgumentParser:
 
 
 def _load_config_data(path: _Path) -> Any:  # noqa: ANN401
-    """Read a JSON or YAML file into plain python values."""
+    r"""Read a JSON or YAML file into plain python values.
+
+    Args:
+        path: the file; read as YAML if it ends with ``.yaml`` or ``.yml``.
+
+    Returns:
+        Any: the file's contents.
+
+    Raises:
+        OSError: if the file can't be read.
+        ValueError: if a JSON file is invalid.
+        ruamel.yaml.error.YAMLError: if a YAML file is invalid.
+
+    Example:
+        .. testsetup:: main-load-config
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: main-load-config
+
+            from pathlib import Path
+
+            from pyantz.__main__ import _load_config_data
+
+            Path("config.yaml").write_text("jobs: []\nvariables: {name: test}\n")
+            print(_load_config_data(Path("config.yaml")))
+
+        .. testoutput:: main-load-config
+
+            {'jobs': [], 'variables': {'name': 'test'}}
+
+        .. testcleanup:: main-load-config
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
     text = path.read_text(encoding="utf-8")
     if path.suffix.lower() in YAML_SUFFIXES:
         return _YAML(typ="safe").load(text)
@@ -56,7 +127,21 @@ def _load_config_data(path: _Path) -> Any:  # noqa: ANN401
 
 
 def _setup_logging(level: str, log_file: str | None) -> None:
-    """Show the logs of pyantz at the requested level."""
+    """Show the logs of pyantz at the requested level.
+
+    Replaces any logging setup already made.
+
+    Args:
+        level: the lowest level shown, e.g., ``"INFO"``.
+        log_file: if set, also write the log to this file.
+
+    Returns:
+        None.
+
+    Raises:
+        OSError: if the log file can't be opened.
+
+    """
     handlers: list[_logging.Handler] = [_logging.StreamHandler()]
     if log_file:
         handlers.append(_logging.FileHandler(log_file, encoding="utf-8"))
@@ -69,7 +154,44 @@ def _setup_logging(level: str, log_file: str | None) -> None:
 
 
 def _describe(config: _InitialConfig) -> str:
-    """List the jobs of the configuration and what they depend on."""
+    """List the jobs of the configuration and what they depend on.
+
+    Args:
+        config: the validated configuration.
+
+    Returns:
+        str: one line per job: its id, name and the ids it depends on.
+
+    Raises:
+        None.
+
+    Example:
+        .. testcode::
+
+            from pyantz.__main__ import _describe
+            from pyantz.infrastructure.config import InitialConfig
+
+            nop = "pyantz.jobs.testing.nop.do_nothing"
+            config = InitialConfig.model_validate(
+                {
+                    "submitter": {"type_": "local_proc", "working_directory": "."},
+                    "jobs": [
+                        {"job_id": "a", "name": "first", "function": nop,
+                         "parameters": {}},
+                        {"job_id": "b", "function": nop, "parameters": {},
+                         "depends_on": ["a"]},
+                    ],
+                }
+            )
+            print(_describe(config))
+
+        .. testoutput::
+
+            2 job(s):
+              a (first)
+              b <- a
+
+    """
     lines = [f"{len(config.jobs)} job(s):"]
     for job in config.jobs:
         name = f" ({job.name})" if job.name else ""
@@ -80,7 +202,22 @@ def _describe(config: _InitialConfig) -> str:
 
 
 def main() -> None:
-    """Entry point for running pyantz."""
+    """Entry point for running pyantz.
+
+    Reads the command line (see :func:`_build_parser`), checks the configuration
+    and runs it, or only describes it with ``--validate``.
+
+    Args:
+        None.
+
+    Returns:
+        None.
+
+    Raises:
+        SystemExit: with status 1 if the configuration is invalid or a job
+            failed, 2 if the arguments are invalid or the file doesn't exist.
+
+    """
     parser = _build_parser()
     args = parser.parse_args()
     config_location = _Path(args.config_location)

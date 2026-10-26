@@ -51,7 +51,8 @@ def _start(tmp_path: Path, slurm_args: list[str], jobs: int = 1) -> None:
 def _slurm_options(cmd: list[str]) -> list[str]:
     """Get the user's options between `sbatch` and the script being submitted.
 
-    Options pyantz adds on its own (time limit, invalid dependency handling) are left out.
+    Options pyantz adds on its own (time limit, invalid dependency handling) are
+    left out.
     """
     script = next(i for i, arg in enumerate(cmd) if arg.endswith("run.sh"))
     return [

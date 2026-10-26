@@ -17,10 +17,17 @@ if TYPE_CHECKING:
 NOT_INSTALLED = (
     "The web ui is not installed: install it with `pip install 'pyantz[frontend]'`"
 )
+"""Error message when the ``frontend`` feature isn't installed."""
 
 
 def get_bundled_frontend_dir() -> Path:
     """Get the directory with the web ui which comes with ``pyantz[frontend]``.
+
+    Args:
+        None.
+
+    Returns:
+        Path: the directory of the built web ui.
 
     Raises:
         ValueError: if the `frontend` feature is not installed, or its ui is not built
@@ -44,7 +51,18 @@ def start_frontend_server() -> None:
     """Start the api and serve the web ui at ``/``.
 
     The ui is the one installed with ``pyantz[frontend]``, unless
-    `PYANTZ_FRONTEND_DIR` names another build.
+    `PYANTZ_FRONTEND_DIR` names another build. Entry point of
+    ``pyantz-frontend``.
+
+    Args:
+        None.
+
+    Returns:
+        None.
+
+    Raises:
+        SystemExit: if the settings are invalid or the web ui isn't available.
+
     """
     try:
         settings = get_settings()

@@ -3,6 +3,7 @@
 # regression tests for issue #16
 
 from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING
 

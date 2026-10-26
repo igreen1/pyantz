@@ -33,21 +33,84 @@ class LocalForLoopParams(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     num_iterations: int
+    """How many times to run the jobs."""
 
     jobs: JobPipeline
+    """The jobs to run in each iteration, in order."""
 
-    # name of the variable holding the index of the iteration (0, 1, ...) which the
-    # jobs can use, for example in a path like `out_%{loop_index}.txt`
     index_variable: str = "loop_index"
+    """Name of the variable holding the index of the iteration (0, 1, ...) which
+    the jobs can use, for example in a path like ``out_%{loop_index}.txt``."""
 
-    # if true, the loop ends at the first failing job; if false, the rest of the
-    # iteration and all later iterations still run, and the loop fails at the end
     stop_on_failure: bool = True
+    """If true, the loop ends at the first failing job; if false, the rest of the
+    iteration and all later iterations still run, and the loop fails at the end."""
 
 
 @add_parameters(LocalForLoopParams)
 def local_for_loop(params: LocalForLoopParams, submit_fn: SubmissionFnType) -> bool:
-    """Run a series of jobs locally for a set of iterations."""
+    """Run a series of jobs locally for a set of iterations.
+
+    The jobs run in this process and inherit the variables of this job, plus the
+    index of the iteration in ``index_variable``. Jobs submitted by the inner jobs
+    are passed on to ``submit_fn``.
+
+    Args:
+        params: the job's parameters, validated as :class:`LocalForLoopParams`.
+        submit_fn: function the inner jobs submit their jobs with.
+
+    Parameters:
+        num_iterations (int): how many times to run the jobs.
+        jobs (JobPipeline): the jobs to run in each iteration, in order.
+        index_variable (str): name of the variable holding the iteration's index.
+            Defaults to ``"loop_index"``.
+        stop_on_failure (bool): if True, stop at the first failing job; otherwise
+            keep going and fail at the end. Defaults to True.
+
+    Returns:
+        bool: True if every job of every iteration succeeded, otherwise False.
+
+    Raises:
+        None: failures of the jobs are reported by returning False.
+
+    Example:
+        .. testsetup:: wrappers-loop
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: wrappers-loop
+
+            import os
+
+            from pyantz.jobs.wrappers.loops import local_for_loop
+
+            success = local_for_loop(
+                {
+                    "num_iterations": 3,
+                    "jobs": [
+                        {
+                            "function": "pyantz.jobs.testing.touch_file.touch_file",
+                            "parameters": {"path": "loop_%{loop_index}.txt"},
+                        },
+                    ],
+                },
+                lambda job: None,
+            )
+            print(success, sorted(f for f in os.listdir() if f.startswith("loop_")))
+
+        .. testoutput:: wrappers-loop
+
+            True ['loop_0.txt', 'loop_1.txt', 'loop_2.txt']
+
+        .. testcleanup:: wrappers-loop
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
     curr_variables: Final[Mapping[str, Any]] = (
         _vars if (_vars := JobVariables.get()) else {}
     )
