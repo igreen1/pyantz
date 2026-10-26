@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Final
 
@@ -43,7 +44,10 @@ def test_doing_nothing_cli(tmp_path: Path) -> None:
     config_path = tmp_path / "config.json"
     config_path.write_text(json.dumps(config))
 
-    subprocess.run(["python", "-m", "pyantz", os.fspath(config_path)], check=True)
+    subprocess.run(
+        [sys.executable, "-m", "pyantz", os.fspath(config_path)],
+        check=True,
+    )
 
 
 def test_doing_nothing_direct_call(tmp_path: Path) -> None:

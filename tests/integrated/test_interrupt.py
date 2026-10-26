@@ -19,6 +19,11 @@ from pyantz.infrastructure.distributed_queue.common.return_types import JobStatu
 if TYPE_CHECKING:
     from pathlib import Path
 
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="needs POSIX signals and process groups",
+)
+
 WAIT_SECONDS = 30
 
 

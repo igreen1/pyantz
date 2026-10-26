@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -19,6 +20,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 exec_path = Path(__file__).parent.parent / "assets" / "script.bash"
+# run with this interpreter by the local tests, so they run on Windows too
+LOCAL_SCRIPT = Path(__file__).parent.parent / "assets" / "script.py"
 
 CREATE_CASE_MATRIX = "pyantz.jobs.branching.case_matrix.create_case_matrix"
 EXPAND_WITH_OUTPUT_DIR = (
@@ -46,13 +49,13 @@ def test_large_pipeline(tmp_path: Path) -> None:
         {
             "function": "pyantz.jobs.wrappers.variables.run_jobs_in_context",
             "parameters": {
-                "shared_variables": {"script_path": "%{output_dir}/script.bash"},
+                "shared_variables": {"script_path": "%{output_dir}/script.py"},
                 "jobs": [
                     {
                         "function": "pyantz.jobs.files.moving.copy",
                         "job_id": "%{pipeline_id}_a",
                         "parameters": {
-                            "source": os.fspath(exec_path),
+                            "source": os.fspath(LOCAL_SCRIPT),
                             "destination": "%{script_path}",
                         },
                     },
@@ -61,7 +64,11 @@ def test_large_pipeline(tmp_path: Path) -> None:
                         "function": "pyantz.jobs.subproc.dispatch.dispatch",
                         "depends_on": ["%{pipeline_id}_a"],
                         "parameters": {
-                            "cmd": ("%{script_path}", "%{output_dir}/%{file}.txt"),
+                            "cmd": (
+                                sys.executable,
+                                "%{script_path}",
+                                "%{output_dir}/%{file}.txt",
+                            ),
                             "stdout_file": "%{output_dir}/stdout.txt",
                         },
                     },
@@ -142,7 +149,7 @@ def test_large_pipeline(tmp_path: Path) -> None:
         },
     }
     start(config)
-    _check_run(tmp_path)
+    _check_run(tmp_path, LOCAL_SCRIPT)
 
 
 def test_large_pipeline_virtual(tmp_path: Path) -> None:
@@ -152,7 +159,7 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
             "function": "pyantz.virtual.add_variables.AddVariables",
             "job_id": "%{pipeline_id}_var_1",
             "parameters": {
-                "variables": {"script_path": "%{output_dir}/script.bash"},
+                "variables": {"script_path": "%{output_dir}/script.py"},
             },
         },
         {
@@ -160,7 +167,7 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
             "job_id": "%{pipeline_id}_a",
             "depends_on": ["%{pipeline_id}_var_1"],
             "parameters": {
-                "source": os.fspath(exec_path),
+                "source": os.fspath(LOCAL_SCRIPT),
                 "destination": "%{script_path}",
             },
         },
@@ -169,7 +176,7 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
             "function": "pyantz.jobs.subproc.dispatch.dispatch",
             "depends_on": ["%{pipeline_id}_a"],
             "parameters": {
-                "cmd": ("%{script_path}", "%{output_dir}/%{file}.txt"),
+                "cmd": (sys.executable, "%{script_path}", "%{output_dir}/%{file}.txt"),
                 "stdout_file": "%{output_dir}/stdout.txt",
             },
         },
@@ -247,7 +254,7 @@ def test_large_pipeline_virtual(tmp_path: Path) -> None:
         },
     }
     start(config)
-    _check_run(tmp_path)
+    _check_run(tmp_path, LOCAL_SCRIPT)
 
 
 @pytest.mark.ssh
@@ -499,7 +506,7 @@ def test_large_pipeline_container(tmp_path: Path) -> None:
     _check_run(tmp_path)
 
 
-def _check_run(tmp_path: Path) -> None:
+def _check_run(tmp_path: Path, script: Path = exec_path) -> None:
     """Check that the pipeline ran successfully."""
     assert (tmp_path / "output").exists()
     assert (tmp_path / "case_matrix.parquet").exists()
@@ -540,8 +547,8 @@ def _check_run(tmp_path: Path) -> None:
     for i, (file_name,) in enumerate(result_case_matrix.select("file").iter_rows()):
         run_dir = tmp_path / "output" / f"run_{i}"
         assert run_dir.exists()
-        assert (run_dir / "script.bash").exists()
-        assert (run_dir / "script.bash").read_text() == exec_path.read_text()
+        assert (run_dir / script.name).exists()
+        assert (run_dir / script.name).read_text() == script.read_text()
         assert (run_dir / f"{file_name}.txt").exists()
         assert (run_dir / "stdout.txt").exists()
         assert (run_dir / "stdout.txt").read_text() == ""

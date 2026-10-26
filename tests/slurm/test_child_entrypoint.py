@@ -15,6 +15,11 @@ from pyantz.infrastructure.config import InitialConfig
 from pyantz.infrastructure.config.runners import SlurmRunnerConfig
 from pyantz.infrastructure.runner.slurm import start
 
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="the fake sbatch is a bash script; slurm runs on Linux",
+)
+
 FAKE_SBATCH = """#!/bin/bash
 echo "$@" >> "$FAKE_SBATCH_LOG"
 echo "1000"
