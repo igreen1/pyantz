@@ -162,8 +162,13 @@ class SqliteQueue(QueueInterface):
 
             """
             cursor = dbapi_connection.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_SECONDS * 1000}")
+            # the mode is kept in the file: only switch a new file. Switching
+            # takes a lock without waiting for it, so a connection opened while
+            # another process writes would fail with "database is locked"
+            (mode,) = cursor.execute("PRAGMA journal_mode").fetchone()
+            if mode != "wal":
+                cursor.execute("PRAGMA journal_mode=WAL")
             cursor.execute("PRAGMA synchronous=NORMAL")
             cursor.close()
 
