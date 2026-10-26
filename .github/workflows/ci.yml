@@ -62,26 +62,37 @@ jobs:
       - run: uv sync --locked
       # not with -n auto: tests/integrated/branching/test_if_else.py parametrizes
       # randomly, so xdist workers collect different tests
-      - run: uv run pytest --junitxml=junit.xml
-      # TEMP: failures as annotations, which are readable without logs access
+      # TEMP: keep pytest's output, and report failures as annotations, which are
+      # readable without access to the logs
+      - shell: bash
+        run: |
+          set -o pipefail
+          uv run pytest --junitxml=junit.xml -rfE 2>&1 | tee pytest.log
       - if: failure()
         shell: bash
         env:
           PYTHONIOENCODING: utf-8
         run: |
           cat > "$RUNNER_TEMP/annotate.py" <<'PY'
+          import os
           import xml.etree.ElementTree as ET
-          ids, out = [], []
-          for case in ET.parse("junit.xml").iter("testcase"):
-              for bad in [*case.iter("failure"), *case.iter("error")]:
-                  test_id = f"{case.get('classname')}::{case.get('name')}"
-                  lines = (bad.text or bad.get("message") or "").strip().splitlines()
-                  ids.append(test_id)
-                  out.append(test_id + "\n" + "\n".join(lines[-12:]))
-          text = "\n\n=====\n".join(["FAILED:\n" + "\n".join(ids), *out])
-          for i in range(0, min(len(text), 9 * 6000), 6000):
-              chunk = text[i : i + 6000].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
-              print(f"::error title=pytest failures {i // 6000}::{chunk}")
+
+          def annotate(title, text):
+              for i in range(0, min(len(text), 4 * 6000), 6000):
+                  chunk = text[i : i + 6000].replace("%", "%25").replace("\r", "")
+                  print(f"::error title={title} {i // 6000}::" + chunk.replace("\n", "%0A"), flush=True)
+
+          log = open("pytest.log", encoding="utf-8", errors="replace").read().splitlines()
+          annotate("pytest log tail", "\n".join(log[-80:]))
+          if not os.path.exists("junit.xml"):
+              annotate("junit", "no junit.xml")
+          else:
+              out = []
+              for case in ET.parse("junit.xml").iter("testcase"):
+                  for bad in [*case.iter("failure"), *case.iter("error")]:
+                      lines = (bad.text or bad.get("message") or "").strip().splitlines()
+                      out.append(f"{case.get('classname')}::{case.get('name')}\n" + "\n".join(lines[-15:]))
+              annotate("pytest failures", "\n\n=====\n".join(out) or "none in junit.xml")
           PY
           uv run python "$RUNNER_TEMP/annotate.py"
 
