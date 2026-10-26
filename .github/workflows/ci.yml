@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master, test-all-platforms]  # TEMP: CI for the test-all-platforms branch
+    branches: [master]
     # versions are tagged without a "v" (bumpver's tag_message), e.g. 2.0.1
     tags: ["[0-9]+.[0-9]+.[0-9]+*"]
   pull_request:
