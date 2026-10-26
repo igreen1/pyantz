@@ -7,9 +7,9 @@ test:
 doc:
 	cd docs && uv run make html
 
+# CI bumps the version and tags it on every push to master
 build:
 	rm -rf dist
-	uvx bumpver update --patch
 	uv build --all-packages
 
 publish:

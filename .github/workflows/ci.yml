@@ -138,15 +138,60 @@ jobs:
           name: playwright-traces
           path: frontend/pyantz/test-results
 
-  release:
-    name: GitHub release
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+  # every push to master which passes the checks is released as a new patch
+  # version. The bump is pushed with the GITHUB_TOKEN, which starts no workflow,
+  # so it doesn't bump again: this run releases it.
+  bump:
+    name: Bump the version and tag it
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/master'
+      && !startsWith(github.event.head_commit.message, 'bump version ')
     needs: [lint, typecheck, test, docs, frontend, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      tag: ${{ steps.bump.outputs.tag }}
     steps:
+      # master, not this run's commit: the bump goes on top of master, and the
+      # newer push (whose run waits for this one) releases it instead
       - uses: actions/checkout@v4
+        with:
+          ref: master
+      - uses: astral-sh/setup-uv@v5
+      - id: bump
+        run: |
+          if [ "$(git rev-parse HEAD)" != "$GITHUB_SHA" ]; then
+            echo "master moved on from $GITHUB_SHA: its own run releases it"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          uvx bumpver==2026.1132 update --patch --no-commit --no-tag-commit --no-push
+          # uv.lock has the version of pyantz-frontend, which bumpver doesn't edit
+          uv lock
+          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/pyantz/__init__.py)"
+          git commit -am "bump version $(git show HEAD:src/pyantz/__init__.py | sed -n 's/^__version__ = "\(.*\)"$/\1/p') -> $version"
+          git tag -a "$version" -m "$version"
+          git push --atomic origin HEAD:master "refs/tags/$version"
+          echo "tag=$version" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build packages
+    # a tag pushed by hand, or the one the bump made
+    if: >-
+      !cancelled() && !contains(needs.*.result, 'failure')
+      && (startsWith(github.ref, 'refs/tags/') || needs.bump.outputs.tag != '')
+    needs: [lint, typecheck, test, docs, frontend, e2e, bump]
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        run: echo "tag=${{ needs.bump.outputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.tag }}
       - uses: astral-sh/setup-uv@v5
       # the pyantz-frontend package builds the web ui with npm
       - uses: actions/setup-node@v4
@@ -155,19 +200,59 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/pyantz/package-lock.json
       - name: check the tag is the package's version
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' src/pyantz/__init__.py)"
-          if [ "$version" != "$GITHUB_REF_NAME" ]; then
-            echo "::error::tag $GITHUB_REF_NAME is not the package version $version"
+          if [ "$version" != "$TAG" ]; then
+            echo "::error::tag $TAG is not the package version $version"
             exit 1
           fi
       - name: build pyantz and pyantz-frontend
         run: uv build --all-packages
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  release:
+    name: GitHub release
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # gh release create --verify-tag needs the repository
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
       - name: create the release with the built packages
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build.outputs.tag }}
         run: >
-          gh release create "$GITHUB_REF_NAME" dist/*
-          --title "$GITHUB_REF_NAME"
+          gh release create "$TAG" dist/*
+          --title "$TAG"
           --generate-notes
           --verify-tag
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build]
+    runs-on: ubuntu-latest
+    # trusted publishing: PyPI trusts this workflow and environment, no token
+    environment:
+      name: pypi
+      url: https://pypi.org/project/pyantz/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      # uploads both pyantz and pyantz-frontend, each to its own project
+      - uses: pypa/gh-action-pypi-publish@release/v1
