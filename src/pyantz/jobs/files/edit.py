@@ -656,7 +656,7 @@ def _json_editor_factory(  # noqa: C901, PLR0915
             edited = edit_any(current.get(curr_key, {}), field_components, new_value)
         if isinstance(current, MutableMapping):
             # edit in place: keeps the order of the keys and, for yaml, the comments
-            cast("MutableMapping[str, Any]", current)[curr_key] = edited
+            current[curr_key] = edited
             return cast("JsonValue", current)
         return cast("JsonValue", {**current, curr_key: edited})
 

@@ -11,7 +11,7 @@ import logging
 import os
 import tarfile
 import tempfile
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import docker
 import docker.errors
@@ -168,7 +168,7 @@ def run_container(config: InitialConfig) -> None:
         msg = f"run_container needs a 'container' host, got {config.host.type_!r}"
         raise RuntimeError(msg)
 
-    host_config: ContainerConfig = cast("ContainerConfig", config.host)
+    host_config: ContainerConfig = config.host
 
     working_dir = host_config.working_dir or DEFAULT_CONTAINER_WORKING_DIR
 

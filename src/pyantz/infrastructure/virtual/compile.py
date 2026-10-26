@@ -12,7 +12,6 @@ from typing import (
     Any,
     TypeAliasType,
     Union,
-    cast,
     get_args,
     get_origin,
 )
@@ -81,12 +80,8 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
 
     # uncompiled lookup tables
 
-    virtual_job_lookup = {
-        job.job_id: cast("VirtualJobConfig", job) for job in jobs if job.virtual
-    }
-    real_job_lookup = {
-        job.job_id: cast("RealJobConfig", job) for job in jobs if not job.virtual
-    }
+    virtual_job_lookup = {job.job_id: job for job in jobs if job.virtual}
+    real_job_lookup = {job.job_id: job for job in jobs if not job.virtual}
 
     graph = {job.job_id: job.depends_on or set[str]() for job in jobs}
     try:
@@ -355,7 +350,7 @@ def _compile_singular(
 
     """
     if not job.virtual:
-        return [cast("RealJobConfig", job), *dep_jobs]
+        return [job, *dep_jobs]
     virtual_id = job.job_id
     other_virtual_ids = set(virtual_ids) - {virtual_id}
 
@@ -372,7 +367,7 @@ def _compile_singular(
             ),
         )
 
-    result = cast("VirtualJobConfig", job).compile_virtual(cleaned_dep_jobs)
+    result = job.compile_virtual(cleaned_dep_jobs)
     return [
         real_job.model_copy(
             update={

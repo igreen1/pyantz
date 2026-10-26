@@ -84,7 +84,7 @@ Job functions must follow this signature:
 ```python
 def my_job(params: dict | BaseModel, submit_fn: Callable) -> bool:
     ...
-    return True   # True = success, False = failure
+    return True  # True = success, False = failure
 ```
 
 The `submit_fn` argument allows a job to dynamically enqueue additional jobs at runtime (used by branching and loop wrappers).
@@ -273,6 +273,7 @@ class ProcessDataParams(BaseModel):
 @no_submit_fn
 def process_data(params: ProcessDataParams) -> bool:
     import polars as pl
+
     df = pl.read_parquet(params.input_file)
     df.filter(pl.col("score") > params.threshold).write_parquet(params.output_file)
     return True

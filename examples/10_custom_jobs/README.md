@@ -25,6 +25,7 @@ class WordCountParams(BaseModel):
     input_file: Path
     output_file: Path
 
+
 @add_parameters(WordCountParams)
 @no_submit_fn
 def word_count(params: WordCountParams) -> bool:

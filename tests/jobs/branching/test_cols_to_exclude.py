@@ -18,7 +18,7 @@ def test_several_columns_validate() -> None:
     """A tuple of any length is accepted."""
     for columns in [(), ("a",), ("a", "b"), ("a", "b", "c")]:
         params = CaseMatrixExpansionParams(
-            case_matrix_parquet="x",  # ty: ignore[invalid-argument-type]
+            case_matrix_parquet="x",
             cols_to_exclude=columns,
             pipeline_template=[],
         )

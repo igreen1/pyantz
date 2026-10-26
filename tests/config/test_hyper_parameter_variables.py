@@ -14,7 +14,7 @@ def test_id_name_and_dependencies_are_resolved() -> None:
         name="n_%{i}",
         depends_on={"d_%{i}"},
         variables={"i": 1},
-        function=NOP,  # ty: ignore[invalid-argument-type]
+        function=NOP,
         parameters={},
     )
 
@@ -30,7 +30,7 @@ def test_resolution_survives_a_round_trip() -> None:
         job_id="j_%{i}",
         depends_on={"d_%{i}", "other"},
         variables={"i": "x"},
-        function=NOP,  # ty: ignore[invalid-argument-type]
+        function=NOP,
         parameters={},
     )
 
@@ -44,7 +44,7 @@ def test_unset_variables_are_left_in_place() -> None:
         job_id="j_%{missing}",
         name="plain",
         variables={"i": 1},
-        function=NOP,  # ty: ignore[invalid-argument-type]
+        function=NOP,
         parameters={},
     )
     assert job.job_id == "j_%{missing}"
@@ -69,7 +69,7 @@ def test_plain_job_config_unaffected() -> None:
     """Jobs without context keep their templates untouched."""
     job = JobConfig(
         job_id="j_%{i}",
-        function=NOP,  # ty: ignore[invalid-argument-type]
+        function=NOP,
         parameters={},
     )
     assert job.job_id == "j_%{i}"

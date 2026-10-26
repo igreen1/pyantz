@@ -127,7 +127,7 @@ class ContinuousRange[S: int | float](BaseModel):
         # the epsilon stops 0.7/0.1-style rounding noise from including the max
         count = math.ceil((self.max_value - self.min_value) / self.step - 1e-9)  # type: ignore[operator]  # ty: ignore[unsupported-operator]
         for index in range(max(count, 0)):
-            value = self.min_value + index * self.step  # type: ignore[operator]  # ty: ignore[unsupported-operator]
+            value = self.min_value + index * self.step  # type: ignore[operator]
             yield round(value, FLOAT_DECIMALS) if isinstance(value, float) else value  # type: ignore[misc]  # ty: ignore[invalid-yield]
 
 
@@ -779,7 +779,7 @@ def _pipeline_factory_factory(
             None.
 
         """
-        prev: None | JobConfig = None
+        prev: JobConfig | None = None
 
         def transform(curr: JobConfig) -> JobConfig:
             """Chain curr to depend on prev and advance the prev pointer.

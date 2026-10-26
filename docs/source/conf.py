@@ -47,7 +47,7 @@ html_theme = "sphinx_book_theme"
 html_static_path = ["_static"]
 
 
-def skip_member(  # noqa: PLR0913
+def skip_member(  # noqa: PLR0913, PLR0917
     app: Sphinx,
     what: str,
     name: str,
@@ -91,7 +91,7 @@ def skip_member(  # noqa: PLR0913
     return skip
 
 
-def label_job_parameters(  # noqa: PLR0913
+def label_job_parameters(  # noqa: PLR0913, PLR0917
     app: Sphinx,
     what: str,
     name: str,
@@ -150,6 +150,9 @@ def setup(app: Sphinx) -> None:
 autodoc_default_options = {"ignore-module-all": True, "private-members": True}
 autodoc_typehints = "description"
 typehints_use_signature = True
+# sphinx-autodoc-typehints can't import the `TYPE_CHECKING` imports of
+# sqlalchemy.orm.instrumentation (relative imports), which isn't our code
+suppress_warnings = ["sphinx_autodoc_typehints.guarded_import"]
 
 # a job function's "Parameters:" section lists the fields of its parameters model;
 # it is kept apart from "Args:" (the function's own arguments) instead of being

@@ -35,7 +35,7 @@ def test_missing_parquet_returns_false_with_a_log(
     params = ExternalAnalysisParams(
         variable_names_to_parquets={"data": tmp_path / "missing.parquet"},
         lazy_or_eager="eager",
-        external_function=NOP,  # ty: ignore[invalid-argument-type]
+        external_function=NOP,
     )
 
     with caplog.at_level(logging.ERROR):
@@ -51,7 +51,7 @@ def test_unreadable_parquet_returns_false(tmp_path: Path) -> None:
     params = ExternalAnalysisParams(
         variable_names_to_parquets={"data": broken},
         lazy_or_eager="eager",
-        external_function=NOP,  # ty: ignore[invalid-argument-type]
+        external_function=NOP,
     )
 
     assert external_analysis(params.model_dump(), lambda *_: None) is False
@@ -61,7 +61,7 @@ def test_extraction_creates_missing_directories(tmp_path: Path) -> None:
     """The result's directory is created if it doesn't exist."""
     target = tmp_path / "a" / "b" / "result.parquet"
     params = ExternalExtractParams(
-        external_function=f"{__name__}.make_frame",  # ty: ignore[invalid-argument-type]
+        external_function=f"{__name__}.make_frame",
         result_parquet_location=str(target),
     )
 
@@ -76,8 +76,8 @@ def test_unregistered_variable_still_fails_cleanly(tmp_path: Path) -> None:
     make_frame().write_parquet(data)
     params = ExternalAnalysisParams(
         variable_names_to_parquets={"data": data},
-        lazy_or_eager={"other": "lazy"},  # ty: ignore[invalid-argument-type]
-        external_function=NOP,  # ty: ignore[invalid-argument-type]
+        lazy_or_eager={"other": "lazy"},
+        external_function=NOP,
     )
 
     assert external_analysis(params.model_dump(), lambda *_: None) is False

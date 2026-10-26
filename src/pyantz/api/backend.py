@@ -49,7 +49,7 @@ def create_app(frontend_dir: Path | None = None) -> FastAPI:
 
             from pyantz.api.backend import create_app
 
-            paths = {route.path for route in create_app().routes}
+            paths = create_app().openapi()["paths"]
             print("/api/v1.0/jobs/get_all_jobs" in paths)
 
         .. testoutput::
