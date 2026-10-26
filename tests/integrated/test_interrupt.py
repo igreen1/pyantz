@@ -40,7 +40,20 @@ def _start_sleeping_pipeline(
             {
                 "job_id": "sleeper",
                 "function": "pyantz.jobs.subproc.dispatch.dispatch",
-                "parameters": {"cmd": ["sleep", "60"]},
+                # touches the marker once started: signalling the pipeline while
+                # the subprocess is still being started can orphan it (the
+                # signal interrupts Popen before it owns the child)
+                "parameters": {
+                    "cmd": [
+                        sys.executable,
+                        "-c",
+                        (
+                            "import pathlib, sys, time;"
+                            " pathlib.Path(sys.argv[1]).touch(); time.sleep(60)"
+                        ),
+                        os.fspath(tmp_path / "started"),
+                    ],
+                },
             },
         ],
         "submitter": {
@@ -73,10 +86,10 @@ def _job_status(queue_file: Path) -> int | None:
     return None if row is None else row[0]
 
 
-def _wait_until_running(queue_file: Path) -> None:
+def _wait_until_running(queue_file: Path, started: Path) -> None:
     deadline = time.monotonic() + WAIT_SECONDS
     while time.monotonic() < deadline:
-        if _job_status(queue_file) == JobStatus.RUNNING:
+        if _job_status(queue_file) == JobStatus.RUNNING and started.exists():
             return
         time.sleep(0.1)
     pytest.fail("job never started running")
@@ -102,7 +115,7 @@ def test_signal_stops_pipeline_and_cleans_up(
     proc = _start_sleeping_pipeline(tmp_path, use_same_proc=use_same_proc)
     queue_file = tmp_path / "work" / "queue.db"
     try:
-        _wait_until_running(queue_file)
+        _wait_until_running(queue_file, tmp_path / "started")
 
         proc.send_signal(sig)
         proc.wait(timeout=WAIT_SECONDS)
