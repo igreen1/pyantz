@@ -129,6 +129,7 @@ def start(config: InitialConfig) -> JobsReport:
     runner_config.working_directory.mkdir(parents=True, exist_ok=True)
     _remove_stale_queue(queue_file)
     logger.debug("Creating sqlite queue %s", queue_file)
+    _create_queue_file(queue_file)
 
     # closed at the end, so a later run in this process can replace the file
     with SqliteQueue(queue_file) as queue:
@@ -173,6 +174,65 @@ def _log_failures(queue: SqliteQueue) -> None:
     width = max(len(job_id) for job_id, _ in rows)
     table = "\n".join(f"  {job_id:<{width}}  {error}" for job_id, error in rows)
     logging.getLogger(__name__).error("%d job(s) failed:\n%s", len(failed), table)
+
+
+def _create_queue_file(queue_file: Path) -> None:
+    """Create the queue's file, with its tables and in WAL mode, all at once.
+
+    It is set up under another name and then renamed, so another process (e.g.
+    the API reading the progress of the run) never opens a half made file:
+    setting it up at the same time fails with "database is locked".
+
+    Args:
+        queue_file: the queue's SQLite file, which doesn't exist yet.
+
+    Returns:
+        None.
+
+    Raises:
+        OSError: if the file can't be created or renamed.
+        sqlalchemy.exc.OperationalError: if the tables can't be created.
+
+    Example:
+        .. testsetup:: local-runner-create-queue
+
+            import os, shutil, tempfile
+            start_dir = os.getcwd()
+            os.chdir(tempfile.mkdtemp())
+
+        .. testcode:: local-runner-create-queue
+
+            import os
+            import sqlite3
+            from pathlib import Path
+
+            from pyantz.infrastructure.runner.local.local_runner import (
+                _create_queue_file,
+            )
+
+            _create_queue_file(Path("queue.db"))
+            print(os.listdir())
+            with sqlite3.connect("queue.db") as conn:
+                print(conn.execute("PRAGMA journal_mode").fetchone()[0])
+            conn.close()
+
+        .. testoutput:: local-runner-create-queue
+
+            ['queue.db']
+            wal
+
+        .. testcleanup:: local-runner-create-queue
+
+            tmp = os.getcwd()
+            os.chdir(start_dir)
+            shutil.rmtree(tmp)
+
+    """
+    partial = queue_file.with_name(queue_file.name + ".new")
+    _remove_stale_queue(partial)
+    # closing the last connection removes the -wal and -shm files
+    SqliteQueue(partial).close()
+    partial.replace(queue_file)
 
 
 def _remove_stale_queue(queue_file: Path) -> None:
