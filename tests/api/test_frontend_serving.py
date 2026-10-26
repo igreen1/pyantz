@@ -1,5 +1,7 @@
 """Test that the server can serve the built web ui next to the api."""
 
+from __future__ import annotations
+
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 

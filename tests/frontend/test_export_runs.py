@@ -1,5 +1,7 @@
 """What the editor exports is a config which pyantz accepts and runs."""
 
+from __future__ import annotations
+
 import json
 import re
 from pathlib import Path

@@ -1,5 +1,7 @@
 """Test ``subsequent_host`` is selected by its ``type_`` discriminator."""
 
+from __future__ import annotations
+
 import pytest
 from pydantic import ValidationError
 

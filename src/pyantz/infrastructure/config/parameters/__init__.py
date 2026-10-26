@@ -1,5 +1,7 @@
 """Functionality to mark functions to strongly type the parameters."""
 
+from __future__ import annotations
+
 from .compile_check import get_params
 from .decorators import (
     add_parameters,

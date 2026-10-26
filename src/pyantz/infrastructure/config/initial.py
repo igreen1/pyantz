@@ -6,6 +6,8 @@ the submitter (local or SLURM), optional global variables, and the host
 on which the submitter should be started.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from typing import Annotated, Any, Self
 

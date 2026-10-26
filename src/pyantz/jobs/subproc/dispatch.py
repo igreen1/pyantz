@@ -6,6 +6,8 @@ directory, and a timeout.  It returns ``True`` on success (exit code 0)
 and ``False`` on :exc:`subprocess.CalledProcessError` or timeout.
 """
 
+from __future__ import annotations
+
 import logging
 import subprocess
 from collections.abc import Mapping

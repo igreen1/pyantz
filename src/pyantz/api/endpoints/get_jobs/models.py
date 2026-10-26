@@ -1,5 +1,7 @@
 """Data models for the `get_jobs` endpoint."""
 
+from __future__ import annotations
+
 from pydantic import BaseModel
 
 

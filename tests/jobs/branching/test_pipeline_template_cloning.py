@@ -1,5 +1,7 @@
 """Test cloning a pipeline template for each row of a case matrix."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

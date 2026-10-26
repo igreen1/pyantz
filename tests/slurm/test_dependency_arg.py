@@ -1,5 +1,7 @@
 """Test merging dependencies into the sbatch arguments."""
 
+from __future__ import annotations
+
 import os
 import subprocess
 from typing import TYPE_CHECKING, Any

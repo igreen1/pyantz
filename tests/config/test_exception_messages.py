@@ -1,5 +1,7 @@
 """Test that errors say what is wrong."""
 
+from __future__ import annotations
+
 import pytest
 from pydantic import BaseModel, ValidationError
 

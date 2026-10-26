@@ -4,6 +4,8 @@
 configuration in one go instead of one error at a time.
 """
 
+from __future__ import annotations
+
 import graphlib
 from collections import Counter
 from typing import TYPE_CHECKING

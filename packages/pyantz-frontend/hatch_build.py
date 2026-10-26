@@ -1,5 +1,7 @@
 """Build the web ui (frontend/pyantz) into the package when it is built."""
 
+from __future__ import annotations
+
 import shutil
 import subprocess
 from pathlib import Path

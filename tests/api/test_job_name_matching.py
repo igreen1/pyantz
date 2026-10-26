@@ -1,5 +1,7 @@
 """Test looking up registered jobs by name."""
 
+from __future__ import annotations
+
 from http import HTTPStatus
 
 from fastapi.testclient import TestClient

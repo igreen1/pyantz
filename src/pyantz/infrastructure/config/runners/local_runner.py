@@ -5,6 +5,8 @@ to store the SQLite queue, how often to poll for new jobs, and an optional
 overall timeout.  It is the default runner for local development and testing.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Literal
 

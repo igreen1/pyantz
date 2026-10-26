@@ -2,6 +2,7 @@
 
 # regression tests for issue #14
 
+from __future__ import annotations
 from pydantic import BaseModel
 
 from pyantz.infrastructure.config import JobConfig

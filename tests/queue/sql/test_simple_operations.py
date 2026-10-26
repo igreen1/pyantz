@@ -1,5 +1,7 @@
 """Test the simple get/set operations of the queue."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 import pytest

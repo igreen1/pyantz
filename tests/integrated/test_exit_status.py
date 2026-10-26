@@ -2,6 +2,7 @@
 
 # regression tests for issue #18
 
+from __future__ import annotations
 import json
 import os
 import sys

@@ -1,5 +1,7 @@
 """Test the code base is formatted with ruff."""
 
+from __future__ import annotations
+
 import subprocess
 import sys
 from pathlib import Path

@@ -6,6 +6,8 @@ the ``uvx pyantz …`` invocation that the remote side runs after extracting
 the archive.
 """
 
+from __future__ import annotations
+
 import io
 import tarfile
 import time

@@ -11,6 +11,8 @@ Large job configs are split into ``CHUNKSIZE``-character chunks so that
 SQLite's per-column string limit is not exceeded.
 """
 
+from __future__ import annotations
+
 from typing import Final
 
 from sqlalchemy import String, Text

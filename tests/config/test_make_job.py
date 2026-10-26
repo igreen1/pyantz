@@ -1,5 +1,7 @@
 """Test ``make_job`` error messages and import behavior."""
 
+from __future__ import annotations
+
 from typing import Any
 
 import pytest

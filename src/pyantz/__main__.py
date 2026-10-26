@@ -3,6 +3,8 @@
 Pass a path to the configuration file (JSON or YAML).
 """
 
+from __future__ import annotations
+
 import argparse as _argparse
 import json as _json
 import logging as _logging

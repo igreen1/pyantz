@@ -1,5 +1,7 @@
 """Test failed jobs are retried the configured number of times."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

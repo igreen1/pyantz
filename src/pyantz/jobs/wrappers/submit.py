@@ -9,6 +9,8 @@ letting users switch execution backends mid-pipeline.
 container) before using the new submitter.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict

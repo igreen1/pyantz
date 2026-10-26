@@ -28,7 +28,7 @@ pip install pyantz
 uv add pyantz
 ```
 
-**Requires Python ≥ 3.14.**
+**Requires Python ≥ 3.13.**
 
 ---
 

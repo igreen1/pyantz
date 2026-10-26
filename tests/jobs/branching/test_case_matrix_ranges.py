@@ -1,5 +1,7 @@
 """Test the value ranges which make up a case matrix."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING, Any
 

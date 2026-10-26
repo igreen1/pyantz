@@ -1,5 +1,7 @@
 """Test running external functions."""
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING
 

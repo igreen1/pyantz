@@ -1,5 +1,7 @@
 """Test that sbatch-ed child jobs can start on a node."""
 
+from __future__ import annotations
+
 import os
 import shlex
 import stat

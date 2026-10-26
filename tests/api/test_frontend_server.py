@@ -1,5 +1,7 @@
 """Test `pyantz-frontend`, which serves the ui of ``pyantz[frontend]``."""
 
+from __future__ import annotations
+
 import sys
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any

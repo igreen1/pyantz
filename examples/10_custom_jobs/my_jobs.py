@@ -5,6 +5,8 @@ To use these in a pipeline JSON, reference them as:
 or, more practically, install this in your project and use your package name.
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 

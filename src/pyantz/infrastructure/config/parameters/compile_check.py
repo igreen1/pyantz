@@ -10,6 +10,8 @@ resolved at runtime; set ``strict: true`` on a job or
 ``check_at_startup: true`` on its decorator to force early validation.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, cast
 
 from pydantic import BaseModel, ValidationError

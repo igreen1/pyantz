@@ -5,6 +5,8 @@ in parameters.  At parse time Pydantic calls :func:`_make_pipeline` to
 convert a raw list of dicts into typed job config objects.
 """
 
+from __future__ import annotations
+
 from collections.abc import Iterable
 from typing import Annotated, Any
 
