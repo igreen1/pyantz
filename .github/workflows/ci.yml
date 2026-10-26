@@ -66,8 +66,10 @@ jobs:
       # TEMP: failures as annotations, which are readable without logs access
       - if: failure()
         shell: bash
+        env:
+          PYTHONIOENCODING: utf-8
         run: |
-          uv run python - <<'PY'
+          cat > "$RUNNER_TEMP/annotate.py" <<'PY'
           import xml.etree.ElementTree as ET
           ids, out = [], []
           for case in ET.parse("junit.xml").iter("testcase"):
@@ -81,6 +83,7 @@ jobs:
               chunk = text[i : i + 6000].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
               print(f"::error title=pytest failures {i // 6000}::{chunk}")
           PY
+          uv run python "$RUNNER_TEMP/annotate.py"
 
   docs:
     name: Doctests and Sphinx docs
