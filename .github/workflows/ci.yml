@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, test-all-platforms]  # TEMP: CI for the test-all-platforms branch
     # versions are tagged without a "v" (bumpver's tag_message), e.g. 2.0.1
     tags: ["[0-9]+.[0-9]+.[0-9]+*"]
   pull_request:
@@ -62,7 +62,23 @@ jobs:
       - run: uv sync --locked
       # not with -n auto: tests/integrated/branching/test_if_else.py parametrizes
       # randomly, so xdist workers collect different tests
-      - run: uv run pytest
+      - run: uv run pytest --junitxml=junit.xml
+      # TEMP: failures as annotations, which are readable without logs access
+      - if: failure()
+        shell: bash
+        run: |
+          uv run python - <<'PY'
+          import xml.etree.ElementTree as ET
+          out = []
+          for case in ET.parse("junit.xml").iter("testcase"):
+              for bad in [*case.iter("failure"), *case.iter("error")]:
+                  lines = (bad.text or bad.get("message") or "").strip().splitlines()
+                  out.append(f"{case.get('classname')}::{case.get('name')}\n" + "\n".join(lines[-25:]))
+          text = "\n\n=====\n".join(out) or "no failures in junit.xml"
+          for i in range(0, min(len(text), 9 * 6000), 6000):
+              chunk = text[i : i + 6000].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+              print(f"::error title=pytest failures {i // 6000}::{chunk}")
+          PY
 
   docs:
     name: Doctests and Sphinx docs
