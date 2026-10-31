@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import graphlib
+import logging
 from collections import Counter
 from collections.abc import Collection, Iterable, Mapping
 from types import UnionType
@@ -92,6 +93,11 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         msg = f"Dependency cycle: {' -> '.join(exc.args[1])}"
         raise ValueError(msg) from exc
 
+    logging.getLogger(__name__).debug(
+        "Compiling %d job(s), %d of them virtual",
+        len(jobs),
+        len(virtual_job_lookup),
+    )
     if not virtual_job_lookup:
         return _compile_parameters([*real_job_lookup.values()])
 
@@ -173,6 +179,9 @@ def compile_virtual(jobs: list[AnyJobConfig]) -> list[RealJobConfig]:
         compile_results = _compile_parameters(compile_results)
         compiled_jobs.extend(compile_results)
 
+    logging.getLogger(__name__).debug(
+        "Compiled %d job(s) into %d concrete job(s)", len(jobs), len(compiled_jobs)
+    )
     return compiled_jobs
 
 
@@ -243,6 +252,9 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
         sub_job_validated: AnyJobConfig | None = _try_to_validate_job(sub_job)
         if sub_job_validated is None:
             continue  # cannot help this parameter out
+        logging.getLogger(__name__).debug(
+            "Compiling job in parameter %s of job %s", parm_job_field, job.job_id
+        )
         job = job.model_copy(
             update={
                 "parameters": {
@@ -259,6 +271,12 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
         if any(sub_job is None for sub_job in validated_sub_jobs):
             continue  # not all jobs, so cannot help this parameter out
         sub_jobs = type(sub_jobs)(validated_sub_jobs)
+        logging.getLogger(__name__).debug(
+            "Compiling %d job(s) in parameter %s of job %s",
+            len(sub_jobs),
+            multi_parm_job_field,
+            job.job_id,
+        )
         job = job.model_copy(
             update={
                 "parameters": {
@@ -367,6 +385,11 @@ def _compile_singular(
             ),
         )
 
+    logging.getLogger(__name__).debug(
+        "Compiling virtual job %s over %d dependent job(s)",
+        virtual_id,
+        len(cleaned_dep_jobs),
+    )
     result = job.compile_virtual(cleaned_dep_jobs)
     return [
         real_job.model_copy(

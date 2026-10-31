@@ -113,6 +113,7 @@ class SqliteQueue(QueueInterface):
 
         """
         self.database_file = database_file
+        logging.getLogger(__name__).debug("Opening sqlite queue %s", database_file)
         self._engine = self._create_engine(self.database_file)
 
         try:
@@ -281,6 +282,7 @@ class SqliteQueue(QueueInterface):
                 sesh.commit()
                 return None
             sesh.commit()
+            logger.debug("Dequeued job %s", job_id)
             return GetJobReturn(payload=payload)
 
     @staticmethod
@@ -469,6 +471,9 @@ class SqliteQueue(QueueInterface):
                 .values(worker_id=worker_id),
             )
             sesh.commit()
+        logging.getLogger(__name__).debug(
+            "Job %s is run by worker %d", job_id, worker_id
+        )
 
     def fail_jobs_of_worker(self, worker_id: int) -> list[str]:
         """Mark the RUNNING jobs of a worker which died as ERROR.
@@ -515,6 +520,10 @@ class SqliteQueue(QueueInterface):
             )
             failed = [row[0] for row in rows]
             sesh.commit()
+        if failed:
+            logging.getLogger(__name__).debug(
+                "Failed job(s) %s of dead worker %d", failed, worker_id
+            )
         self._update_job_statuses()  # their dependents fail too
         return failed
 
@@ -574,6 +583,8 @@ class SqliteQueue(QueueInterface):
             )
             failed = [row[0] for row in sesh.execute(stmt)]
             sesh.commit()
+        if failed:
+            logging.getLogger(__name__).debug("Failed deadlocked job(s) %s", failed)
         return failed
 
     def get_jobs_report(self) -> JobsReport:
@@ -803,6 +814,9 @@ class SqliteQueue(QueueInterface):
             sesh.execute(update_query)
             sesh.flush()
             sesh.commit()
+        logging.getLogger(__name__).debug(
+            "Job %s status set to %s (details: %s)", job_id, status.name, details
+        )
 
         self._update_job_statuses()
 
@@ -912,6 +926,9 @@ class SqliteQueue(QueueInterface):
             )
             return False
 
+        logging.getLogger(__name__).debug(
+            "Added job %s to the queue (parent: %s)", job_config.job_id, parent_job_id
+        )
         # not required but polite
         self._update_job_statuses()
         return True
@@ -1070,3 +1087,8 @@ class SqliteQueue(QueueInterface):
             if in_queue is None:
                 sesh.add(JobQueue(job_id=job_config.job_id))
             sesh.commit()
+        logging.getLogger(__name__).debug(
+            "Replaced config of job %s (requeued: %s)",
+            job_config.job_id,
+            in_queue is None,
+        )

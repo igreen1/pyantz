@@ -11,6 +11,7 @@ container) before using the new submitter.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
@@ -126,7 +127,14 @@ def submit(params: SubmitParams) -> bool:
         jobs=params.jobs, submitter=params.runner_config, variables=curr_variables
     )
 
+    logger = logging.getLogger(__name__)
+    logger.debug(
+        "Submitting %d job(s) with a new %s submitter",
+        len(new_initial_config.jobs),
+        params.runner_config.type_,
+    )
     report = start(new_initial_config)
+    logger.debug("New submitter finished with report %s", report)
 
     return report is None or report.all_succeeded
 
@@ -225,6 +233,14 @@ def new_host(params: HostParams) -> bool:
         host=params.host_config,
     )
 
+    logger = logging.getLogger(__name__)
+    logger.debug(
+        "Running %d job(s) on new %s host with a %s submitter",
+        len(new_initial_config.jobs),
+        params.host_config.type_,
+        params.submit_config.type_,
+    )
     report = start(new_initial_config)
+    logger.debug("New host finished with report %s", report)
 
     return report is None or report.all_succeeded

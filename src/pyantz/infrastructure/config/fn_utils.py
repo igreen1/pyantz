@@ -9,6 +9,7 @@ dynamically imports it again at runtime.
 from __future__ import annotations
 
 import importlib
+import logging
 import os
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Annotated, Any, TypeVar
@@ -122,6 +123,9 @@ def _check_import_allowed(key: str) -> None:
             f"Cannot import '{key}': it is not inside one of the modules allowed by "
             f"{ALLOWED_MODULES_VARIABLE} ({', '.join(allowed)})"
         )
+        logging.getLogger(__name__).warning(
+            "Refused to import %s: not inside %s", key, ALLOWED_MODULES_VARIABLE
+        )
         raise ValueError(msg)
 
 
@@ -198,6 +202,8 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
     if not isinstance(key, str):
         return key
 
+    logger = logging.getLogger(__name__)
+    logger.debug("Importing %s", key)
     _check_import_allowed(key)
 
     name_components = key.split(".")
@@ -215,6 +221,7 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
         except ModuleNotFoundError as exc:
             if exc.name is not None and mod_name.startswith(exc.name):
                 last_error = exc
+                logger.debug("%s is not a module, trying a shorter prefix", mod_name)
                 continue  # this prefix isn't a module, so try a shorter one
             msg = f"Cannot import '{key}': unable to import module '{mod_name}' ({exc})"
             raise ValueError(msg) from exc
@@ -230,6 +237,7 @@ def import_module_item_by_name(key: Any) -> Any:  # noqa: ANN401
                 f"'{attribute}'"
             )
             raise ValueError(msg) from exc
+        logger.debug("Imported %s from module %s", key, mod_name)
         return item
 
     mod_name = ".".join(name_components[:-1])

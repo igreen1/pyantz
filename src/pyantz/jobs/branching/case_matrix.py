@@ -13,6 +13,7 @@ also creates per-run output directories and injects ``output_dir`` and
 from __future__ import annotations
 
 import itertools
+import logging
 import math
 import os
 import uuid
@@ -444,6 +445,11 @@ def create_case_matrix(
         )
 
     left.sink_parquet(params.save_file)
+    logging.getLogger(__name__).debug(
+        "Wrote case matrix of variables %s to %s",
+        list(params.variables),
+        params.save_file,
+    )
 
     return True
 
@@ -531,11 +537,17 @@ def pipeline_expansion(
         # virtual jobs are compiled away before a job runs
         cast("list[JobConfig]", params.pipeline_template)
     )
+    logger = logging.getLogger(__name__)
+    logger.debug("Expanding pipeline over case matrix %s", params.case_matrix_parquet)
+    num_pipelines = 0
     for sub_matrix in case_matrix.collect_batches():
         for row_entry in sub_matrix.iter_rows(named=True):
+            logger.debug("Submitting pipeline for case %s", row_entry)
             pipeline_submitter = pipeline_submit_factory(row_entry)
             pipeline_submitter(submit_fn)
+            num_pipelines += 1
 
+    logger.debug("Submitted %d pipeline(s)", num_pipelines)
     return True
 
 

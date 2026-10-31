@@ -12,6 +12,7 @@ making them useful for dynamic branching based on runtime state.
 
 from __future__ import annotations
 
+import logging
 import math
 import operator
 import re
@@ -154,10 +155,16 @@ def if_else(params: IfElseParams, submit_fn: SubmissionFnType) -> bool:
     """
     # first compare which one we want to do
     if _compare(params):
+        logging.getLogger(__name__).debug(
+            "Condition true, submitting job %s", params.if_true.job_id
+        )
         submit_fn(
             params.if_true,
         )
     else:
+        logging.getLogger(__name__).debug(
+            "Condition false, submitting job %s", params.if_false.job_id
+        )
         submit_fn(
             params.if_false,
         )
@@ -254,9 +261,14 @@ def conditionally_execute(
 
     """
     if _compare(params):
+        logging.getLogger(__name__).debug(
+            "Condition true, submitting job %s", params.if_true.job_id
+        )
         submit_fn(
             params.if_true,
         )
+    else:
+        logging.getLogger(__name__).debug("Condition false, submitting nothing")
     return True
 
 
@@ -397,7 +409,11 @@ def _compare(params: IfElseParams | ConditionalExecution) -> bool:
     if params.coerce == "str" or isinstance(left, str) != isinstance(right, str):
         # text compared with text; a number against text is compared as text too
         return op(str(left), str(right))
-    return op(left, right)
+    result = op(left, right)
+    logging.getLogger(__name__).debug(
+        "Compared %r %s %r: %s", left, comparator, right, result
+    )
+    return result
 
 
 op_mapping: dict[ValidOperators, Callable[..., bool]] = {

@@ -10,6 +10,7 @@ when you need to share in-memory state between steps without a file system.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any, Final
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -121,12 +122,18 @@ def run_pipeline(params: LocalPipelineParameters) -> bool:
         msg = "Cannot submit jobs from within a local pipeline."
         raise RuntimeError(msg)
 
+    logger = logging.getLogger(__name__)
+    logger.debug("Running local pipeline of %d job(s)", len(params.jobs))
     success: bool = True
     for job in params.jobs:
         job_with_parent_context = JobWithContext.from_config(job).inherit_context(
             curr_variables
         )
         if not run_job(job_with_parent_context, submitter_fn=submit_fn):
+            logger.debug(
+                "Job %s failed, stopping the local pipeline",
+                job_with_parent_context.job_id,
+            )
             success = False
             break
 
