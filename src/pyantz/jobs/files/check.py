@@ -7,6 +7,7 @@ Both return ``False`` (signalling job failure) when the condition is not met.
 
 from __future__ import annotations
 
+import logging
 import mmap
 from pathlib import Path
 
@@ -68,7 +69,9 @@ def file_exists(params: ExistsParams) -> bool:
             shutil.rmtree(tmp)
 
     """
-    return params.file.exists()
+    exists = params.file.exists()
+    logging.getLogger(__name__).debug("File %s exists: %s", params.file, exists)
+    return exists
 
 
 class FileContentsParams(BaseModel):
@@ -138,6 +141,7 @@ def file_contains(params: FileContentsParams) -> bool:
 
     """
     if not params.file.exists():
+        logging.getLogger(__name__).debug("File %s doesn't exist", params.file)
         return False
 
     # an empty file can't be memory mapped; it only contains the empty substring

@@ -7,6 +7,7 @@ variable context from the enclosing scope.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
@@ -115,8 +116,16 @@ def local_for_loop(params: LocalForLoopParams, submit_fn: SubmissionFnType) -> b
         _vars if (_vars := JobVariables.get()) else {}
     )
 
+    logger = logging.getLogger(__name__)
     success = True
     for index in range(params.num_iterations):
+        logger.debug(
+            "Loop iteration %d of %d (%s=%d)",
+            index + 1,
+            params.num_iterations,
+            params.index_variable,
+            index,
+        )
         iteration_variables = {**curr_variables, params.index_variable: index}
         for job in params.jobs:
             job_ctx = JobWithContext.from_config(job).inherit_context(
@@ -124,6 +133,7 @@ def local_for_loop(params: LocalForLoopParams, submit_fn: SubmissionFnType) -> b
             )
             if not run_job_no_parent_wrapper(job_ctx, submit_fn):
                 # later jobs and iterations must not run, unless asked to go on
+                logger.debug("Job %s failed in iteration %d", job_ctx.job_id, index)
                 if params.stop_on_failure:
                     return False
                 success = False

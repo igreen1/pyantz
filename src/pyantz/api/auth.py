@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hmac
+import logging
 from typing import Annotated
 
 from fastapi import Header, HTTPException, status
@@ -55,6 +56,9 @@ def require_token(authorization: Annotated[str | None, Header()] = None) -> None
     if scheme.lower() != "bearer" or not hmac.compare_digest(
         supplied.encode(), token.encode()
     ):
+        logging.getLogger(__name__).debug(
+            "Rejected request with a missing or bad token"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing or invalid token",

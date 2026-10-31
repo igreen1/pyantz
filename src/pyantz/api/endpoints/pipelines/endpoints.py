@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -249,6 +250,9 @@ def start_run(config: ConfigBody) -> StartRunResponse:
             stderr=subprocess.STDOUT,
             start_new_session=True,
         )
+    logging.getLogger(__name__).info(
+        "Started run %s (pid %d) in %s", run_id, _PROCESSES[run_id].pid, run_dir
+    )
     return StartRunResponse(run_id=run_id)
 
 

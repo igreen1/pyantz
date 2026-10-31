@@ -32,6 +32,7 @@ Example of :class:`InitialConfig`:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Annotated, Any, Self
 
@@ -98,9 +99,12 @@ def make_and_compile(jobs: Any) -> list[JobConfig]:  # noqa: ANN401
             ['run_jobs_in_context']
 
     """
+    logger = logging.getLogger(__name__)
     job_configs = list(map(make_job, jobs))
+    logger.debug("Validated %d job config(s)", len(job_configs))
     problems = find_graph_problems(job_configs)
     if problems:
+        logger.debug("Found %d problem(s) in the job graph", len(problems))
         msg = "Invalid jobs:\n- " + "\n- ".join(problems)
         raise ValueError(msg)
     return compile_virtual(job_configs)
