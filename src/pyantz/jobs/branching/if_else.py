@@ -12,6 +12,7 @@ making them useful for dynamic branching based on runtime state.
 
 from __future__ import annotations
 
+import logging
 import math
 import operator
 import re
@@ -152,12 +153,15 @@ def if_else(params: IfElseParams, submit_fn: SubmissionFnType) -> bool:
             ['bigger']
 
     """
+    logger = logging.getLogger(__name__)
     # first compare which one we want to do
     if _compare(params):
+        logger.debug("Condition true, submitting job %s", params.if_true.job_id)
         submit_fn(
             params.if_true,
         )
     else:
+        logger.debug("Condition false, submitting job %s", params.if_false.job_id)
         submit_fn(
             params.if_false,
         )
@@ -253,10 +257,14 @@ def conditionally_execute(
             ERROR: disk full 1
 
     """
+    logger = logging.getLogger(__name__)
     if _compare(params):
+        logger.debug("Condition true, submitting job %s", params.if_true.job_id)
         submit_fn(
             params.if_true,
         )
+    else:
+        logger.debug("Condition false, submitting nothing")
     return True
 
 
@@ -366,6 +374,30 @@ def _compare(params: IfElseParams | ConditionalExecution) -> bool:
 
             auto True
             str False
+
+    """
+    result = _evaluate(params)
+    # the sides may hold variables' values (e.g., secrets), so they aren't logged
+    logging.getLogger(__name__).debug(
+        "Comparison %s (coerce=%s) is %s", params.comparator, params.coerce, result
+    )
+    return result
+
+
+def _evaluate(params: IfElseParams | ConditionalExecution) -> bool:
+    """Evaluate ``left <comparator> right`` without logging; see :func:`_compare`.
+
+    Args:
+        params: the parameters holding the sides, the comparator and how to read
+            the sides.
+
+    Returns:
+        bool: the result of the comparison.
+
+    Raises:
+        ValueError: if ``coerce`` is ``float`` and a side isn't a number.
+        re.error: if ``comparator`` is ``=~`` and the right side isn't a valid
+            regular expression.
 
     """
     left, right = params.left_side, params.right_side

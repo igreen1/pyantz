@@ -6,6 +6,7 @@ changes, ``pyantz-dev``).
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import uvicorn
@@ -57,9 +58,11 @@ def create_app(frontend_dir: Path | None = None) -> FastAPI:
             True
 
     """
+    logger = logging.getLogger(__name__)
     application = FastAPI()
     origins = get_cors_origins()
     if origins:
+        logger.debug("Allowing CORS origins %s", origins)
         application.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
@@ -75,6 +78,7 @@ def create_app(frontend_dir: Path | None = None) -> FastAPI:
                 "build the web ui with `npm run build` in frontend/pyantz"
             )
             raise ValueError(msg)
+        logger.debug("Serving the web ui from %s", frontend_dir)
         # last, so that it never hides the api
         application.mount(
             "/", StaticFiles(directory=frontend_dir, html=True), name="frontend"

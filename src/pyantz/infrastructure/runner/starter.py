@@ -6,6 +6,7 @@ the point to the correct local runner.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 
 from pyantz.infrastructure.config import InitialConfig as _InitialConfig
@@ -80,7 +81,14 @@ def start(config: _InitialConfig | Mapping[str, Any]) -> JobsReport | None:
             shutil.rmtree(tmp)
 
     """
+    logger = logging.getLogger(__name__)
     loaded_config: _InitialConfig = _InitialConfig.model_validate(config)
+    logger.debug(
+        "Validated configuration with %d job(s), host %s, submitter %s",
+        len(loaded_config.jobs),
+        loaded_config.host.type_,
+        loaded_config.submitter.type_,
+    )
     if loaded_config.host.type_ == "local":
         return run_local(loaded_config)
     if loaded_config.host.type_ == "container":
@@ -149,6 +157,10 @@ def run_local(config: _InitialConfig) -> JobsReport | None:
             shutil.rmtree(tmp)
 
     """
+    logging.getLogger(__name__).debug(
+        "Starting %s submitter on this machine",
+        config.submitter.type_,
+    )
     # if not loaded, check it
     if config.submitter.type_ == "local_proc":
         # start local runner
