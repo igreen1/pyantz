@@ -542,7 +542,7 @@ def pipeline_expansion(
     num_pipelines = 0
     for sub_matrix in case_matrix.collect_batches():
         for row_entry in sub_matrix.iter_rows(named=True):
-            logger.debug("Submitting pipeline for case %s", row_entry)
+            logger.debug("Submitting pipeline for case %d", num_pipelines)
             pipeline_submitter = pipeline_submit_factory(row_entry)
             pipeline_submitter(submit_fn)
             num_pipelines += 1

@@ -56,7 +56,7 @@ def require_token(authorization: Annotated[str | None, Header()] = None) -> None
     if scheme.lower() != "bearer" or not hmac.compare_digest(
         supplied.encode(), token.encode()
     ):
-        logging.getLogger(__name__).debug(
+        logging.getLogger(__name__).warning(
             "Rejected request with a missing or bad token"
         )
         raise HTTPException(

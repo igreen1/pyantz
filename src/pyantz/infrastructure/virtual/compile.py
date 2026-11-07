@@ -240,6 +240,7 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
         ValueError: if nested jobs can't be compiled (see :func:`compile_virtual`).
 
     """
+    logger = logging.getLogger(__name__)
     joblike_parms = _find_joblike_parameters_with_model(job)
     if joblike_parms is None:
         return job
@@ -252,7 +253,7 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
         sub_job_validated: AnyJobConfig | None = _try_to_validate_job(sub_job)
         if sub_job_validated is None:
             continue  # cannot help this parameter out
-        logging.getLogger(__name__).debug(
+        logger.debug(
             "Compiling job in parameter %s of job %s", parm_job_field, job.job_id
         )
         job = job.model_copy(
@@ -271,7 +272,7 @@ def _compile_parameters_singular(job: RealJobConfig) -> RealJobConfig:
         if any(sub_job is None for sub_job in validated_sub_jobs):
             continue  # not all jobs, so cannot help this parameter out
         sub_jobs = type(sub_jobs)(validated_sub_jobs)
-        logging.getLogger(__name__).debug(
+        logger.debug(
             "Compiling %d job(s) in parameter %s of job %s",
             len(sub_jobs),
             multi_parm_job_field,

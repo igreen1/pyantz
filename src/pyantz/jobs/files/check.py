@@ -140,12 +140,14 @@ def file_contains(params: FileContentsParams) -> bool:
             shutil.rmtree(tmp)
 
     """
+    logger = logging.getLogger(__name__)
     if not params.file.exists():
-        logging.getLogger(__name__).debug("File %s doesn't exist", params.file)
+        logger.debug("File %s doesn't exist", params.file)
         return False
 
     # an empty file can't be memory mapped; it only contains the empty substring
     if params.file.stat().st_size == 0:
+        logger.debug("File %s is empty", params.file)
         return params.substring == ""
 
     # use memory mapping to efficiently load the file without overloading ram
@@ -155,4 +157,6 @@ def file_contains(params: FileContentsParams) -> bool:
         params.file.open("rb", 0) as fh,
         mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as mm,
     ):
-        return mm.find(params.substring.encode("utf-8")) != -1
+        found = mm.find(params.substring.encode("utf-8")) != -1
+    logger.debug("File %s contains the substring: %s", params.file, found)
+    return found

@@ -130,7 +130,7 @@ def run_pipeline(params: LocalPipelineParameters) -> bool:
             curr_variables
         )
         if not run_job(job_with_parent_context, submitter_fn=submit_fn):
-            logger.debug(
+            logger.warning(
                 "Job %s failed, stopping the local pipeline",
                 job_with_parent_context.job_id,
             )

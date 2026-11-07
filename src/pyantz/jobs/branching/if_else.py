@@ -153,18 +153,15 @@ def if_else(params: IfElseParams, submit_fn: SubmissionFnType) -> bool:
             ['bigger']
 
     """
+    logger = logging.getLogger(__name__)
     # first compare which one we want to do
     if _compare(params):
-        logging.getLogger(__name__).debug(
-            "Condition true, submitting job %s", params.if_true.job_id
-        )
+        logger.debug("Condition true, submitting job %s", params.if_true.job_id)
         submit_fn(
             params.if_true,
         )
     else:
-        logging.getLogger(__name__).debug(
-            "Condition false, submitting job %s", params.if_false.job_id
-        )
+        logger.debug("Condition false, submitting job %s", params.if_false.job_id)
         submit_fn(
             params.if_false,
         )
@@ -260,15 +257,14 @@ def conditionally_execute(
             ERROR: disk full 1
 
     """
+    logger = logging.getLogger(__name__)
     if _compare(params):
-        logging.getLogger(__name__).debug(
-            "Condition true, submitting job %s", params.if_true.job_id
-        )
+        logger.debug("Condition true, submitting job %s", params.if_true.job_id)
         submit_fn(
             params.if_true,
         )
     else:
-        logging.getLogger(__name__).debug("Condition false, submitting nothing")
+        logger.debug("Condition false, submitting nothing")
     return True
 
 
@@ -380,6 +376,30 @@ def _compare(params: IfElseParams | ConditionalExecution) -> bool:
             str False
 
     """
+    result = _evaluate(params)
+    # the sides may hold variables' values (e.g., secrets), so they aren't logged
+    logging.getLogger(__name__).debug(
+        "Comparison %s (coerce=%s) is %s", params.comparator, params.coerce, result
+    )
+    return result
+
+
+def _evaluate(params: IfElseParams | ConditionalExecution) -> bool:
+    """Evaluate ``left <comparator> right`` without logging; see :func:`_compare`.
+
+    Args:
+        params: the parameters holding the sides, the comparator and how to read
+            the sides.
+
+    Returns:
+        bool: the result of the comparison.
+
+    Raises:
+        ValueError: if ``coerce`` is ``float`` and a side isn't a number.
+        re.error: if ``comparator`` is ``=~`` and the right side isn't a valid
+            regular expression.
+
+    """
     left, right = params.left_side, params.right_side
     comparator = params.comparator
 
@@ -409,11 +429,7 @@ def _compare(params: IfElseParams | ConditionalExecution) -> bool:
     if params.coerce == "str" or isinstance(left, str) != isinstance(right, str):
         # text compared with text; a number against text is compared as text too
         return op(str(left), str(right))
-    result = op(left, right)
-    logging.getLogger(__name__).debug(
-        "Compared %r %s %r: %s", left, comparator, right, result
-    )
-    return result
+    return op(left, right)
 
 
 op_mapping: dict[ValidOperators, Callable[..., bool]] = {

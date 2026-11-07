@@ -134,7 +134,12 @@ def submit(params: SubmitParams) -> bool:
         params.runner_config.type_,
     )
     report = start(new_initial_config)
-    logger.debug("New submitter finished with report %s", report)
+    if report is not None:
+        logger.debug(
+            "New submitter finished: %d of %d job(s) succeeded",
+            report.success,
+            report.total,
+        )
 
     return report is None or report.all_succeeded
 
@@ -241,6 +246,11 @@ def new_host(params: HostParams) -> bool:
         params.submit_config.type_,
     )
     report = start(new_initial_config)
-    logger.debug("New host finished with report %s", report)
+    if report is not None:
+        logger.debug(
+            "New host finished: %d of %d job(s) succeeded",
+            report.success,
+            report.total,
+        )
 
     return report is None or report.all_succeeded

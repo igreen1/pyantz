@@ -521,7 +521,7 @@ class SqliteQueue(QueueInterface):
             failed = [row[0] for row in rows]
             sesh.commit()
         if failed:
-            logging.getLogger(__name__).debug(
+            logging.getLogger(__name__).warning(
                 "Failed job(s) %s of dead worker %d", failed, worker_id
             )
         self._update_job_statuses()  # their dependents fail too
@@ -584,7 +584,7 @@ class SqliteQueue(QueueInterface):
             failed = [row[0] for row in sesh.execute(stmt)]
             sesh.commit()
         if failed:
-            logging.getLogger(__name__).debug("Failed deadlocked job(s) %s", failed)
+            logging.getLogger(__name__).warning("Failed deadlocked job(s) %s", failed)
         return failed
 
     def get_jobs_report(self) -> JobsReport:
@@ -814,8 +814,12 @@ class SqliteQueue(QueueInterface):
             sesh.execute(update_query)
             sesh.flush()
             sesh.commit()
-        logging.getLogger(__name__).debug(
-            "Job %s status set to %s (details: %s)", job_id, status.name, details
+        # details are often error messages, which may hold parameters: not logged
+        logging.getLogger(__name__).log(
+            logging.WARNING if status == JobStatus.ERROR else logging.DEBUG,
+            "Job %s status set to %s",
+            job_id,
+            status.name,
         )
 
         self._update_job_statuses()
@@ -1084,11 +1088,10 @@ class SqliteQueue(QueueInterface):
             in_queue = sesh.execute(
                 sa.select(JobQueue.q_index).where(JobQueue.job_id == job_config.job_id),
             ).first()
-            if in_queue is None:
+            requeued = in_queue is None
+            if requeued:
                 sesh.add(JobQueue(job_id=job_config.job_id))
             sesh.commit()
         logging.getLogger(__name__).debug(
-            "Replaced config of job %s (requeued: %s)",
-            job_config.job_id,
-            in_queue is None,
+            "Replaced config of job %s (requeued: %s)", job_config.job_id, requeued
         )

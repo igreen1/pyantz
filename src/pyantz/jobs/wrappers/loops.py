@@ -133,7 +133,7 @@ def local_for_loop(params: LocalForLoopParams, submit_fn: SubmissionFnType) -> b
             )
             if not run_job_no_parent_wrapper(job_ctx, submit_fn):
                 # later jobs and iterations must not run, unless asked to go on
-                logger.debug("Job %s failed in iteration %d", job_ctx.job_id, index)
+                logger.warning("Job %s failed in iteration %d", job_ctx.job_id, index)
                 if params.stop_on_failure:
                     return False
                 success = False
